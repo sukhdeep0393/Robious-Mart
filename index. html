@@ -345,13 +345,18 @@
 
   <!-- INVENTORY -->
   <div class="page" id="page-inventory">
-    <div class="card"><div class="ct">Report low inventory</div>
+    <div class="card" id="flagFormCard"><div class="ct">Report low inventory</div>
       <div style="margin-bottom:8px"><input id="invItem" placeholder="Item name (e.g. Bud Light 6-pack)" onkeydown="if(event.key==='Enter')flagInv()" /></div>
+      <div style="margin-bottom:10px"><label>Additional notes (optional)</label><input id="invNote" placeholder="e.g. Almost out, need to order 2 cases" /></div>
       <button class="btn bprimary" style="padding:11px" onclick="flagInv()">Flag low inventory</button>
     </div>
     <div class="card">
       <div class="sh2"><div class="ct" style="margin:0">Active flags</div><span class="badge bred" id="invCnt" style="display:none"></span></div>
       <div id="invList"><div class="empty"><div class="ei">✓</div>No active flags</div></div>
+    </div>
+    <div class="card" id="resolvedCard" style="display:none">
+      <div class="ct">Resolved today</div>
+      <div id="resolvedList"></div>
     </div>
   </div>
 
@@ -966,18 +971,80 @@ async function loadInvoices(){
 
 // ---- INVENTORY ----
 async function flagInv(){
-  const item=document.getElementById('invItem').value.trim();if(!item){toast('Enter item name');return;}
-  try{await window.F.addDoc(window.F.collection(window.db,'inventoryFlags'),{item,employee:CU.name,resolved:false,date:new Date().toISOString().split('T')[0],timestamp:window.F.serverTimestamp()});document.getElementById('invItem').value='';toast('✓ Item flagged!');loadInvFlags();}catch(e){toast('Error');}
+  const item=document.getElementById('invItem').value.trim();
+  const note=document.getElementById('invNote')?.value.trim()||'';
+  if(!item){toast('Enter item name');return;}
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'inventoryFlags'),{
+      item, note, employee:CU.name, resolved:false,
+      resolvedBy:'', operatorNote:'',
+      date:new Date().toISOString().split('T')[0],
+      timestamp:window.F.serverTimestamp()
+    });
+    document.getElementById('invItem').value='';
+    if(document.getElementById('invNote')) document.getElementById('invNote').value='';
+    toast('✓ Item flagged!');
+    loadInvFlags();
+  }catch(e){toast('Error flagging item');}
 }
-async function resFlag(id){try{await window.F.updateDoc(window.F.doc(window.db,'inventoryFlags',id),{resolved:true});toast('Marked resolved');loadInvFlags();}catch(e){}}
+async function resFlag(id){
+  try{
+    const noteEl=document.getElementById('opnote-'+id);
+    const opNote=noteEl?noteEl.value.trim():'';
+    await window.F.updateDoc(window.F.doc(window.db,'inventoryFlags',id),{
+      resolved:true,
+      resolvedBy:CU.name,
+      operatorNote:opNote,
+      resolvedDate:new Date().toISOString().split('T')[0]
+    });
+    toast('✓ Flag resolved');
+    loadInvFlags();
+  }catch(e){toast('Error resolving flag');}
+}
 async function loadInvFlags(){
   try{
     const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.where('resolved','==',false),window.F.orderBy('timestamp','desc')));
     const el=document.getElementById('invList'),cnt=document.getElementById('invCnt');
-    if(snap.empty){el.innerHTML='<div class="empty"><div class="ei">✓</div>No active flags</div>';cnt.style.display='none';return;}
+    if(snap.empty){
+      el.innerHTML='<div class="empty"><div class="ei">✓</div>No active flags</div>';
+      cnt.style.display='none';
+      return;
+    }
     cnt.style.display='inline-flex';cnt.textContent=snap.size;
-    el.innerHTML=snap.docs.map(d=>{const x=d.data();return`<div class="irow"><div><div style="font-size:14px">${x.item}</div><div style="font-size:11px;color:var(--text3)">By ${x.employee} · ${x.date}</div></div><button class="bsm" onclick="resFlag('${d.id}')">Resolved</button></div>`;}).join('');
-  }catch(e){}
+    const isOp=CU&&CU.role==='operator';
+    el.innerHTML=snap.docs.map(d=>{
+      const x=d.data();
+      const noteHtml=x.note?`<div style="font-size:12px;color:var(--text2);margin-top:2px">📝 ${x.note}</div>`:'';
+      const opNoteForm=isOp?`
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <input placeholder="Add operator note before resolving..." id="opnote-${d.id}" style="flex:1;font-size:12px;padding:6px 8px" />
+          <button class="bsm" onclick="resFlag('${d.id}')">Resolve</button>
+        </div>`:`<button class="bsm" style="margin-top:6px" onclick="resFlag('${d.id}')">Mark resolved</button>`;
+      return`<div class="irow" style="flex-direction:column;align-items:stretch">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:600;color:var(--text)">${x.item||'Unknown item'}</div>
+            ${noteHtml}
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">Flagged by <strong>${x.employee||'Unknown'}</strong> · ${x.date||''}</div>
+          </div>
+          <span class="badge bred" style="flex-shrink:0">Low</span>
+        </div>
+        ${opNoteForm}
+      </div>`;
+    }).join('');
+
+    // Also load recently resolved for operator
+    if(isOp){
+      const today=new Date().toISOString().split('T')[0];
+      const rSnap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.where('resolved','==',true),window.F.where('date','==',today)));
+      const rc=document.getElementById('resolvedCard');
+      const rl=document.getElementById('resolvedList');
+      if(rc&&rl&&!rSnap.empty){
+        rc.style.display='block';
+        rl.innerHTML=rSnap.docs.map(d=>{const x=d.data();return`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="text-decoration:line-through;color:var(--text3)">${x.item}</span>${x.operatorNote?' — '+x.operatorNote:''}</div>`;}).join('');
+      }
+    }
+  }catch(e){console.error('loadInvFlags error',e);}
 }
 
 // ---- LOGS ----
