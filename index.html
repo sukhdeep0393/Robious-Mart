@@ -248,6 +248,10 @@
 
   <!-- FUEL -->
   <div class="page" id="page-fuel">
+    <div class="card" id="latestFuelCard" style="display:none">
+      <div class="ct">Latest fuel reading</div>
+      <div id="latestFuelContent"></div>
+    </div>
     <div class="card"><div class="ct">Upload fuel printout</div>
       <div class="uzone" onclick="document.getElementById('fuelPic').click()">
         <div id="fuelPrev"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div></div>
@@ -483,6 +487,7 @@ function showTab(id){
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.id===id)t.classList.add('active');});
   if(id==='dashboard')loadDashboard();
+  if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();}
   if(id==='logs')loadLogs();
   if(id==='invoices')loadInvoices();
   if(id==='inventory')loadInvFlags();
@@ -568,11 +573,11 @@ async function loadDashboard(){
     const scrMTD=scrSnap.docs.map(d=>d.data()).filter(d=>d.date>=mtdStart);
     const scrVal=scrMTD.length>0?scrMTD[scrMTD.length-1].totalValue||0:0;
 
-    // Low inventory flags - safe fetch
+    // Low inventory flags
     let openFlags=0;
     try{
-      const invSnap=await getDocs(collection(window.db,'inventoryFlags'));
-      openFlags=invSnap.docs.filter(d=>d.data().resolved===false).length;
+      const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
+      openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
     }catch(e2){openFlags=0;}
 
     // Compliance alerts
@@ -1003,45 +1008,52 @@ async function resFlag(id){
 }
 async function loadInvFlags(){
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.where('resolved','==',false),window.F.orderBy('timestamp','desc')));
+    // Fetch all flags, filter in JS to avoid Firestore index requirement
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.orderBy('timestamp','desc'),window.F.limit(100)));
+    const allDocs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const active=allDocs.filter(x=>x.resolved===false||x.resolved===undefined);
     const el=document.getElementById('invList'),cnt=document.getElementById('invCnt');
-    if(snap.empty){
+    if(!active.length){
       el.innerHTML='<div class="empty"><div class="ei">✓</div>No active flags</div>';
       cnt.style.display='none';
-      return;
-    }
-    cnt.style.display='inline-flex';cnt.textContent=snap.size;
-    const isOp=CU&&CU.role==='operator';
-    el.innerHTML=snap.docs.map(d=>{
-      const x=d.data();
-      const noteHtml=x.note?`<div style="font-size:12px;color:var(--text2);margin-top:2px">📝 ${x.note}</div>`:'';
-      const opNoteForm=isOp?`
-        <div style="margin-top:8px;display:flex;gap:6px">
-          <input placeholder="Add operator note before resolving..." id="opnote-${d.id}" style="flex:1;font-size:12px;padding:6px 8px" />
-          <button class="bsm" onclick="resFlag('${d.id}')">Resolve</button>
-        </div>`:`<button class="bsm" style="margin-top:6px" onclick="resFlag('${d.id}')">Mark resolved</button>`;
-      return`<div class="irow" style="flex-direction:column;align-items:stretch">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div style="flex:1">
-            <div style="font-size:15px;font-weight:600;color:var(--text)">${x.item||'Unknown item'}</div>
-            ${noteHtml}
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">Flagged by <strong>${x.employee||'Unknown'}</strong> · ${x.date||''}</div>
+    } else {
+      cnt.style.display='inline-flex';cnt.textContent=active.length;
+      const isOp=CU&&CU.role==='operator';
+      el.innerHTML=active.map(x=>{
+        const noteHtml=x.note?`<div style="font-size:12px;color:var(--text2);margin-top:2px">📝 ${x.note}</div>`:'';
+        const opNoteForm=isOp?`
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <input placeholder="Add note before resolving (optional)..." id="opnote-${x.id}" style="flex:1;font-size:12px;padding:6px 8px" />
+            <button class="bsm" onclick="resFlag('${x.id}')">Resolve</button>
+          </div>`:`<button class="bsm" style="margin-top:6px" onclick="resFlag('${x.id}')">Mark resolved</button>`;
+        return`<div class="irow" style="flex-direction:column;align-items:stretch">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1">
+              <div style="font-size:15px;font-weight:600;color:var(--text)">${x.item||'Unknown item'}</div>
+              ${noteHtml}
+              <div style="font-size:11px;color:var(--text3);margin-top:3px">Flagged by <strong>${x.employee||'Unknown'}</strong> · ${x.date||''}</div>
+            </div>
+            <span class="badge bred" style="flex-shrink:0">Low</span>
           </div>
-          <span class="badge bred" style="flex-shrink:0">Low</span>
-        </div>
-        ${opNoteForm}
-      </div>`;
-    }).join('');
+          ${opNoteForm}
+        </div>`;
+      }).join('');
+    }
 
-    // Also load recently resolved for operator
+    // Show recently resolved for operator
+    const isOp=CU&&CU.role==='operator';
     if(isOp){
       const today=new Date().toISOString().split('T')[0];
-      const rSnap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.where('resolved','==',true),window.F.where('date','==',today)));
+      const resolved=allDocs.filter(x=>x.resolved===true&&x.resolvedDate===today);
       const rc=document.getElementById('resolvedCard');
       const rl=document.getElementById('resolvedList');
-      if(rc&&rl&&!rSnap.empty){
-        rc.style.display='block';
-        rl.innerHTML=rSnap.docs.map(d=>{const x=d.data();return`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="text-decoration:line-through;color:var(--text3)">${x.item}</span>${x.operatorNote?' — '+x.operatorNote:''}</div>`;}).join('');
+      if(rc&&rl){
+        if(resolved.length){
+          rc.style.display='block';
+          rl.innerHTML=resolved.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="text-decoration:line-through;color:var(--text3)">${x.item}</span>${x.operatorNote?' — <span style="color:var(--text2)">'+x.operatorNote+'</span>':''}<div style="font-size:11px;color:var(--text3)">Resolved by ${x.resolvedBy||'Unknown'}</div></div>`).join('');
+        } else {
+          rc.style.display='none';
+        }
       }
     }
   }catch(e){console.error('loadInvFlags error',e);}
@@ -1191,6 +1203,34 @@ async function loadMyHours(){
       <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?r.hoursWorked.toFixed(1)+' hrs':'—'}</div>
     </div>`).join('')+'</div>';
   }catch(e){el.innerHTML='<div class="empty">Error loading hours</div>';}
+}
+
+async function loadLatestFuel(){
+  const card=document.getElementById('latestFuelCard');
+  const el=document.getElementById('latestFuelContent');
+  if(!card||!el)return;
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(5)));
+    if(snap.empty){card.style.display='none';return;}
+    card.style.display='block';
+    el.innerHTML=snap.docs.map(d=>{
+      const x=d.data();
+      const tanks=[{n:'Regular',v:x.regularGal||0,c:10000},{n:'Premium',v:x.premiumGal||0,c:8000},{n:'Diesel',v:x.dieselGal||0,c:6000}];
+      const barsHtml=tanks.map(t=>{
+        const p=Math.min(100,t.v/t.c*100);
+        const col=p<20?'var(--red)':p<40?'var(--amber)':'var(--blue)';
+        return`<div class="fbar"><div class="fbar-h"><span>${t.n}</span><span style="color:${col}">${t.v.toLocaleString()} gal${p<20?' ⚑ Low':''}</span></div><div class="fbar-t"><div class="fbar-f" style="width:${p}%;background:${col}"></div></div></div>`;
+      }).join('');
+      const photoHtml=x.photoUrl?`<img src="${x.photoUrl}" style="width:100%;border-radius:8px;max-height:160px;object-fit:cover;margin-top:10px;cursor:pointer" onclick="window.open('${x.photoUrl}','_blank')" />`:'';
+      return`<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:500">${new Date(x.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+          <span class="badge bgrn">${x.employee||'Unknown'}</span>
+        </div>
+        ${barsHtml}${photoHtml}
+      </div>`;
+    }).join('');
+  }catch(e){card.style.display='none';}
 }
 
 window.addEventListener('fbReady',()=>{});
