@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Robious Mart — Ops</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Robious Mart">
+<style>
+  :root{--blue:#1a5ca8;--blue-dark:#154d91;--blue-light:#e8f0fb;--green:#3B6D11;--green-light:#EAF3DE;--red:#A32D2D;--red-light:#FCEBEB;--amber:#854F0B;--amber-light:#FAEEDA;--border:#e2e2de;--text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;--bg:#ffffff;--bg2:#f8f8f6;--r:10px;--rl:14px;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--text);font-size:15px;min-height:100vh;}
+  input,select,textarea{font-family:inherit;font-size:15px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;width:100%;outline:none;-webkit-appearance:none;}
+  input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,92,168,.12);}
+  button{font-family:inherit;cursor:pointer;}
+  label{font-size:13px;color:var(--text2);display:block;margin-bottom:5px;font-weight:500;}
+  /* LOGIN */
+  #loginScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:30px 24px;}
+  .login-logo{font-size:28px;font-weight:800;margin-bottom:6px;}.login-logo span{color:var(--blue);}
+  .login-sub{font-size:13px;color:var(--text3);margin-bottom:32px;}
+  .lcard{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:24px;width:100%;max-width:360px;}
+  .ltabs{display:flex;gap:8px;margin-bottom:20px;}
+  .ltab{flex:1;padding:9px;border-radius:var(--r);font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--bg2);color:var(--text2);}
+  .ltab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
+  .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:var(--bg2);transition:background .15s;}
+  .pin-dot.filled{background:var(--blue);border-color:var(--blue);}
+  .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .pk{padding:16px;border-radius:var(--r);font-size:20px;font-weight:600;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+  .pk:active{background:var(--bg2);transform:scale(.96);}
+  .pk.del{font-size:16px;color:var(--text2);}
+  .pk.blank{border:none;background:none;cursor:default;}
+  .lerr{color:var(--red);font-size:13px;text-align:center;min-height:20px;margin-bottom:10px;}
+  .btn-login{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;}
+  /* APP */
+  #appShell{display:none;}
+  .header{background:var(--bg);border-bottom:1px solid var(--border);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .logo{font-size:17px;font-weight:700;}.logo span{color:var(--blue);}
+  .ubadge{font-size:12px;color:var(--text2);background:var(--bg2);padding:4px 10px;border-radius:20px;border:1px solid var(--border);}
+  .lout{font-size:12px;color:var(--text3);background:none;border:none;padding:4px 8px;}
+  .alert-banner{background:var(--red-light);border-bottom:1px solid #f7c1c1;padding:10px 16px;font-size:13px;color:var(--red);font-weight:500;}
+  .tab-bar{background:var(--bg);border-bottom:1px solid var(--border);padding:0 8px;display:flex;overflow-x:auto;scrollbar-width:none;}
+  .tab-bar::-webkit-scrollbar{display:none;}
+  .tab{padding:13px 12px 11px;font-size:13px;font-weight:500;color:var(--text2);border:none;background:none;border-bottom:2.5px solid transparent;white-space:nowrap;}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .page{display:none;padding:16px 16px 100px;max-width:600px;margin:0 auto;}
+  .page.active{display:block;}
+  .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:12px;}
+  .ct{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .btn{display:block;width:100%;padding:13px;border-radius:var(--r);font-size:15px;font-weight:600;border:none;text-align:center;}
+  .btn:active{transform:scale(.98);opacity:.9;}
+  .bprimary{background:var(--blue);color:#fff;}
+  .bsecondary{background:var(--bg2);color:var(--text);border:1px solid var(--border);}
+  .bsm{font-size:12px;padding:5px 12px;border-radius:20px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);display:inline-block;width:auto;}
+  .bdsm{font-size:12px;padding:5px 12px;border-radius:20px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1;display:inline-block;width:auto;}
+  .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;}
+  .bred{background:var(--red-light);color:var(--red);}
+  .bamb{background:var(--amber-light);color:var(--amber);}
+  .bgrn{background:var(--green-light);color:var(--green);}
+  .bblu{background:var(--blue-light);color:var(--blue);}
+  .metric{background:var(--bg2);border-radius:var(--r);padding:12px;}
+  .mlab{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500;}
+  .mval{font-size:20px;font-weight:700;}
+  .mok{background:var(--green-light);color:var(--green);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;margin-top:8px;}
+  .merr{background:var(--red-light);color:var(--red);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;margin-top:8px;}
+  .uzone{border:2px dashed var(--border);border-radius:var(--rl);padding:28px 16px;text-align:center;cursor:pointer;}
+  .uzone:active{background:var(--bg2);}
+  .fbar{margin-bottom:10px;}
+  .fbar-h{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;}
+  .fbar-t{background:var(--border);border-radius:4px;height:8px;}
+  .fbar-f{height:100%;border-radius:4px;}
+  .sh{display:grid;grid-template-columns:1fr 55px 75px 50px;gap:6px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:0 2px 8px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+  .sr{display:grid;grid-template-columns:1fr 55px 75px 50px;gap:6px;align-items:center;margin-bottom:8px;}
+  .sn{font-size:13px;line-height:1.3;}
+  .sp{font-size:13px;color:var(--text2);}
+  .crow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:8px;}
+  .crow:last-child{border-bottom:none;}
+  .irow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;}
+  .irow:last-child{border-bottom:none;}
+  .aibox{background:var(--bg2);border-radius:var(--r);padding:14px;font-size:13px;line-height:1.7;color:var(--text2);white-space:pre-wrap;min-height:60px;}
+  .litem{padding:12px 0;border-bottom:1px solid var(--border);}
+  .litem:last-child{border-bottom:none;}
+  .ltitle{font-size:13px;font-weight:500;margin-bottom:3px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .lmeta{font-size:11px;color:var(--text3);margin-bottom:3px;}
+  .ldet{font-size:12px;color:var(--text2);}
+  .empty{text-align:center;padding:28px 16px;color:var(--text3);font-size:13px;}
+  .ei{font-size:28px;margin-bottom:6px;}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+  .toast.show{opacity:1;}
+  .sh2{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .short-over-box{border-radius:8px;padding:10px 12px;font-size:13px;font-weight:500;margin-top:8px;}
+  .short-box{background:var(--red-light);color:var(--red);}
+  .over-box{background:var(--green-light);color:var(--green);}
+  .even-box{background:var(--blue-light);color:var(--blue);}
+  .auto-scanning{background:var(--amber-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--amber);margin-top:10px;display:flex;align-items:center;gap:8px;}
+  /* DASHBOARD */
+  .dash-greeting{font-size:20px;font-weight:700;margin-bottom:2px;}
+  .dash-date{font-size:13px;color:var(--text3);margin-bottom:16px;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  .stat-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:14px;}
+  .stat-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+  .stat-val{font-size:22px;font-weight:700;margin-bottom:2px;}
+  .stat-sub{font-size:11px;color:var(--text3);}
+  .stat-change{font-size:12px;font-weight:600;margin-top:4px;}
+  .ch-up{color:var(--green);}
+  .ch-dn{color:var(--red);}
+  .ch-neu{color:var(--text3);}
+  .dash-section{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 10px;}
+  .emp-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .emp-row:last-child{border-bottom:none;}
+  .emp-name{font-weight:500;}
+  .emp-detail{font-size:12px;color:var(--text2);margin-top:2px;}
+  .mtd-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .mtd-row:last-child{border-bottom:none;}
+  .alert-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .alert-item:last-child{border-bottom:none;}
+  .loading-dash{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;}
+
+  /* EMPLOYEES TAB */
+  .emp-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:12px;}
+  .emp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .emp-avatar{width:38px;height:38px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--blue);flex-shrink:0;}
+  .hours-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .hours-row:last-child{border-bottom:none;}
+  .fuel-photo-thumb{width:100%;border-radius:var(--r);max-height:180px;object-fit:cover;cursor:pointer;margin-top:8px;}
+  .filter-bar{display:flex;gap:8px;margin-bottom:12px;}
+  .filter-bar input,.filter-bar select{flex:1;}
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-logo">Robious<span> Mart</span></div>
+  <div class="login-sub">Operations Platform</div>
+  <div class="lcard">
+    <div class="ltabs">
+      <button class="ltab active" onclick="switchLTab('op',this)">Operator</button>
+      <button class="ltab" onclick="switchLTab('emp',this)">Employee</button>
+    </div>
+    <div id="opLogin">
+      <div style="margin-bottom:10px"><label>Email</label><input type="email" id="opEmail" placeholder="your@email.com" /></div>
+      <div style="margin-bottom:14px"><label>Password</label><input type="password" id="opPass" placeholder="Password" onkeydown="if(event.key==='Enter')doOpLogin()" /></div>
+      <div class="lerr" id="opErr"></div>
+      <button class="btn-login" onclick="doOpLogin()">Sign in</button>
+    </div>
+    <div id="empLogin" style="display:none">
+      <div style="margin-bottom:12px"><label>Your name</label><input type="text" id="empName" placeholder="First name" /></div>
+      <div class="pin-dots"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
+      <div class="lerr" id="pinErr"></div>
+      <div class="pin-pad">
+        <button class="pk" onclick="pk('1')">1</button><button class="pk" onclick="pk('2')">2</button><button class="pk" onclick="pk('3')">3</button>
+        <button class="pk" onclick="pk('4')">4</button><button class="pk" onclick="pk('5')">5</button><button class="pk" onclick="pk('6')">6</button>
+        <button class="pk" onclick="pk('7')">7</button><button class="pk" onclick="pk('8')">8</button><button class="pk" onclick="pk('9')">9</button>
+        <button class="pk blank" disabled></button><button class="pk" onclick="pk('0')">0</button><button class="pk del" onclick="pdel()">⌫</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <div class="header">
+    <div class="logo">Robious<span> Mart</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="ubadge" id="uBadge"></span>
+      <button class="lout" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="alert-banner" id="alertBanner" style="display:none"></div>
+  <div class="tab-bar" id="tabBar"></div>
+
+  <!-- DASHBOARD (operator only) -->
+  <div class="page" id="page-dashboard">
+    <div id="dashContent"><div class="loading-dash"><div style="font-size:28px;margin-bottom:8px">⏳</div>Loading your dashboard...</div></div>
+  </div>
+
+  <!-- DAILY -->
+  <div class="page" id="page-daily">
+    <div class="card"><div class="ct">Shift info</div>
+      <div class="g3" style="margin-bottom:10px">
+        <div><label>Employee</label><input id="d-emp" readonly style="background:var(--bg2)" /></div>
+        <div><label>Date</label><input type="date" id="d-date" /></div>
+        <div><label>Shift</label><select id="d-shift"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="night">Night</option></select></div>
+      </div>
+      <div class="g3" style="margin-bottom:10px">
+        <div><label>Start time</label><input type="time" id="d-start" /></div>
+        <div><label>End time</label><input type="time" id="d-end" oninput="calcHours()" /></div>
+        <div><label>Hours worked</label><input id="d-hours" readonly placeholder="Auto" style="background:var(--bg2);font-weight:600;color:var(--blue)" /></div>
+      </div>
+      <div><label>Shift comment (optional)</label><input id="d-comment" placeholder="e.g. Busy morning, delivery arrived..." /></div>
+    </div>
+    <div class="card">
+      <div class="ct">C-store sales</div>
+      <div class="g3" style="margin-bottom:10px">
+        <div><label>Total sales ($)</label><input type="number" id="d-tot" placeholder="0.00" oninput="chkMatch()" /></div>
+        <div><label>Cash ($)</label><input type="number" id="d-cash" placeholder="0.00" oninput="chkMatch()" /></div>
+        <div><label>Credit ($)</label><input type="number" id="d-cred" placeholder="0.00" oninput="chkMatch()" /></div>
+      </div>
+      <div id="matchInd"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="ct" style="margin-bottom:10px">Cash drawer — short or over</div>
+        <div class="g2" style="margin-bottom:8px">
+          <div><label>Expected cash ($)</label><input type="number" id="d-expected" placeholder="0.00" oninput="calcShortOver()" /></div>
+          <div><label>Actual counted ($)</label><input type="number" id="d-actual" placeholder="0.00" oninput="calcShortOver()" /></div>
+        </div>
+        <div id="shortOverResult"></div>
+      </div>
+    </div>
+    <div class="card"><div class="ct">Fuel sold (gallons)</div>
+      <div class="g3">
+        <div><label>Regular</label><input type="number" id="d-reg" placeholder="0.0" /></div>
+        <div><label>Premium</label><input type="number" id="d-prem" placeholder="0.0" /></div>
+        <div><label>Diesel</label><input type="number" id="d-dies" placeholder="0.0" /></div>
+      </div>
+    </div>
+    <div class="card"><div class="ct">Lottery</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Lottery total ($)</label><input type="number" id="d-ltot" placeholder="0.00" oninput="updLot()" /></div>
+        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" oninput="updLot()" /></div>
+      </div>
+      <div id="lotNet"></div>
+    </div>
+    <div class="card"><div class="ct">Incidents & notes</div>
+      <div style="margin-bottom:10px"><label>Incidents / issues</label><textarea id="d-inc" rows="3" placeholder="Problems, equipment issues, complaints..."></textarea></div>
+      <div><label>Notes for next shift</label><textarea id="d-notes" rows="2" placeholder="Pass-along notes..."></textarea></div>
+    </div>
+    <div class="card">
+      <div class="ct">End-of-shift photos</div>
+      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue)">
+        Take photos of your register tape, cash drawer, or any receipts. Claude will read them and fill in the numbers automatically.
+      </div>
+      <div class="uzone" onclick="document.getElementById('shiftPhotos').click()" style="padding:20px">
+        <div style="font-size:28px;margin-bottom:6px">📸</div>
+        <div style="font-size:14px;color:var(--text2)" id="shiftPhotoLabel">Tap to add photos (optional)</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Register tape, cash drawer, POS screen</div>
+      </div>
+      <input type="file" id="shiftPhotos" accept="image/*" multiple style="display:none" onchange="handleShiftPhotos(this)" />
+      <div id="shiftPhotoScanMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>Claude is reading your photos and filling in numbers...</div>
+    </div>
+    <button class="btn bprimary" id="dailyBtn" onclick="subDaily()">Submit shift report</button>
+  </div>
+
+  <!-- FUEL -->
+  <div class="page" id="page-fuel">
+    <div class="card"><div class="ct">Upload fuel printout</div>
+      <div class="uzone" onclick="document.getElementById('fuelPic').click()">
+        <div id="fuelPrev"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div></div>
+      </div>
+      <input type="file" id="fuelPic" accept="image/*" style="display:none" onchange="prvFuel(this)" />
+    </div>
+    <div class="card"><div class="ct">Fuel report date & employee</div>
+      <div class="g2">
+        <div><label>Date</label><input type="date" id="f-date" /></div>
+        <div><label>Employee</label><input id="f-emp" readonly style="background:var(--bg2)" /></div>
+      </div>
+    </div>
+    <div class="card"><div class="ct">Manual entry (gallons in tank)</div>
+      <div class="g3" style="margin-bottom:14px">
+        <div><label>Regular</label><input type="number" id="f-reg" placeholder="gal" oninput="updFBars()" /></div>
+        <div><label>Premium</label><input type="number" id="f-prem" placeholder="gal" oninput="updFBars()" /></div>
+        <div><label>Diesel</label><input type="number" id="f-dies" placeholder="gal" oninput="updFBars()" /></div>
+      </div>
+      <div id="fuelBars"></div>
+    </div>
+    <button class="btn bprimary" onclick="subFuel()">Save fuel report</button>
+  </div>
+
+  <!-- SCRATCH-OFFS -->
+  <div class="page" id="page-scratch">
+    <div class="card"><div class="ct">Shift info</div>
+      <div class="g2">
+        <div><label>Employee</label><input id="s-emp" readonly style="background:var(--bg2)" /></div>
+        <div><label>Reporting at</label><select id="s-type" onchange="document.getElementById('scrBtn').textContent=this.value==='start'?'Save opening count':'Save closing count'"><option value="start">Start of shift</option><option value="end">End of shift</option></select></div>
+      </div>
+    </div>
+    <div class="card" id="mgmtCard" style="display:none">
+      <div class="sh2"><div class="ct" style="margin:0">Manage scratch-off games</div><button class="bsm" onclick="togAddGame()">+ Add game</button></div>
+      <div id="addGameForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <div class="g2" style="margin-bottom:8px">
+          <div><label>Game name</label><input id="gname" placeholder="e.g. $1 Lucky Stars" /></div>
+          <div><label>Ticket price ($)</label><input type="number" id="gprice" placeholder="1" min="1" max="30" /></div>
+        </div>
+        <div style="margin-bottom:8px"><label>Game # (1–33)</label><input type="number" id="gnum" placeholder="e.g. 7" min="1" max="33" /></div>
+        <button class="btn bprimary" style="padding:10px;font-size:13px" onclick="addGame()">Add game</button>
+      </div>
+      <div id="gmList"></div>
+    </div>
+    <div class="card">
+      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--amber)">Count tickets <strong>remaining in dispenser</strong> for each active game</div>
+      <div class="sh"><div>Game</div><div>Price</div><div>Count</div><div></div></div>
+      <div id="scrRows"><div class="empty"><div class="ei">🎟</div>No games added yet</div></div>
+      <div id="scrTot" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Estimated value on hand</div>
+        <div style="font-size:22px;font-weight:700" id="scrTotVal">$0</div>
+      </div>
+    </div>
+    <button class="btn bprimary" id="scrBtn" onclick="subScratch()">Save opening count</button>
+  </div>
+
+  <!-- COMPLIANCE -->
+  <div class="page" id="page-compliance">
+    <div id="compAlerts"></div>
+    <div class="card">
+      <div class="sh2"><div class="ct" style="margin:0">Licenses & inspections</div><button class="bsm" onclick="togAddLic()">+ Add</button></div>
+      <div id="addLicForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin:0 0 14px">
+        <div class="g2" style="margin-bottom:8px">
+          <div><label>Name</label><input id="ln" placeholder="e.g. Fire inspection" /></div>
+          <div><label>Due date</label><input type="date" id="ld" /></div>
+        </div>
+        <button class="btn bprimary" style="padding:10px;font-size:13px" onclick="addLic()">Add</button>
+      </div>
+      <div id="licList"></div>
+    </div>
+  </div>
+
+  <!-- INVOICES -->
+  <div class="page" id="page-invoices">
+    <div class="card"><div class="ct">Upload invoice</div>
+      <div class="uzone" onclick="document.getElementById('invFile').click()">
+        <div style="font-size:32px;margin-bottom:8px">🧾</div>
+        <div style="font-size:14px;color:var(--text2)" id="invFName">Tap to upload invoice</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Photo or PDF — AI scans automatically</div>
+      </div>
+      <input type="file" id="invFile" accept="image/*,application/pdf" style="display:none" onchange="handleInv(this)" />
+      <div id="autoScanMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>AI is scanning your invoice...</div>
+    </div>
+    <div id="invResult" style="display:none">
+      <div class="card">
+        <div class="ct">AI invoice breakdown</div>
+        <div class="aibox" id="invAI"></div>
+        <button class="btn bprimary" style="margin-top:12px;padding:11px" onclick="saveInv()">Save & submit invoice</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Recently submitted</div>
+      <div id="savedInvList"><div class="empty"><div class="ei">🧾</div>No invoices submitted yet</div></div>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="page" id="page-inventory">
+    <div class="card"><div class="ct">Report low inventory</div>
+      <div style="margin-bottom:8px"><input id="invItem" placeholder="Item name (e.g. Bud Light 6-pack)" onkeydown="if(event.key==='Enter')flagInv()" /></div>
+      <button class="btn bprimary" style="padding:11px" onclick="flagInv()">Flag low inventory</button>
+    </div>
+    <div class="card">
+      <div class="sh2"><div class="ct" style="margin:0">Active flags</div><span class="badge bred" id="invCnt" style="display:none"></span></div>
+      <div id="invList"><div class="empty"><div class="ei">✓</div>No active flags</div></div>
+    </div>
+  </div>
+
+
+  <!-- EMPLOYEES (operator only) -->
+  <div class="page" id="page-employees">
+    <div class="card">
+      <div class="ct">Filter</div>
+      <div class="filter-bar">
+        <input type="month" id="empMonth" onchange="loadEmployees()" />
+        <select id="empFilter" onchange="loadEmployees()">
+          <option value="all">All employees</option>
+        </select>
+      </div>
+    </div>
+    <div id="empContent"><div class="empty"><div class="ei">👥</div>Loading...</div></div>
+
+    <div class="ct" style="margin:16px 0 10px">Fuel inventory photos</div>
+    <div class="filter-bar">
+      <input type="date" id="fuelPhotoDate" onchange="loadFuelPhotos()" placeholder="Filter by date" />
+    </div>
+    <div id="fuelPhotoList"><div class="empty"><div class="ei">📷</div>No fuel photos yet</div></div>
+  </div>
+
+  <!-- MY HOURS (employee/lead) -->
+  <div class="page" id="page-myhours">
+    <div class="card">
+      <div class="ct">Filter</div>
+      <input type="month" id="myHoursMonth" onchange="loadMyHours()" style="margin-bottom:0" />
+    </div>
+    <div id="myHoursSummary"></div>
+    <div id="myHoursContent"><div class="empty"><div class="ei">⏱</div>Loading...</div></div>
+  </div>
+
+  <!-- LOGS (operator only) -->
+  <div class="page" id="page-logs">
+    <div class="card"><div class="ct">Filter</div>
+      <div class="g2">
+        <div><label>Type</label><select id="logFilt" onchange="loadLogs()"><option value="all">All entries</option><option value="dailyReports">Daily reports</option><option value="fuelReports">Fuel reports</option><option value="scratchCounts">Scratch counts</option><option value="invoices">Invoices</option></select></div>
+        <div><label>Date</label><input type="date" id="logDate" onchange="loadLogs()" /></div>
+      </div>
+    </div>
+    <div class="card"><div class="ct">Entries</div><div id="logsList"><div class="empty"><div class="ei">📊</div>Loading...</div></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore,collection,addDoc,getDocs,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyC5ZtJ25RB4gz_Ov8H0lPHExsggpP00Gok",authDomain:"robious-mart.firebaseapp.com",projectId:"robious-mart",storageBucket:"robious-mart.firebasestorage.app",messagingSenderId:"679205177455",appId:"1:679205177455:web:b10c4c2835f9cf2c2e259a"});
+const db=getFirestore(app);
+window.db=db;
+window.F={collection,addDoc,getDocs,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc};
+window.dispatchEvent(new Event('fbReady'));
+</script>
+
+<script>
+const OP_EMAIL='sukhdeep.0393@gmail.com',OP_PASS='Newjersey@2025',LEAD_PIN='1111';
+let CU=null,pinBuf='',games=[],invFD=null,invAT='',invFN='';
+
+const TABS={
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'logs',l:'📊 Logs'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}]
+};
+
+// ---- LOGIN ----
+function switchLTab(t,el){
+  document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('active'));el.classList.add('active');
+  document.getElementById('opLogin').style.display=t==='op'?'block':'none';
+  document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
+}
+function doOpLogin(){
+  const e=document.getElementById('opEmail').value.trim(),p=document.getElementById('opPass').value;
+  if(e===OP_EMAIL&&p===OP_PASS) loginOK({name:'Sukh',role:'operator'});
+  else{document.getElementById('opErr').textContent='Incorrect email or password';setTimeout(()=>document.getElementById('opErr').textContent='',3000);}
+}
+function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
+function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
+function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
+function chkPin(){
+  const n=document.getElementById('empName').value.trim();
+  if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
+  if(pinBuf===LEAD_PIN) loginOK({name:n,role:'lead'});
+  else{document.getElementById('pinErr').textContent='Incorrect PIN';pinBuf='';updDots();setTimeout(()=>document.getElementById('pinErr').textContent='',2500);}
+}
+function loginOK(u){
+  CU=u;
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  document.getElementById('uBadge').textContent=u.name+(u.role==='operator'?' · Operator':u.role==='lead'?' · Lead':'');
+  document.getElementById('d-emp').value=u.name;
+  document.getElementById('s-emp').value=u.name;
+  document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-emp').value=u.name;
+  // Set default month filters
+  const ym=new Date().toISOString().slice(0,7);
+  const em=document.getElementById('empMonth');if(em)em.value=ym;
+  const mm=document.getElementById('myHoursMonth');if(mm)mm.value=ym;
+  buildTabs();
+  if(u.role==='operator'||u.role==='lead') document.getElementById('mgmtCard').style.display='block';
+  loadGames();loadInvFlags();loadInvoices();
+  if(u.role==='operator'){checkComp();showTab('dashboard');}
+  else showTab('daily');
+}
+function doLogout(){
+  CU=null;pinBuf='';invFD=null;invAT='';invFN='';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('opEmail').value='';document.getElementById('opPass').value='';document.getElementById('empName').value='';updDots();
+}
+
+// ---- TABS ----
+function buildTabs(){
+  const bar=document.getElementById('tabBar');
+  bar.innerHTML=TABS[CU.role].map(t=>`<button class="tab" data-id="${t.id}" onclick="showTab('${t.id}')">${t.l}</button>`).join('');
+}
+function showTab(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.id===id)t.classList.add('active');});
+  if(id==='dashboard')loadDashboard();
+  if(id==='logs')loadLogs();
+  if(id==='invoices')loadInvoices();
+  if(id==='inventory')loadInvFlags();
+  if(id==='scratch')renderScrRows();
+  if(id==='compliance')checkComp();
+  if(id==='employees')loadEmployees();
+  if(id==='myhours')loadMyHours();
+}
+
+// ---- TOAST ----
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+function calcHours(){
+  const s=document.getElementById('d-start').value;
+  const e=document.getElementById('d-end').value;
+  if(!s||!e){document.getElementById('d-hours').value='';return;}
+  let [sh,sm]=s.split(':').map(Number);
+  let [eh,em]=e.split(':').map(Number);
+  let totalMins=(eh*60+em)-(sh*60+sm);
+  if(totalMins<0)totalMins+=24*60; // overnight shift
+  const hrs=Math.floor(totalMins/60);
+  const mins=totalMins%60;
+  const decimalHrs=parseFloat((totalMins/60).toFixed(2));
+  // Show as "9h 30min (9.50 hrs)" so both formats are clear
+  document.getElementById('d-hours').value=hrs+'h '+(mins>0?mins+'min':'')+'  ('+decimalHrs+' hrs)';
+  return decimalHrs;
+}
+
+// ---- DASHBOARD ----
+async function loadDashboard(){
+  const el=document.getElementById('dashContent');
+  el.innerHTML='<div class="loading-dash"><div style="font-size:28px;margin-bottom:8px">⏳</div>Loading your dashboard...</div>';
+
+  const today=new Date().toISOString().split('T')[0];
+  const now=new Date();
+  const mtdStart=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  const yesterday=new Date(now-864e5).toISOString().split('T')[0];
+
+  try{
+    const {getDocs,query,collection,orderBy,where,limit}=window.F;
+
+    // Fetch all daily reports for this month
+    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('timestamp','desc'),limit(200)));
+    const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const todayR=allReports.filter(r=>r.date===today);
+    const yestR=allReports.filter(r=>r.date===yesterday);
+    const mtdR=allReports.filter(r=>r.date>=mtdStart);
+
+    // Totals
+    const sum=(arr,key)=>arr.reduce((s,r)=>s+(parseFloat(r[key])||0),0);
+    const todaySales=sum(todayR,'totalSales');
+    const yestSales=sum(yestR,'totalSales');
+    const mtdSales=sum(mtdR,'totalSales');
+    const mtdCash=sum(mtdR,'cashSales');
+    const mtdCredit=sum(mtdR,'creditSales');
+    const mtdRegGal=sum(mtdR,'regularGal');
+    const mtdPremGal=sum(mtdR,'premiumGal');
+    const mtdDiesGal=sum(mtdR,'dieselGal');
+    const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
+    const todayLotNet=sum(todayR,'lotteryTotal')-sum(todayR,'lotteryPayout');
+
+    // Sales change
+    const salesChange=yestSales>0?((todaySales-yestSales)/yestSales*100):0;
+    const changeClass=salesChange>0?'ch-up':salesChange<0?'ch-dn':'ch-neu';
+    const changeText=salesChange===0?'—':(salesChange>0?'▲':'▼')+' '+Math.abs(salesChange).toFixed(1)+'% vs yesterday';
+
+    // Cash short/over by employee (MTD)
+    const empMap={};
+    mtdR.forEach(r=>{
+      if(!r.employee)return;
+      if(!empMap[r.employee])empMap[r.employee]={name:r.employee,shifts:0,shortOver:0,short:0,over:0};
+      empMap[r.employee].shifts++;
+      if(r.cashDifference){
+        empMap[r.employee].shortOver+=r.cashDifference;
+        if(r.cashDifference<0) empMap[r.employee].short++;
+        else if(r.cashDifference>0) empMap[r.employee].over++;
+      }
+    });
+
+    // Scratch-off MTD
+    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(100)));
+    const scrMTD=scrSnap.docs.map(d=>d.data()).filter(d=>d.date>=mtdStart);
+    const scrVal=scrMTD.length>0?scrMTD[scrMTD.length-1].totalValue||0:0;
+
+    // Low inventory flags - safe fetch
+    let openFlags=0;
+    try{
+      const invSnap=await getDocs(collection(window.db,'inventoryFlags'));
+      openFlags=invSnap.docs.filter(d=>d.data().resolved===false).length;
+    }catch(e2){openFlags=0;}
+
+    // Compliance alerts
+    const urgLics=lics.filter(l=>!l.ack&&du(l.due)<=30);
+
+    // Recent incidents
+    const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!='').slice(0,5);
+
+    const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const fmtMon=()=>new Date().toLocaleDateString('en-US',{month:'long'});
+
+    el.innerHTML=`
+      <div class="dash-greeting">Good ${getGreeting()}, Sukh 👋</div>
+      <div class="dash-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
+
+      ${urgLics.length||openFlags?`<div class="card" style="border-color:#f7c1c1;background:var(--red-light);margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px">⚑ Needs your attention</div>
+        ${urgLics.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:3px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+' days left'}</div>`).join('')}
+        ${openFlags?`<div style="font-size:12px;color:var(--red);margin-bottom:3px">• ${openFlags} open low inventory flag${openFlags>1?'s':''}</div>`:''}
+      </div>`:''}
+
+      <div class="dash-section">Today — ${fmtDate(today)}</div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total sales</div>
+          <div class="stat-val">$${todaySales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div class="stat-change ${changeClass}">${changeText}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net lottery</div>
+          <div class="stat-val" style="color:${todayLotNet>=0?'var(--green)':'var(--red)'}">$${todayLotNet.toFixed(2)}</div>
+          <div class="stat-sub">${todayR.length} report${todayR.length!==1?'s':''} submitted</div>
+        </div>
+      </div>
+
+      <div class="dash-section">Month to date — ${fmtMon()}</div>
+      <div class="card">
+        <div class="mtd-row"><span style="color:var(--text2)">Total sales</span><strong>$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Cash sales</span><strong>$${mtdCash.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Credit sales</span><strong>$${mtdCredit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Net lottery</span><strong style="color:${mtdLotNet>=0?'var(--green)':'var(--red)'}">$${mtdLotNet.toFixed(2)}</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Regular fuel</span><strong>${mtdRegGal.toFixed(1)} gal</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Premium fuel</span><strong>${mtdPremGal.toFixed(1)} gal</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Diesel fuel</span><strong>${mtdDiesGal.toFixed(1)} gal</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Total fuel sold</span><strong>${(mtdRegGal+mtdPremGal+mtdDiesGal).toFixed(1)} gal</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Shift reports submitted</span><strong>${mtdR.length}</strong></div>
+      </div>
+
+      <div class="dash-section">Cash accountability — ${fmtMon()}</div>
+      <div class="card">
+        ${Object.values(empMap).length===0?'<div class="empty" style="padding:16px"><div class="ei">👤</div>No employee data yet</div>':
+        Object.values(empMap).map(e=>{
+          const diff=e.shortOver;
+          const col=Math.abs(diff)<0.01?'var(--text2)':diff<0?'var(--red)':'var(--green)';
+          const label=Math.abs(diff)<0.01?'Balanced':diff<0?`Short $${Math.abs(diff).toFixed(2)}`:`Over $${diff.toFixed(2)}`;
+          return`<div class="emp-row">
+            <div><div class="emp-name">${e.name}</div><div class="emp-detail">${e.shifts} shift${e.shifts!==1?'s':''} · ${e.short} short · ${e.over} over</div></div>
+            <div style="font-size:13px;font-weight:600;color:${col}">${label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="dash-section">Scratch-off inventory</div>
+      <div class="card">
+        <div class="mtd-row"><span style="color:var(--text2)">Last recorded value on hand</span><strong>$${scrVal.toLocaleString()}</strong></div>
+        <div class="mtd-row"><span style="color:var(--text2)">Counts submitted this month</span><strong>${scrMTD.length}</strong></div>
+      </div>
+
+      ${incidents.length?`<div class="dash-section">Recent incidents</div>
+      <div class="card">
+        ${incidents.map(r=>`<div class="alert-item"><div><div style="font-size:13px">${r.incidents.substring(0,80)}${r.incidents.length>80?'...':''}</div><div style="font-size:11px;color:var(--text3)">${r.employee} · ${fmtDate(r.date)}</div></div></div>`).join('')}
+      </div>`:''}
+
+      <div style="margin-top:8px">
+        <button class="btn bsecondary" onclick="loadDashboard()" style="font-size:13px;padding:10px">↻ Refresh dashboard</button>
+      </div>
+    `;
+  }catch(e){
+    el.innerHTML=`<div class="empty"><div class="ei">⚠️</div><div style="margin-bottom:8px">Error loading dashboard</div><div style="font-size:11px;background:#f0f0f0;padding:8px;border-radius:6px;text-align:left;word-break:break-all;color:#333">${e.message||e.toString()}</div><button class="btn bsecondary" style="margin-top:12px;font-size:13px;padding:10px" onclick="loadDashboard()">Try again</button></div>`;
+    console.error('Dashboard error:',e);
+  }
+}
+
+function getGreeting(){
+  const h=new Date().getHours();
+  return h<12?'morning':h<17?'afternoon':'evening';
+}
+
+// ---- DAILY ----
+async function handleShiftPhotos(input){
+  if(!input.files.length) return;
+  const label=document.getElementById('shiftPhotoLabel');
+  const msg=document.getElementById('shiftPhotoScanMsg');
+  label.textContent=`${input.files.length} photo${input.files.length>1?'s':''} selected — scanning...`;
+  msg.style.display='flex';
+  try{
+    const imgs=[];
+    for(const file of input.files){
+      const b64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(file);});
+      imgs.push({type:'image',source:{type:'base64',media_type:file.type,data:b64}});
+    }
+    imgs.push({type:'text',text:'These are end-of-shift photos from a convenience store (Robious Mart, Virginia). Please read all visible numbers and extract: 1) Total sales if visible, 2) Cash sales amount, 3) Credit/card sales amount, 4) Any lottery totals or payouts, 5) Any fuel gallon amounts. Return ONLY a JSON object like: {"totalSales":0,"cashSales":0,"creditSales":0,"lotteryTotal":0,"lotteryPayout":0,"regularGal":0,"premiumGal":0,"dieselGal":0,"notes":"any other relevant info seen"}. If a value is not visible return 0.'});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:imgs}]})});
+    const data=await resp.json();
+    const raw=data.content?.map(c=>c.text||'').join('')||'{}';
+    const clean=raw.replace(/```json|```/g,'').trim();
+    const vals=JSON.parse(clean);
+    if(vals.totalSales) document.getElementById('d-tot').value=vals.totalSales;
+    if(vals.cashSales) document.getElementById('d-cash').value=vals.cashSales;
+    if(vals.creditSales) document.getElementById('d-cred').value=vals.creditSales;
+    if(vals.lotteryTotal) document.getElementById('d-ltot').value=vals.lotteryTotal;
+    if(vals.lotteryPayout) document.getElementById('d-lpay').value=vals.lotteryPayout;
+    if(vals.regularGal) document.getElementById('d-reg').value=vals.regularGal;
+    if(vals.premiumGal) document.getElementById('d-prem').value=vals.premiumGal;
+    if(vals.dieselGal) document.getElementById('d-dies').value=vals.dieselGal;
+    chkMatch(); updLot();
+    label.textContent=`✓ ${input.files.length} photo${input.files.length>1?'s':''} scanned — numbers filled in below. Review and correct if needed.`;
+    label.style.color='var(--green)';
+    if(vals.notes) document.getElementById('d-notes').value=(document.getElementById('d-notes').value+' '+vals.notes).trim();
+  }catch(e){
+    label.textContent='Could not read photos — please enter numbers manually';
+    label.style.color='var(--red)';
+  }
+  msg.style.display='none';
+}
+
+function chkMatch(){
+  const tot=parseFloat(document.getElementById('d-tot').value)||0,cash=parseFloat(document.getElementById('d-cash').value)||0,cred=parseFloat(document.getElementById('d-cred').value)||0;
+  const el=document.getElementById('matchInd');
+  if(!tot&&!cash&&!cred){el.innerHTML='';return;}
+  const diff=Math.abs(tot-cash-cred);
+  el.innerHTML=diff<.01?'<div class="mok">✓ Cash + credit matches total</div>':`<div class="merr">⚑ Difference: $${diff.toFixed(2)}</div>`;
+}
+function calcShortOver(){
+  const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0;
+  const el=document.getElementById('shortOverResult');
+  if(!exp&&!act){el.innerHTML='';return;}
+  const diff=act-exp;
+  if(Math.abs(diff)<0.01){el.innerHTML='<div class="short-over-box even-box">✓ Cash drawer is exact</div>';}
+  else if(diff<0){el.innerHTML=`<div class="short-over-box short-box">⚑ SHORT by $${Math.abs(diff).toFixed(2)}</div>`;}
+  else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
+}
+function updLot(){
+  const net=(parseFloat(document.getElementById('d-ltot').value)||0)-(parseFloat(document.getElementById('d-lpay').value)||0);
+  const el=document.getElementById('lotNet'),v=document.getElementById('d-ltot').value;
+  if(!v){el.innerHTML='';return;}
+  el.innerHTML=`<div class="metric" style="display:inline-block"><div class="mlab">Net lottery</div><div class="mval" style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</div></div>`;
+}
+async function subDaily(){
+  const btn=document.getElementById('dailyBtn');btn.innerHTML='<span class="spinner"></span>Saving...';btn.disabled=true;
+  const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0,cashDiff=act-exp;
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'dailyReports'),{
+      type:'dailyReports',employee:CU.name,role:CU.role,
+      shift:document.getElementById('d-shift').value,
+      totalSales:parseFloat(document.getElementById('d-tot').value)||0,
+      cashSales:parseFloat(document.getElementById('d-cash').value)||0,
+      creditSales:parseFloat(document.getElementById('d-cred').value)||0,
+      expectedCash:exp,actualCash:act,
+      cashStatus:Math.abs(cashDiff)<0.01?'exact':cashDiff<0?'short':'over',
+      cashDifference:cashDiff,
+      regularGal:parseFloat(document.getElementById('d-reg').value)||0,
+      premiumGal:parseFloat(document.getElementById('d-prem').value)||0,
+      dieselGal:parseFloat(document.getElementById('d-dies').value)||0,
+      lotteryTotal:parseFloat(document.getElementById('d-ltot').value)||0,
+      lotteryPayout:parseFloat(document.getElementById('d-lpay').value)||0,
+      incidents:document.getElementById('d-inc').value,
+      notes:document.getElementById('d-notes').value,
+      shiftComment:document.getElementById('d-comment').value,
+      startTime:document.getElementById('d-start').value,
+      endTime:document.getElementById('d-end').value,
+      hoursWorked:calcHours()||0,
+      date:document.getElementById('d-date')?.value||new Date().toISOString().split('T')[0],
+      timestamp:window.F.serverTimestamp()
+    });
+    toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
+    setTimeout(()=>{btn.innerHTML='Submit shift report';btn.disabled=false;btn.style.background='';},3000);
+    ['d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('d-hours').value='';
+    document.getElementById('matchInd').innerHTML='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
+    const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
+    document.getElementById('shiftPhotos').value='';
+    document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-emp').value=u.name;
+  // Set default month filters
+  const ym=new Date().toISOString().slice(0,7);
+  const em=document.getElementById('empMonth');if(em)em.value=ym;
+  const mm=document.getElementById('myHoursMonth');if(mm)mm.value=ym;
+  }catch(e){toast('Error saving');btn.innerHTML='Submit shift report';btn.disabled=false;}
+}
+
+// ---- FUEL ----
+function prvFuel(i){if(!i.files[0])return;const url=URL.createObjectURL(i.files[0]);document.getElementById('fuelPrev').innerHTML=`<img src="${url}" style="max-width:100%;border-radius:8px;max-height:200px;object-fit:contain" />`;}
+function updFBars(){
+  const T=[{n:'Regular',v:parseFloat(document.getElementById('f-reg').value)||0,c:10000},{n:'Premium',v:parseFloat(document.getElementById('f-prem').value)||0,c:8000},{n:'Diesel',v:parseFloat(document.getElementById('f-dies').value)||0,c:6000}];
+  document.getElementById('fuelBars').innerHTML=T.filter(t=>t.v>0).map(t=>{const p=Math.min(100,t.v/t.c*100),col=p<20?'var(--red)':p<40?'var(--amber)':'var(--blue)';return`<div class="fbar"><div class="fbar-h"><span>${t.n}</span><span style="color:${col}">${t.v.toLocaleString()} gal${p<20?' ⚑ Low':''}</span></div><div class="fbar-t"><div class="fbar-f" style="width:${p}%;background:${col}"></div></div></div>`;}).join('');
+}
+function resizeImage(file,maxW){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const ratio=Math.min(1,maxW/img.width);
+      const canvas=document.createElement('canvas');
+      canvas.width=img.width*ratio;
+      canvas.height=img.height*ratio;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      res(canvas.toDataURL('image/jpeg',0.7));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror=rej;
+    img.src=url;
+  });
+}
+
+async function subFuel(){
+  try{
+    // Convert photo to base64 for storage
+    let photoUrl='';
+    const fuelPicFile=document.getElementById('fuelPic').files[0];
+    if(fuelPicFile){
+      try{
+        // Resize image to keep Firebase doc small
+        photoUrl=await resizeImage(fuelPicFile,800);
+      }catch(pe){console.log('Photo processing skipped',pe);}
+    }
+    await window.F.addDoc(window.F.collection(window.db,'fuelReports'),{
+      type:'fuelReports',
+      employee:document.getElementById('f-emp').value||CU.name,
+      regularGal:parseFloat(document.getElementById('f-reg').value)||0,
+      premiumGal:parseFloat(document.getElementById('f-prem').value)||0,
+      dieselGal:parseFloat(document.getElementById('f-dies').value)||0,
+      photoUrl,
+      date:document.getElementById('f-date')?.value||new Date().toISOString().split('T')[0],
+      timestamp:window.F.serverTimestamp()
+    });
+    toast('✓ Fuel report saved!');
+    ['f-reg','f-prem','f-dies'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('fuelBars').innerHTML='';
+    document.getElementById('fuelPrev').innerHTML='<div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div>';
+    document.getElementById('fuelPic').value='';
+    document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  }catch(e){toast('Error saving fuel report');}
+}
+
+// ---- SCRATCH-OFFS ----
+async function loadGames(){
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'scratchGames'),window.F.orderBy('gameNumber','asc')));
+    games=snap.docs.map(d=>({id:d.id,...d.data()}));renderScrRows();renderGmList();
+  }catch(e){}
+}
+function renderScrRows(){
+  const el=document.getElementById('scrRows');
+  if(!games.length){el.innerHTML='<div class="empty"><div class="ei">🎟</div>No games added yet</div>';document.getElementById('scrTot').style.display='none';return;}
+  el.innerHTML=games.map(g=>`<div class="sr"><div class="sn">#${g.gameNumber} ${g.name}</div><div class="sp">$${g.price}</div><input type="number" min="0" placeholder="0" id="sc-${g.id}" oninput="updScrTot()" style="text-align:center;padding:8px" /><div></div></div>`).join('');
+}
+function renderGmList(){
+  const el=document.getElementById('gmList');if(!el)return;
+  if(!games.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">No games added yet</div>';return;}
+  el.innerHTML=games.map(g=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px">#${g.gameNumber} ${g.name} <span style="color:var(--text3)">$${g.price}</span></div><button class="bdsm" onclick="delGame('${g.id}')">Remove</button></div>`).join('');
+}
+function updScrTot(){
+  const tot=games.reduce((s,g)=>s+(parseFloat(document.getElementById('sc-'+g.id)?.value)||0)*g.price,0);
+  const has=games.some(g=>document.getElementById('sc-'+g.id)?.value);
+  document.getElementById('scrTot').style.display=has?'block':'none';
+  document.getElementById('scrTotVal').textContent='$'+tot.toLocaleString();
+}
+function togAddGame(){const f=document.getElementById('addGameForm');f.style.display=f.style.display==='none'?'block':'none';}
+async function addGame(){
+  const n=document.getElementById('gname').value.trim(),p=parseFloat(document.getElementById('gprice').value),num=parseInt(document.getElementById('gnum').value);
+  if(!n||!p||!num){toast('Fill in all fields');return;}
+  if(num<1||num>33){toast('Game # must be 1–33');return;}
+  if(games.find(g=>g.gameNumber===num)){toast('Game # already exists');return;}
+  try{await window.F.addDoc(window.F.collection(window.db,'scratchGames'),{name:n,price:p,gameNumber:num,timestamp:window.F.serverTimestamp()});document.getElementById('gname').value='';document.getElementById('gprice').value='';document.getElementById('gnum').value='';document.getElementById('addGameForm').style.display='none';toast('✓ Game added');loadGames();}catch(e){toast('Error adding game');}
+}
+async function delGame(id){try{await window.F.deleteDoc(window.F.doc(window.db,'scratchGames',id));toast('Game removed');loadGames();}catch(e){toast('Error');}}
+async function subScratch(){
+  const counts={};games.forEach(g=>{counts['g_'+g.id]=parseFloat(document.getElementById('sc-'+g.id)?.value)||0;});
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{type:'scratchCounts',employee:CU.name,shiftType:document.getElementById('s-type').value,counts,games:games.map(g=>({id:g.id,name:g.name,price:g.price,gameNumber:g.gameNumber})),totalValue:games.reduce((s,g)=>s+(counts['g_'+g.id]*g.price),0),date:new Date().toISOString().split('T')[0],timestamp:window.F.serverTimestamp()});
+    toast('✓ Scratch count saved!');games.forEach(g=>{const el=document.getElementById('sc-'+g.id);if(el)el.value='';});document.getElementById('scrTot').style.display='none';
+  }catch(e){toast('Error saving');}
+}
+
+// ---- COMPLIANCE ----
+let lics=[
+  {id:'abc',name:'ABC License (Alcohol)',due:'2026-09-15',ack:false},
+  {id:'deq',name:'DEQ Inspection',due:'2026-08-01',ack:false},
+  {id:'biz',name:'Business License',due:'2027-06-01',ack:true},
+  {id:'lot',name:'Lottery License',due:'2027-09-01',ack:false},
+];
+function du(d){return Math.ceil((new Date(d)-new Date())/(864e5));}
+function renderLics(){
+  document.getElementById('licList').innerHTML=lics.map(l=>{
+    const d=du(l.due);let bc='bgrn',bt=d+'d left';
+    if(d<0){bc='bred';bt='Overdue';}else if(d<=30){bc='bred';bt=d+'d left';}else if(d<=90){bc='bamb';bt=d+'d left';}
+    const editForm=`<div id="edit-${l.id}" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-top:8px">
+      <label style="margin-bottom:4px">Update renewal date</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="newdate-${l.id}" value="${l.due}" style="flex:1" />
+        <button class="bsm" onclick="updateLicDate('${l.id}')">Save</button>
+        <button class="bsm" onclick="document.getElementById('edit-${l.id}').style.display='none'">Cancel</button>
+      </div>
+    </div>`;
+    return`<div class="crow" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="flex:1"><div style="font-size:14px;font-weight:500;margin-bottom:3px">${l.name}</div><div style="font-size:12px;color:var(--text2)">Due: ${new Date(l.due).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="badge ${bc}">${bt}</span>
+          ${(!l.ack&&d<=90)?`<button class="bsm" onclick="ackLic('${l.id}')">Ack</button>`:''}
+          <button class="bsm" onclick="toggleEditLic('${l.id}')">✏️ Edit</button>
+        </div>
+      </div>
+      ${editForm}
+    </div>`;
+  }).join('');
+}
+function checkComp(){
+  if(!CU||CU.role!=='operator')return;
+  const urg=lics.filter(l=>!l.ack&&du(l.due)<=30);
+  const ban=document.getElementById('alertBanner');
+  if(urg.length){ban.style.display='block';ban.textContent=`⚑ ${urg.length} compliance item${urg.length>1?'s':''} need attention — check Compliance tab`;}else{ban.style.display='none';}
+  const ca=document.getElementById('compAlerts');
+  if(ca&&urg.length){ca.innerHTML=`<div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px">⚑ Action required</div>${urg.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+' days left'}</div>`).join('')}</div>`;}else if(ca){ca.innerHTML='';}
+  renderLics();
+}
+function ackLic(id){
+  lics=lics.map(l=>l.id===id?{...l,ack:true}:l);checkComp();toast('Acknowledged');
+  setTimeout(()=>{const ef=document.getElementById('edit-'+id);if(ef)ef.style.display='block';},400);
+}
+function toggleEditLic(id){const f=document.getElementById('edit-'+id);if(f)f.style.display=f.style.display==='none'?'block':'none';}
+function updateLicDate(id){
+  const newDate=document.getElementById('newdate-'+id)?.value;
+  if(!newDate){toast('Pick a date');return;}
+  lics=lics.map(l=>l.id===id?{...l,due:newDate,ack:false}:l);checkComp();toast('✓ Date updated');
+}
+function togAddLic(){const f=document.getElementById('addLicForm');f.style.display=f.style.display==='none'?'block':'none';}
+function addLic(){
+  const n=document.getElementById('ln').value.trim(),d=document.getElementById('ld').value;
+  if(!n||!d){toast('Enter name and date');return;}
+  lics.push({id:Date.now().toString(),name:n,due:d,ack:false});
+  document.getElementById('ln').value='';document.getElementById('ld').value='';document.getElementById('addLicForm').style.display='none';
+  checkComp();toast('✓ License added');
+}
+
+// ---- INVOICES ----
+function handleInv(i){
+  const f=i.files[0];if(!f)return;
+  invFN=f.name;document.getElementById('invFName').textContent=f.name;
+  const r=new FileReader();
+  r.onload=()=>{invFD={b64:r.result.split(',')[1],type:f.type};autoScanInvoice();};
+  r.readAsDataURL(f);
+}
+async function autoScanInvoice(){
+  if(!invFD)return;
+  document.getElementById('autoScanMsg').style.display='flex';
+  document.getElementById('invResult').style.display='none';
+  const img=invFD.type.startsWith('image/');
+  const ca=img
+    ?[{type:'image',source:{type:'base64',media_type:invFD.type,data:invFD.b64}},{type:'text',text:'You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice: 1) Vendor name & invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, line total, 4) Invoice subtotal and total, 5) Flag unusual pricing or quantities, 6) One-line summary. Be concise and practical for a gas station operator.'}]
+    :[{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}},{type:'text',text:'You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice: 1) Vendor name & invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, line total, 4) Invoice subtotal and total, 5) Flag unusual pricing or quantities, 6) One-line summary. Be concise and practical for a gas station operator.'}];
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:ca}]})});
+    const data=await resp.json();
+    invAT=data.content?.map(c=>c.text||'').join('')||'Could not read invoice.';
+    document.getElementById('invAI').textContent=invAT;
+    document.getElementById('invResult').style.display='block';
+  }catch(e){
+    invAT='Error analyzing invoice. Please try again.';
+    document.getElementById('invAI').textContent=invAT;
+    document.getElementById('invResult').style.display='block';
+  }
+  document.getElementById('autoScanMsg').style.display='none';
+}
+async function saveInv(){
+  if(!invAT)return;
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'invoices'),{type:'invoices',fileName:invFN,analysis:invAT,employee:CU.name,date:new Date().toISOString().split('T')[0],timestamp:window.F.serverTimestamp()});
+    toast('✓ Invoice submitted!');invFD=null;invAT='';invFN='';
+    document.getElementById('invFName').textContent='Tap to upload invoice';
+    document.getElementById('invResult').style.display='none';
+    document.getElementById('invFile').value='';
+    loadInvoices();
+  }catch(e){toast('Error saving');}
+}
+async function loadInvoices(){
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'invoices'),window.F.orderBy('timestamp','desc'),window.F.limit(10)));
+    const el=document.getElementById('savedInvList');
+    if(snap.empty){el.innerHTML='<div class="empty"><div class="ei">🧾</div>No invoices submitted yet</div>';return;}
+    el.innerHTML=snap.docs.map(d=>{const x=d.data();return`<div class="litem"><div class="ltitle"><span>${x.fileName||'Invoice'}</span><span class="badge bblu">${x.date}</span></div><div class="lmeta">By ${x.employee||'Unknown'}</div><div class="ldet">${(x.analysis||'').substring(0,100)}...</div></div>`;}).join('');
+  }catch(e){}
+}
+
+// ---- INVENTORY ----
+async function flagInv(){
+  const item=document.getElementById('invItem').value.trim();if(!item){toast('Enter item name');return;}
+  try{await window.F.addDoc(window.F.collection(window.db,'inventoryFlags'),{item,employee:CU.name,resolved:false,date:new Date().toISOString().split('T')[0],timestamp:window.F.serverTimestamp()});document.getElementById('invItem').value='';toast('✓ Item flagged!');loadInvFlags();}catch(e){toast('Error');}
+}
+async function resFlag(id){try{await window.F.updateDoc(window.F.doc(window.db,'inventoryFlags',id),{resolved:true});toast('Marked resolved');loadInvFlags();}catch(e){}}
+async function loadInvFlags(){
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.where('resolved','==',false),window.F.orderBy('timestamp','desc')));
+    const el=document.getElementById('invList'),cnt=document.getElementById('invCnt');
+    if(snap.empty){el.innerHTML='<div class="empty"><div class="ei">✓</div>No active flags</div>';cnt.style.display='none';return;}
+    cnt.style.display='inline-flex';cnt.textContent=snap.size;
+    el.innerHTML=snap.docs.map(d=>{const x=d.data();return`<div class="irow"><div><div style="font-size:14px">${x.item}</div><div style="font-size:11px;color:var(--text3)">By ${x.employee} · ${x.date}</div></div><button class="bsm" onclick="resFlag('${d.id}')">Resolved</button></div>`;}).join('');
+  }catch(e){}
+}
+
+// ---- LOGS ----
+async function loadLogs(){
+  const filt=document.getElementById('logFilt')?.value||'all',df=document.getElementById('logDate')?.value||'';
+  const el=document.getElementById('logsList');if(!el)return;
+  el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+  try{
+    const cols=filt==='all'?['dailyReports','fuelReports','scratchCounts','invoices']:[filt];
+    let all=[];
+    for(const col of cols){const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));snap.docs.forEach(d=>all.push({id:d.id,col,...d.data()}));}
+    if(df)all=all.filter(d=>d.date===df);
+    all.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    if(!all.length){el.innerHTML='<div class="empty"><div class="ei">📊</div>No entries found</div>';return;}
+    el.innerHTML=all.slice(0,40).map(d=>{
+      let t='',det='',b='';
+      if(d.col==='dailyReports'){
+        const cs=d.cashStatus==='short'?` · <span style="color:var(--red)">Short $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:d.cashStatus==='over'?` · <span style="color:var(--green)">Over $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:'';
+        t=`${d.shift} shift — ${d.employee}`;det=`Sales: $${(d.totalSales||0).toFixed(2)} · Fuel: ${((d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0)).toFixed(0)} gal${cs}`;b='<span class="badge bblu">Daily</span>';
+      }
+      else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
+      else if(d.col==='scratchCounts'){t=`${d.shiftType==='start'?'Opening':'Closing'} count — ${d.employee}`;det=`Est. value: $${(d.totalValue||0).toLocaleString()}`;b='<span class="badge bamb">Scratch</span>';}
+      else if(d.col==='invoices'){t=d.fileName||'Invoice';det=`By ${d.employee||'Unknown'} — ${(d.analysis||'').substring(0,70)}...`;b='<span class="badge bred">Invoice</span>';}
+      return`<div class="litem"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div></div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';}
+}
+
+
+// ---- EMPLOYEES TAB (operator) ----
+async function loadEmployees(){
+  const el=document.getElementById('empContent');
+  const photoEl=document.getElementById('fuelPhotoList');
+  if(!el)return;
+  el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+
+  const month=document.getElementById('empMonth')?.value||new Date().toISOString().slice(0,7);
+  const mtdStart=month+'-01';
+  const mtdEnd=month+'-31';
+  const filterEmp=document.getElementById('empFilter')?.value||'all';
+
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('timestamp','desc'),window.F.limit(500)));
+    const all=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
+
+    // Build employee map
+    const empMap={};
+    all.forEach(r=>{
+      if(!r.employee)return;
+      if(!empMap[r.employee])empMap[r.employee]={name:r.employee,shifts:[],totalHours:0};
+      empMap[r.employee].shifts.push(r);
+      empMap[r.employee].totalHours+=parseFloat(r.hoursWorked)||0;
+    });
+
+    // Populate filter dropdown
+    const sel=document.getElementById('empFilter');
+    if(sel){
+      const existing=Array.from(sel.options).map(o=>o.value);
+      Object.keys(empMap).forEach(n=>{if(!existing.includes(n)){const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);}});
+    }
+
+    const filtered=filterEmp==='all'?Object.values(empMap):Object.values(empMap).filter(e=>e.name===filterEmp);
+    if(!filtered.length){el.innerHTML='<div class="empty"><div class="ei">👥</div>No shifts submitted this month</div>';return;}
+
+    el.innerHTML=filtered.map(e=>{
+      const shifts=e.shifts.sort((a,b)=>b.date.localeCompare(a.date));
+      return`<div class="emp-card">
+        <div class="emp-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="emp-avatar">${e.name.charAt(0).toUpperCase()}</div>
+            <div><div style="font-size:15px;font-weight:600">${e.name}</div><div style="font-size:12px;color:var(--text3)">${e.shifts.length} shift${e.shifts.length!==1?'s':''} this month</div></div>
+          </div>
+          <div style="text-align:right"><div style="font-size:18px;font-weight:700;color:var(--blue)">${e.totalHours.toFixed(1)}</div><div style="font-size:11px;color:var(--text3)">total hrs</div></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:10px">
+          ${shifts.map(r=>`<div class="hours-row">
+            <div>
+              <div style="font-weight:500">${new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+              <div style="font-size:11px;color:var(--text3)">${r.shift||''} ${r.startTime&&r.endTime?'· '+r.startTime+' – '+r.endTime:''} ${r.shiftComment?'· "'+r.shiftComment+'"':''}</div>
+            </div>
+            <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?r.hoursWorked.toFixed(1)+' hrs':'—'}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div class="empty">Error loading employee data</div>';}
+
+  // Load fuel photos
+  loadFuelPhotos();
+}
+
+async function loadFuelPhotos(){
+  const el=document.getElementById('fuelPhotoList');
+  if(!el)return;
+  const dateFilter=document.getElementById('fuelPhotoDate')?.value||'';
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
+    let docs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.photoUrl&&d.photoUrl!='');
+    if(dateFilter)docs=docs.filter(d=>d.date===dateFilter);
+    if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>No fuel photos'+(dateFilter?' for this date':' yet')+'</div>';return;}
+    el.innerHTML=docs.map(d=>`<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:500">${new Date(d.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+        <span class="badge bgrn">${d.employee||'Unknown'}</span>
+      </div>
+      <img src="${d.photoUrl}" class="fuel-photo-thumb" onclick="window.open('${d.photoUrl}','_blank')" alt="Fuel report ${d.date}" />
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal</div>
+    </div>`).join('');
+  }catch(e){el.innerHTML='<div class="empty">Error loading photos</div>';}
+}
+
+// ---- MY HOURS (employee/lead) ----
+async function loadMyHours(){
+  const sumEl=document.getElementById('myHoursSummary');
+  const el=document.getElementById('myHoursContent');
+  if(!el)return;
+  el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+
+  const month=document.getElementById('myHoursMonth')?.value||new Date().toISOString().slice(0,7);
+  const mtdStart=month+'-01';
+  const mtdEnd=month+'-31';
+
+  try{
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('timestamp','desc'),window.F.limit(200)));
+    const myShifts=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.employee===CU.name&&r.date>=mtdStart&&r.date<=mtdEnd);
+
+    const totalHours=myShifts.reduce((s,r)=>s+(parseFloat(r.hoursWorked)||0),0);
+
+    if(sumEl){
+      sumEl.innerHTML=`<div class="stat-grid" style="margin-bottom:12px">
+        <div class="stat-card"><div class="stat-label">Total hours</div><div class="stat-val" style="color:var(--blue)">${totalHours.toFixed(1)}</div><div class="stat-sub">${new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div></div>
+        <div class="stat-card"><div class="stat-label">Shifts worked</div><div class="stat-val">${myShifts.length}</div><div class="stat-sub">this month</div></div>
+      </div>`;
+    }
+
+    if(!myShifts.length){el.innerHTML='<div class="empty"><div class="ei">⏱</div>No shifts recorded this month</div>';return;}
+
+    const sorted=myShifts.sort((a,b)=>b.date.localeCompare(a.date));
+    el.innerHTML='<div class="card">'+sorted.map(r=>`<div class="hours-row">
+      <div>
+        <div style="font-weight:500">${new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+        <div style="font-size:11px;color:var(--text3)">${r.shift||''} ${r.startTime&&r.endTime?'· '+r.startTime+' – '+r.endTime:''} ${r.shiftComment?'· "'+r.shiftComment+'"':''}</div>
+      </div>
+      <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?r.hoursWorked.toFixed(1)+' hrs':'—'}</div>
+    </div>`).join('')+'</div>';
+  }catch(e){el.innerHTML='<div class="empty">Error loading hours</div>';}
+}
+
+window.addEventListener('fbReady',()=>{});
+</script>
+</body>
+</html>
