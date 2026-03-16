@@ -120,6 +120,12 @@
   .alert-item:last-child{border-bottom:none;}
   .loading-dash{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;}
 
+  /* EDIT LOG MODAL */
+  .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal-box{background:var(--bg);border-radius:var(--rl);padding:20px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;}
+  .modal-title{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+  .modal-close{font-size:20px;background:none;border:none;color:var(--text3);padding:0 4px;}
+  .edit-field{margin-bottom:12px;}
   /* EMPLOYEES TAB */
   .emp-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:12px;}
   .emp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
@@ -290,7 +296,7 @@
           <div><label>Game name</label><input id="gname" placeholder="e.g. $1 Lucky Stars" /></div>
           <div><label>Ticket price ($)</label><input type="number" id="gprice" placeholder="1" min="1" max="30" /></div>
         </div>
-        <div style="margin-bottom:8px"><label>Game # (1–33)</label><input type="number" id="gnum" placeholder="e.g. 7" min="1" max="33" /></div>
+        <div style="margin-bottom:8px"><label>Game # (1–100)</label><input type="number" id="gnum" placeholder="e.g. 7" min="1" max="100" /></div>
         <button class="btn bprimary" style="padding:10px;font-size:13px" onclick="addGame()">Add game</button>
       </div>
       <div id="gmList"></div>
@@ -408,6 +414,21 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- EDIT LOG MODAL -->
+<div class="modal-overlay" id="editModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span>Edit log entry</span>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div id="editModalContent"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn bprimary" style="flex:1;padding:11px" onclick="saveLogEdit()">Save changes</button>
+      <button class="btn" style="padding:11px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1;flex:1" onclick="deleteLog()">Delete entry</button>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -851,7 +872,7 @@ function togAddGame(){const f=document.getElementById('addGameForm');f.style.dis
 async function addGame(){
   const n=document.getElementById('gname').value.trim(),p=parseFloat(document.getElementById('gprice').value),num=parseInt(document.getElementById('gnum').value);
   if(!n||!p||!num){toast('Fill in all fields');return;}
-  if(num<1||num>33){toast('Game # must be 1–33');return;}
+  if(num<1||num>100){toast('Game # must be 1–100');return;}
   if(games.find(g=>g.gameNumber===num)){toast('Game # already exists');return;}
   try{await window.F.addDoc(window.F.collection(window.db,'scratchGames'),{name:n,price:p,gameNumber:num,timestamp:window.F.serverTimestamp()});document.getElementById('gname').value='';document.getElementById('gprice').value='';document.getElementById('gnum').value='';document.getElementById('addGameForm').style.display='none';toast('✓ Game added');loadGames();}catch(e){toast('Error adding game');}
 }
@@ -1080,9 +1101,124 @@ async function loadLogs(){
       else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
       else if(d.col==='scratchCounts'){t=`${d.shiftType==='start'?'Opening':'Closing'} count — ${d.employee}`;det=`Est. value: $${(d.totalValue||0).toLocaleString()}`;b='<span class="badge bamb">Scratch</span>';}
       else if(d.col==='invoices'){t=d.fileName||'Invoice';det=`By ${d.employee||'Unknown'} — ${(d.analysis||'').substring(0,70)}...`;b='<span class="badge bred">Invoice</span>';}
-      return`<div class="litem"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div></div>`;
+      const editBtn=`<button class="bsm" onclick="openEditModal('${d.id}','${d.col}',${JSON.stringify(d).replace(/'/g,"&#39;").replace(/"/g,'&quot;')})" style="flex-shrink:0">✏️ Edit</button>`;
+      return`<div class="litem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div></div>
+          ${editBtn}
+        </div>
+      </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';}
+}
+
+// Edit modal state
+let editState={id:'',col:'',data:{}};
+
+function openEditModal(id,col,dataStr){
+  // dataStr comes in as HTML-encoded JSON, decode it
+  const div=document.createElement('div');
+  div.innerHTML=dataStr.replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+  let d;
+  try{d=JSON.parse(div.textContent||dataStr.replace(/&quot;/g,'"').replace(/&#39;/g,"'"));}
+  catch(e){d={};}
+  editState={id,col,data:d};
+  const el=document.getElementById('editModalContent');
+
+  // Build edit form based on collection type
+  let fields='';
+  if(col==='dailyReports'){
+    fields=`
+      <div class="edit-field"><label>Date</label><input type="date" id="ef-date" value="${d.date||''}" /></div>
+      <div class="edit-field"><label>Employee</label><input id="ef-employee" value="${d.employee||''}" /></div>
+      <div class="edit-field"><label>Shift</label><select id="ef-shift"><option ${d.shift==='morning'?'selected':''}>morning</option><option ${d.shift==='afternoon'?'selected':''}>afternoon</option><option ${d.shift==='night'?'selected':''}>night</option></select></div>
+      <div class="edit-field"><label>Total sales ($)</label><input type="number" id="ef-totalSales" value="${d.totalSales||0}" /></div>
+      <div class="edit-field"><label>Cash sales ($)</label><input type="number" id="ef-cashSales" value="${d.cashSales||0}" /></div>
+      <div class="edit-field"><label>Credit sales ($)</label><input type="number" id="ef-creditSales" value="${d.creditSales||0}" /></div>
+      <div class="edit-field"><label>Lottery total ($)</label><input type="number" id="ef-lotteryTotal" value="${d.lotteryTotal||0}" /></div>
+      <div class="edit-field"><label>Lottery payout ($)</label><input type="number" id="ef-lotteryPayout" value="${d.lotteryPayout||0}" /></div>
+      <div class="edit-field"><label>Regular gal</label><input type="number" id="ef-regularGal" value="${d.regularGal||0}" /></div>
+      <div class="edit-field"><label>Premium gal</label><input type="number" id="ef-premiumGal" value="${d.premiumGal||0}" /></div>
+      <div class="edit-field"><label>Diesel gal</label><input type="number" id="ef-dieselGal" value="${d.dieselGal||0}" /></div>
+      <div class="edit-field"><label>Incidents</label><textarea id="ef-incidents" rows="2">${d.incidents||''}</textarea></div>
+      <div class="edit-field"><label>Notes</label><textarea id="ef-notes" rows="2">${d.notes||''}</textarea></div>`;
+  } else if(col==='fuelReports'){
+    fields=`
+      <div class="edit-field"><label>Date</label><input type="date" id="ef-date" value="${d.date||''}" /></div>
+      <div class="edit-field"><label>Employee</label><input id="ef-employee" value="${d.employee||''}" /></div>
+      <div class="edit-field"><label>Regular gal</label><input type="number" id="ef-regularGal" value="${d.regularGal||0}" /></div>
+      <div class="edit-field"><label>Premium gal</label><input type="number" id="ef-premiumGal" value="${d.premiumGal||0}" /></div>
+      <div class="edit-field"><label>Diesel gal</label><input type="number" id="ef-dieselGal" value="${d.dieselGal||0}" /></div>`;
+  } else if(col==='scratchCounts'){
+    fields=`
+      <div class="edit-field"><label>Date</label><input type="date" id="ef-date" value="${d.date||''}" /></div>
+      <div class="edit-field"><label>Employee</label><input id="ef-employee" value="${d.employee||''}" /></div>
+      <div class="edit-field"><label>Shift type</label><select id="ef-shiftType"><option value="start" ${d.shiftType==='start'?'selected':''}>Start of shift</option><option value="end" ${d.shiftType==='end'?'selected':''}>End of shift</option></select></div>`;
+  } else {
+    fields=`
+      <div class="edit-field"><label>Date</label><input type="date" id="ef-date" value="${d.date||''}" /></div>
+      <div class="edit-field"><label>File name</label><input id="ef-fileName" value="${d.fileName||''}" /></div>`;
+  }
+
+  el.innerHTML=fields+`<div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--amber);margin-top:4px">⚠️ Changes are permanent. Delete cannot be undone.</div>`;
+  document.getElementById('editModal').style.display='flex';
+}
+
+function closeEditModal(){
+  document.getElementById('editModal').style.display='none';
+  editState={id:'',col:'',data:{}};
+}
+
+async function saveLogEdit(){
+  if(!editState.id||!editState.col){closeEditModal();return;}
+  const {col,id}=editState;
+  const updates={};
+
+  // Collect fields based on col type
+  const f=id=>{const el=document.getElementById('ef-'+id);return el?el.value:null;};
+  if(f('date'))updates.date=f('date');
+  if(f('employee'))updates.employee=f('employee');
+  if(col==='dailyReports'){
+    if(f('shift'))updates.shift=f('shift');
+    if(f('totalSales')!==null)updates.totalSales=parseFloat(f('totalSales'))||0;
+    if(f('cashSales')!==null)updates.cashSales=parseFloat(f('cashSales'))||0;
+    if(f('creditSales')!==null)updates.creditSales=parseFloat(f('creditSales'))||0;
+    if(f('lotteryTotal')!==null)updates.lotteryTotal=parseFloat(f('lotteryTotal'))||0;
+    if(f('lotteryPayout')!==null)updates.lotteryPayout=parseFloat(f('lotteryPayout'))||0;
+    if(f('regularGal')!==null)updates.regularGal=parseFloat(f('regularGal'))||0;
+    if(f('premiumGal')!==null)updates.premiumGal=parseFloat(f('premiumGal'))||0;
+    if(f('dieselGal')!==null)updates.dieselGal=parseFloat(f('dieselGal'))||0;
+    if(f('incidents')!==null)updates.incidents=f('incidents');
+    if(f('notes')!==null)updates.notes=f('notes');
+  } else if(col==='fuelReports'){
+    if(f('regularGal')!==null)updates.regularGal=parseFloat(f('regularGal'))||0;
+    if(f('premiumGal')!==null)updates.premiumGal=parseFloat(f('premiumGal'))||0;
+    if(f('dieselGal')!==null)updates.dieselGal=parseFloat(f('dieselGal'))||0;
+  } else if(col==='scratchCounts'){
+    if(f('shiftType'))updates.shiftType=f('shiftType');
+  } else {
+    if(f('fileName'))updates.fileName=f('fileName');
+  }
+  updates.editedBy=CU.name;
+  updates.editedAt=new Date().toISOString();
+
+  try{
+    await window.F.updateDoc(window.F.doc(window.db,col,id),updates);
+    toast('✓ Entry updated');
+    closeEditModal();
+    loadLogs();
+  }catch(e){toast('Error saving changes');}
+}
+
+async function deleteLog(){
+  if(!editState.id||!editState.col)return;
+  if(!confirm('Delete this entry permanently? This cannot be undone.'))return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,editState.col,editState.id));
+    toast('Entry deleted');
+    closeEditModal();
+    loadLogs();
+  }catch(e){toast('Error deleting entry');}
 }
 
 
