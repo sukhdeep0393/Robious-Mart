@@ -1091,7 +1091,12 @@ async function loadLogs(){
     for(const col of cols){const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));snap.docs.forEach(d=>all.push({id:d.id,col,...d.data()}));}
     if(df)all=all.filter(d=>d.date===df);
     all.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    window._logCache=all; // store for edit modal
     if(!all.length){el.innerHTML='<div class="empty"><div class="ei">📊</div>No entries found</div>';return;}
+    // Store all data for modal access
+    logDataStore={};
+    all.forEach(d=>{logDataStore[d.id]=d;});
+
     el.innerHTML=all.slice(0,40).map(d=>{
       let t='',det='',b='';
       if(d.col==='dailyReports'){
@@ -1101,7 +1106,7 @@ async function loadLogs(){
       else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
       else if(d.col==='scratchCounts'){t=`${d.shiftType==='start'?'Opening':'Closing'} count — ${d.employee}`;det=`Est. value: $${(d.totalValue||0).toLocaleString()}`;b='<span class="badge bamb">Scratch</span>';}
       else if(d.col==='invoices'){t=d.fileName||'Invoice';det=`By ${d.employee||'Unknown'} — ${(d.analysis||'').substring(0,70)}...`;b='<span class="badge bred">Invoice</span>';}
-      const editBtn=`<button class="bsm" onclick="openEditModal('${d.id}','${d.col}',${JSON.stringify(d).replace(/'/g,"&#39;").replace(/"/g,'&quot;')})" style="flex-shrink:0">✏️ Edit</button>`;
+      const editBtn=`<button class="bsm" onclick="openEditModalById('${d.id}','${d.col}')" style="flex-shrink:0">✏️ Edit</button>`;
       return`<div class="litem">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="flex:1"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div></div>
@@ -1114,14 +1119,15 @@ async function loadLogs(){
 
 // Edit modal state
 let editState={id:'',col:'',data:{}};
+let logDataStore={};  // stores full log data by id
 
-function openEditModal(id,col,dataStr){
-  // dataStr comes in as HTML-encoded JSON, decode it
-  const div=document.createElement('div');
-  div.innerHTML=dataStr.replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-  let d;
-  try{d=JSON.parse(div.textContent||dataStr.replace(/&quot;/g,'"').replace(/&#39;/g,"'"));}
-  catch(e){d={};}
+function openEditModalById(id,col){
+  const d=logDataStore[id];
+  if(!d){toast('Could not load entry data');return;}
+  openEditModal(id,col,d);
+}
+
+function openEditModal(id,col,d){
   editState={id,col,data:d};
   const el=document.getElementById('editModalContent');
 
@@ -1162,6 +1168,13 @@ function openEditModal(id,col,dataStr){
 
   el.innerHTML=fields+`<div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--amber);margin-top:4px">⚠️ Changes are permanent. Delete cannot be undone.</div>`;
   document.getElementById('editModal').style.display='flex';
+}
+
+function openFuelEdit(id, dataStr){
+  try{
+    const d=JSON.parse(dataStr.replace(/'/g,'"'));
+    openEditModal(id,'fuelReports',{...d,id});
+  }catch(e){toast('Could not open entry');}
 }
 
 function closeEditModal(){
@@ -1349,8 +1362,11 @@ async function loadLatestFuel(){
     const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(5)));
     if(snap.empty){card.style.display='none';return;}
     card.style.display='block';
+    // Store data for edit modal
+    snap.docs.forEach(d=>{logDataStore[d.id]={id:d.id,col:'fuelReports',...d.data()};});
     el.innerHTML=snap.docs.map(d=>{
       const x=d.data();
+      const id=d.id;
       const tanks=[{n:'Regular',v:x.regularGal||0,c:10000},{n:'Premium',v:x.premiumGal||0,c:8000},{n:'Diesel',v:x.dieselGal||0,c:6000}];
       const barsHtml=tanks.map(t=>{
         const p=Math.min(100,t.v/t.c*100);
@@ -1360,8 +1376,13 @@ async function loadLatestFuel(){
       const photoHtml=x.photoUrl?`<img src="${x.photoUrl}" style="width:100%;border-radius:8px;max-height:160px;object-fit:cover;margin-top:10px;cursor:pointer" onclick="window.open('${x.photoUrl}','_blank')" />`:'';
       return`<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-size:13px;font-weight:500">${new Date(x.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
-          <span class="badge bgrn">${x.employee||'Unknown'}</span>
+          <div>
+            <div style="font-size:13px;font-weight:500">${new Date(x.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+            <div style="font-size:11px;color:var(--text3)">by ${x.employee||'Unknown'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="bsm" onclick="openEditModalById('${id}','fuelReports')">✏️ Edit</button>
+          </div>
         </div>
         ${barsHtml}${photoHtml}
       </div>`;
