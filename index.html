@@ -1287,10 +1287,7 @@ async function saveInv(){
         :{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}}):null;
 
       const jsonPrompt='Extract structured data from this invoice. Return ONLY valid JSON, no other text: {"vendor":"vendor name","invoiceNumber":"inv#","invoiceDate":"YYYY-MM-DD","items":[{"name":"exact product name","qty":1,"unitCost":0.00,"lineTotal":0.00,"unit":"each/case/pack"}]}';
-      const msgContent=imgBlock?[imgBlock,{type:'text',text:jsonPrompt}]:[{type:'text',text:'Based on this invoice text, '+jsonPrompt+'
-
-Invoice text:
-'+invAT}];
+      const msgContent=imgBlock?[imgBlock,{type:'text',text:jsonPrompt}]:[{type:'text',text:'Based on this invoice text, '+jsonPrompt+'\n\nInvoice text:\n'+invAT}];
 
       const jr=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
