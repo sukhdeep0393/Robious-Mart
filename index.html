@@ -881,7 +881,7 @@ async function handleShiftPhotos(input){
       imgs.push({type:'image',source:{type:'base64',media_type:file.type,data:b64}});
     }
     imgs.push({type:'text',text:'These are end-of-shift photos from a convenience store (Robious Mart, Virginia). Please read all visible numbers and extract: 1) Total sales if visible, 2) Cash sales amount, 3) Credit/card sales amount, 4) Any lottery totals or payouts, 5) Any fuel gallon amounts. Return ONLY a JSON object like: {"totalSales":0,"cashSales":0,"creditSales":0,"lotteryTotal":0,"lotteryPayout":0,"regularGal":0,"premiumGal":0,"dieselGal":0,"notes":"any other relevant info seen"}. If a value is not visible return 0.'});
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:imgs}]})});
+    const resp=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:imgs}]})});
     const data=await resp.json();
     const raw=data.content?.map(c=>c.text||'').join('')||'{}';
     const clean=raw.replace(/```json|```/g,'').trim();
@@ -1250,7 +1250,7 @@ async function autoScanInvoice(){
   const prompt='You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice and provide: 1) Vendor name and invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, and line total, 4) Invoice total, 5) Flag any price increases or unusual quantities, 6) One-line summary. Be concise and practical.';
 
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -1289,7 +1289,7 @@ async function saveInv(){
       const jsonPrompt='Extract structured data from this invoice. Return ONLY valid JSON, no other text: {"vendor":"vendor name","invoiceNumber":"inv#","invoiceDate":"YYYY-MM-DD","items":[{"name":"exact product name","qty":1,"unitCost":0.00,"lineTotal":0.00,"unit":"each/case/pack"}]}';
       const msgContent=imgBlock?[imgBlock,{type:'text',text:jsonPrompt}]:[{type:'text',text:'Based on this invoice text, '+jsonPrompt+'\n\nInvoice text:\n'+invAT}];
 
-      const jr=await fetch('https://api.anthropic.com/v1/messages',{
+      const jr=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:msgContent}]})
