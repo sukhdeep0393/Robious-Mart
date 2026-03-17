@@ -204,11 +204,10 @@
     <div class="card">
       <div class="ct">C-store sales</div>
       <div class="g3" style="margin-bottom:10px">
-        <div><label>Total sales ($)</label><input type="number" id="d-tot" placeholder="0.00" oninput="chkMatch()" /></div>
-        <div><label>Cash ($)</label><input type="number" id="d-cash" placeholder="0.00" oninput="chkMatch()" /></div>
-        <div><label>Credit ($)</label><input type="number" id="d-cred" placeholder="0.00" oninput="chkMatch()" /></div>
+        <div><label>Total sales ($)</label><input type="number" id="d-tot" placeholder="0.00" /></div>
+        <div><label>Cash ($)</label><input type="number" id="d-cash" placeholder="0.00" /></div>
+        <div><label>Credit ($)</label><input type="number" id="d-cred" placeholder="0.00" /></div>
       </div>
-      <div id="matchInd"></div>
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
         <div class="ct" style="margin-bottom:10px">Cash drawer — short or over</div>
         <div class="g2" style="margin-bottom:8px">
@@ -494,8 +493,8 @@ function loginOK(u){
   document.getElementById('uBadge').textContent=u.name+(u.role==='operator'?' · Operator':u.role==='lead'?' · Lead':'');
   document.getElementById('d-emp').value=u.name;
   document.getElementById('s-emp').value=u.name;
-  document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('d-date').value=localDate();
+  document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
@@ -538,6 +537,20 @@ function showTab(id){
 // ---- TOAST ----
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
+function localDate(d){
+  const dt=d||new Date();
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+
+function fmtHours(decimalHrs){
+  // Convert decimal hours to h:mm format e.g. 6.17 -> "6h 10min"
+  const totalMins=Math.round(decimalHrs*60);
+  const h=Math.floor(totalMins/60);
+  const m=totalMins%60;
+  if(h===0) return m+'min';
+  return h+'h '+(m>0?m+'min':'');
+}
+
 function calcHours(){
   const s=document.getElementById('d-start').value;
   const e=document.getElementById('d-end').value;
@@ -550,7 +563,7 @@ function calcHours(){
   const mins=totalMins%60;
   const decimalHrs=parseFloat((totalMins/60).toFixed(2));
   // Show as "9h 30min (9.50 hrs)" so both formats are clear
-  document.getElementById('d-hours').value=hrs+'h '+(mins>0?mins+'min':'')+'  ('+decimalHrs+' hrs)';
+  document.getElementById('d-hours').value=hrs+'h'+(mins>0?' '+mins+'min':'');
   return decimalHrs;
 }
 
@@ -559,10 +572,10 @@ async function loadDashboard(){
   const el=document.getElementById('dashContent');
   el.innerHTML='<div class="loading-dash"><div style="font-size:28px;margin-bottom:8px">⏳</div>Loading your dashboard...</div>';
 
-  const today=new Date().toISOString().split('T')[0];
+  const today=localDate();
   const now=new Date();
   const mtdStart=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-  const yesterday=new Date(now-864e5).toISOString().split('T')[0];
+  const yesterday=localDate(new Date(now-864e5));
 
   try{
     const {getDocs,query,collection,orderBy,where,limit}=window.F;
@@ -742,13 +755,7 @@ async function handleShiftPhotos(input){
   msg.style.display='none';
 }
 
-function chkMatch(){
-  const tot=parseFloat(document.getElementById('d-tot').value)||0,cash=parseFloat(document.getElementById('d-cash').value)||0,cred=parseFloat(document.getElementById('d-cred').value)||0;
-  const el=document.getElementById('matchInd');
-  if(!tot&&!cash&&!cred){el.innerHTML='';return;}
-  const diff=Math.abs(tot-cash-cred);
-  el.innerHTML=diff<.01?'<div class="mok">✓ Cash + credit matches total</div>':`<div class="merr">⚑ Difference: $${diff.toFixed(2)}</div>`;
-}
+
 function calcShortOver(){
   const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0;
   const el=document.getElementById('shortOverResult');
@@ -788,18 +795,17 @@ async function subDaily(){
       startTime:document.getElementById('d-start').value,
       endTime:document.getElementById('d-end').value,
       hoursWorked:calcHours()||0,
-      date:document.getElementById('d-date')?.value||new Date().toISOString().split('T')[0],
+      date:document.getElementById('d-date')?.value||localDate(),
       timestamp:window.F.serverTimestamp()
     });
     toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
     setTimeout(()=>{btn.innerHTML='Submit shift report';btn.disabled=false;btn.style.background='';},3000);
     ['d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('d-hours').value='';
-    document.getElementById('matchInd').innerHTML='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
+    document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
     const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
     document.getElementById('shiftPhotos').value='';
-    document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+    document.getElementById('d-date').value=localDate();
+  document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
@@ -850,7 +856,7 @@ async function subFuel(){
       premiumGal:parseFloat(document.getElementById('f-prem').value)||0,
       dieselGal:parseFloat(document.getElementById('f-dies').value)||0,
       photoUrl,
-      date:document.getElementById('f-date')?.value||new Date().toISOString().split('T')[0],
+      date:document.getElementById('f-date')?.value||localDate(),
       timestamp:window.F.serverTimestamp()
     });
     toast('✓ Fuel report saved!');
@@ -858,7 +864,7 @@ async function subFuel(){
     document.getElementById('fuelBars').innerHTML='';
     document.getElementById('fuelPrev').innerHTML='<div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div>';
     document.getElementById('fuelPic').value='';
-    document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+    document.getElementById('f-date').value=localDate();
   }catch(e){toast('Error saving fuel report');}
 }
 
@@ -1001,7 +1007,7 @@ async function subScratch(){
       shiftType: document.getElementById('s-type').value,
       counts, slots: activeSlots.map(s=>({slot:s.slotIdx+1,price:s.price,name:s.name,gameNum:s.gameNum})),
       totalValue,
-      date: new Date().toISOString().split('T')[0],
+      date: localDate(),
       timestamp: window.F.serverTimestamp()
     });
     toast('✓ Scratch count saved!');
@@ -1103,7 +1109,7 @@ async function autoScanInvoice(){
 async function saveInv(){
   if(!invAT)return;
   try{
-    await window.F.addDoc(window.F.collection(window.db,'invoices'),{type:'invoices',fileName:invFN,analysis:invAT,employee:CU.name,date:new Date().toISOString().split('T')[0],timestamp:window.F.serverTimestamp()});
+    await window.F.addDoc(window.F.collection(window.db,'invoices'),{type:'invoices',fileName:invFN,analysis:invAT,employee:CU.name,date:localDate(),timestamp:window.F.serverTimestamp()});
     toast('✓ Invoice submitted!');invFD=null;invAT='';invFN='';
     document.getElementById('invFName').textContent='Tap to upload invoice';
     document.getElementById('invResult').style.display='none';
@@ -1129,7 +1135,7 @@ async function flagInv(){
     await window.F.addDoc(window.F.collection(window.db,'inventoryFlags'),{
       item, note, employee:CU.name, resolved:false,
       resolvedBy:'', operatorNote:'',
-      date:new Date().toISOString().split('T')[0],
+      date:localDate(),
       timestamp:window.F.serverTimestamp()
     });
     document.getElementById('invItem').value='';
@@ -1146,7 +1152,7 @@ async function resFlag(id){
       resolved:true,
       resolvedBy:CU.name,
       operatorNote:opNote,
-      resolvedDate:new Date().toISOString().split('T')[0]
+      resolvedDate:localDate()
     });
     toast('✓ Flag resolved');
     loadInvFlags();
@@ -1189,7 +1195,7 @@ async function loadInvFlags(){
     // Show recently resolved for operator
     const isOp=CU&&CU.role==='operator';
     if(isOp){
-      const today=new Date().toISOString().split('T')[0];
+      const today=localDate();
       const resolved=allDocs.filter(x=>x.resolved===true&&x.resolvedDate===today);
       const rc=document.getElementById('resolvedCard');
       const rl=document.getElementById('resolvedList');
@@ -1403,7 +1409,7 @@ async function loadEmployees(){
             <div class="emp-avatar">${e.name.charAt(0).toUpperCase()}</div>
             <div><div style="font-size:15px;font-weight:600">${e.name}</div><div style="font-size:12px;color:var(--text3)">${e.shifts.length} shift${e.shifts.length!==1?'s':''} this month</div></div>
           </div>
-          <div style="text-align:right"><div style="font-size:18px;font-weight:700;color:var(--blue)">${e.totalHours.toFixed(1)}</div><div style="font-size:11px;color:var(--text3)">total hrs</div></div>
+          <div style="text-align:right"><div style="font-size:18px;font-weight:700;color:var(--blue)">${fmtHours(e.totalHours)}</div><div style="font-size:11px;color:var(--text3)">total hrs</div></div>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:10px">
           ${shifts.map(r=>`<div class="hours-row">
@@ -1411,7 +1417,7 @@ async function loadEmployees(){
               <div style="font-weight:500">${new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
               <div style="font-size:11px;color:var(--text3)">${r.shift||''} ${r.startTime&&r.endTime?'· '+r.startTime+' – '+r.endTime:''} ${r.shiftComment?'· "'+r.shiftComment+'"':''}</div>
             </div>
-            <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?r.hoursWorked.toFixed(1)+' hrs':'—'}</div>
+            <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?fmtHours(r.hoursWorked):'—'}</div>
           </div>`).join('')}
         </div>
       </div>`;
@@ -1461,7 +1467,7 @@ async function loadMyHours(){
 
     if(sumEl){
       sumEl.innerHTML=`<div class="stat-grid" style="margin-bottom:12px">
-        <div class="stat-card"><div class="stat-label">Total hours</div><div class="stat-val" style="color:var(--blue)">${totalHours.toFixed(1)}</div><div class="stat-sub">${new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div></div>
+        <div class="stat-card"><div class="stat-label">Total hours</div><div class="stat-val" style="color:var(--blue)">${fmtHours(totalHours)}</div><div class="stat-sub">${new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div></div>
         <div class="stat-card"><div class="stat-label">Shifts worked</div><div class="stat-val">${myShifts.length}</div><div class="stat-sub">this month</div></div>
       </div>`;
     }
@@ -1474,7 +1480,7 @@ async function loadMyHours(){
         <div style="font-weight:500">${new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
         <div style="font-size:11px;color:var(--text3)">${r.shift||''} ${r.startTime&&r.endTime?'· '+r.startTime+' – '+r.endTime:''} ${r.shiftComment?'· "'+r.shiftComment+'"':''}</div>
       </div>
-      <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?r.hoursWorked.toFixed(1)+' hrs':'—'}</div>
+      <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?fmtHours(r.hoursWorked):'—'}</div>
     </div>`).join('')+'</div>';
   }catch(e){el.innerHTML='<div class="empty">Error loading hours</div>';}
 }
