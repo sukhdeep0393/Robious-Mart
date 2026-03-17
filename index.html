@@ -162,8 +162,18 @@ function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
 function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
 function chkOpPin(){
   if(opPinBuf===OP_PIN){
-    if(typeof loginOK==='function') loginOK({name:'Sukh',role:'operator'});
-    else setTimeout(()=>{ if(typeof loginOK==='function') loginOK({name:'Sukh',role:'operator'}); },500);
+    // Keep retrying until loginOK is available
+    function tryLogin(attempts){
+      if(typeof loginOK==='function'){
+        loginOK({name:'Sukh',role:'operator'});
+      } else if(attempts < 20){
+        setTimeout(()=>tryLogin(attempts+1), 100);
+      } else {
+        document.getElementById('opErr').textContent='App still loading, try again';
+        opPinBuf=''; updOpDots();
+      }
+    }
+    tryLogin(0);
   } else {
     document.getElementById('opErr').textContent='Incorrect PIN';
     opPinBuf='';updOpDots();
@@ -180,8 +190,17 @@ function chkPin(){
   const n=document.getElementById('empName').value.trim();
   if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
   if(pinBuf===LEAD_PIN){
-    if(typeof loginOK==='function') loginOK({name:n,role:'lead'});
-    else setTimeout(()=>{ if(typeof loginOK==='function') loginOK({name:n,role:'lead'}); },500);
+    function tryEmpLogin(attempts){
+      if(typeof loginOK==='function'){
+        loginOK({name:n,role:'lead'});
+      } else if(attempts < 20){
+        setTimeout(()=>tryEmpLogin(attempts+1), 100);
+      } else {
+        document.getElementById('pinErr').textContent='App still loading, try again';
+        pinBuf=''; updDots();
+      }
+    }
+    tryEmpLogin(0);
   } else {
     document.getElementById('pinErr').textContent='Incorrect PIN';
     pinBuf='';updDots();
