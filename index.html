@@ -139,6 +139,45 @@
 </style>
 </head>
 <body>
+<script>
+// PIN constants and functions loaded immediately before Firebase
+const OP_PIN='1024', LEAD_PIN='1111';
+let pinBuf='', opPinBuf='';
+
+function switchLTab(t,el){
+  document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('opLogin').style.display=t==='op'?'block':'none';
+  document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
+}
+
+// Operator PIN
+function opPk(d){
+  if(opPinBuf.length>=4)return;
+  opPinBuf+=d; updOpDots();
+  if(opPinBuf.length===4)setTimeout(chkOpPin,200);
+}
+function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
+function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
+function chkOpPin(){
+  if(typeof loginOK==='undefined'){setTimeout(chkOpPin,200);return;}
+  if(opPinBuf===OP_PIN)loginOK({name:'Sukh',role:'operator'});
+  else{document.getElementById('opErr').textContent='Incorrect PIN';opPinBuf='';updOpDots();setTimeout(()=>document.getElementById('opErr').textContent='',2500);}
+}
+function doOpLogin(){}
+
+// Employee PIN
+function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
+function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
+function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
+function chkPin(){
+  if(typeof loginOK==='undefined'){setTimeout(chkPin,200);return;}
+  const n=document.getElementById('empName').value.trim();
+  if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
+  if(pinBuf===LEAD_PIN)loginOK({name:n,role:'lead'});
+  else{document.getElementById('pinErr').textContent='Incorrect PIN';pinBuf='';updDots();setTimeout(()=>document.getElementById('pinErr').textContent='',2500);}
+}
+</script>
 
 <!-- LOGIN -->
 <div id="loginScreen">
@@ -551,8 +590,7 @@ window.dispatchEvent(new Event('fbReady'));
 </script>
 
 <script>
-const OP_PIN='1024',LEAD_PIN='1111';
-let CU=null,pinBuf='',games=[],invFD=null,invAT='',invFN='';
+let CU=null,games=[],invFD=null,invAT='',invFN='';
 
 const TABS={
   operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
@@ -561,34 +599,7 @@ const TABS={
 };
 
 // ---- LOGIN ----
-function switchLTab(t,el){
-  document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('active'));el.classList.add('active');
-  document.getElementById('opLogin').style.display=t==='op'?'block':'none';
-  document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
-}
 let opPinBuf='';
-function opPk(d){
-  if(opPinBuf.length>=4) return;
-  opPinBuf+=d;
-  updOpDots();
-  if(opPinBuf.length===4) setTimeout(chkOpPin,200);
-}
-function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
-function updOpDots(){for(let i=0;i<4;i++){const el=document.getElementById('opd'+i);if(el)el.classList.toggle('filled',i<opPinBuf.length);}}
-function chkOpPin(){
-  if(opPinBuf===OP_PIN) loginOK({name:'Sukh',role:'operator'});
-  else{document.getElementById('opErr').textContent='Incorrect PIN';opPinBuf='';updOpDots();setTimeout(()=>document.getElementById('opErr').textContent='',2500);}
-}
-function doOpLogin(){}
-function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
-function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
-function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
-function chkPin(){
-  const n=document.getElementById('empName').value.trim();
-  if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
-  if(pinBuf===LEAD_PIN) loginOK({name:n,role:'lead'});
-  else{document.getElementById('pinErr').textContent='Incorrect PIN';pinBuf='';updDots();setTimeout(()=>document.getElementById('pinErr').textContent='',2500);}
-}
 function loginOK(u){
   try{
   CU=u;
