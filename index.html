@@ -422,6 +422,63 @@
     <div id="myHoursContent"><div class="empty"><div class="ei">⏱</div>Loading...</div></div>
   </div>
 
+  <!-- EXPENSES (all roles) -->
+  <div class="page" id="page-expenses">
+    <div class="card">
+      <div class="ct">Add expense</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Date</label><input type="date" id="ex-date" /></div>
+        <div><label>Method of payment</label>
+          <select id="ex-method">
+            <option value="check">Check</option>
+            <option value="cash">Cash</option>
+            <option value="credit card">Credit Card</option>
+            <option value="bank transfer">Bank Transfer</option>
+          </select>
+        </div>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Amount ($)</label><input type="number" id="ex-amount" placeholder="0.00" /></div>
+        <div><label>Vendor / Payee</label><input id="ex-vendor" placeholder="e.g. Layman, Handyman Joe" /></div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Category</label>
+        <select id="ex-category">
+          <option value="delivery">Delivery / Vendor payment</option>
+          <option value="repair">Repair / Maintenance</option>
+          <option value="utilities">Utilities</option>
+          <option value="supplies">Supplies</option>
+          <option value="labor">Labor</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Notes (optional)</label>
+        <textarea id="ex-notes" rows="2" placeholder="e.g. Weekly Layman delivery, AC repair, plumber visit..."></textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <label>Upload check or receipt photo (optional)</label>
+        <div class="uzone" onclick="document.getElementById('exPhoto').click()" style="padding:16px">
+          <div style="font-size:24px;margin-bottom:4px">📷</div>
+          <div style="font-size:13px;color:var(--text2)" id="exPhotoLabel">Tap to add photo</div>
+        </div>
+        <input type="file" id="exPhoto" accept="image/*" style="display:none" onchange="handleExPhoto(this)" />
+      </div>
+      <button class="btn bprimary" style="padding:13px" onclick="submitExpense()">Save expense</button>
+    </div>
+
+    <div class="card">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Recent expenses</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="month" id="exMonth" onchange="loadExpenses()" style="font-size:12px;padding:5px 8px;width:auto" />
+        </div>
+      </div>
+      <div id="exMTDSummary" style="margin-bottom:12px"></div>
+      <div id="exList"><div class="empty"><div class="ei">💸</div>No expenses yet</div></div>
+    </div>
+  </div>
+
   <!-- PRICE HISTORY (operator only) -->
   <div class="page" id="page-pricehistory">
     <div class="card">
@@ -498,9 +555,9 @@ const OP_PIN='1024',LEAD_PIN='1111';
 let CU=null,pinBuf='',games=[],invFD=null,invAT='',invFN='';
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}]
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
 
 // ---- LOGIN ----
@@ -542,6 +599,7 @@ function loginOK(u){
   document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
+  const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
   const em=document.getElementById('empMonth');if(em)em.value=ym;
@@ -578,6 +636,7 @@ function showTab(id){
   if(id==='compliance')checkComp();
   if(id==='employees')loadEmployees();
   if(id==='pricehistory')loadPriceHistory();
+  if(id==='expenses')loadExpenses();
   if(id==='myhours')loadMyHours();
 }
 
@@ -854,6 +913,7 @@ async function subDaily(){
     document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
+  const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
   const em=document.getElementById('empMonth');if(em)em.value=ym;
@@ -1136,36 +1196,72 @@ async function autoScanInvoice(){
   if(!invFD)return;
   document.getElementById('autoScanMsg').style.display='flex';
   document.getElementById('invResult').style.display='none';
-  const img=invFD.type.startsWith('image/');
-  const ca=img
-    ?[{type:'image',source:{type:'base64',media_type:invFD.type,data:invFD.b64}},{type:'text',text:'You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice: 1) Vendor name & invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, line total, 4) Invoice subtotal and total, 5) Flag unusual pricing or quantities, 6) One-line summary. Be concise and practical for a gas station operator.'}]
-    :[{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}},{type:'text',text:'You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice: 1) Vendor name & invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, line total, 4) Invoice subtotal and total, 5) Flag unusual pricing or quantities, 6) One-line summary. Be concise and practical for a gas station operator.'}];
+  const isImg=invFD.type.startsWith('image/');
+
+  // Build content array
+  const imgBlock=isImg
+    ?{type:'image',source:{type:'base64',media_type:invFD.type,data:invFD.b64}}
+    :{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}};
+
+  const prompt='You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice and provide: 1) Vendor name and invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, and line total, 4) Invoice total, 5) Flag any price increases or unusual quantities, 6) One-line summary. Be concise and practical.';
+
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:ca}]})});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1200,
+        messages:[{role:'user',content:[imgBlock,{type:'text',text:prompt}]}]
+      })
+    });
+    if(!resp.ok){
+      const errData=await resp.json().catch(()=>({}));
+      throw new Error(errData.error?.message||'API error '+resp.status);
+    }
     const data=await resp.json();
     invAT=data.content?.map(c=>c.text||'').join('')||'Could not read invoice.';
     document.getElementById('invAI').textContent=invAT;
     document.getElementById('invResult').style.display='block';
   }catch(e){
-    invAT='Error analyzing invoice. Please try again.';
-    document.getElementById('invAI').textContent=invAT;
+    console.error('Invoice scan error:',e);
+    invAT='';
+    document.getElementById('invAI').textContent='Error: '+e.message+'. Please try again.';
     document.getElementById('invResult').style.display='block';
   }
   document.getElementById('autoScanMsg').style.display='none';
 }
 async function saveInv(){
-  if(!invAT)return;
+  if(!invAT||invAT.startsWith('Error'))return;
   try{
-    // Split human summary from structured JSON
-    let humanText=invAT, structuredData=null;
-    if(invAT.includes('---JSON---')){
-      const parts=invAT.split('---JSON---');
-      humanText=parts[0].trim();
-      try{
-        const jsonStr=parts[1].trim();
-        structuredData=JSON.parse(jsonStr);
-      }catch(je){console.log('JSON parse error',je);}
-    }
+    // Extract structured data via second API call
+    let structuredData=null;
+    try{
+      const isImg=invFD&&invFD.type.startsWith('image/');
+      const imgBlock=invFD?(isImg
+        ?{type:'image',source:{type:'base64',media_type:invFD.type,data:invFD.b64}}
+        :{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}}):null;
+
+      const jsonPrompt='Extract structured data from this invoice. Return ONLY valid JSON, no other text: {"vendor":"vendor name","invoiceNumber":"inv#","invoiceDate":"YYYY-MM-DD","items":[{"name":"exact product name","qty":1,"unitCost":0.00,"lineTotal":0.00,"unit":"each/case/pack"}]}';
+      const msgContent=imgBlock?[imgBlock,{type:'text',text:jsonPrompt}]:[{type:'text',text:'Based on this invoice text, '+jsonPrompt+'
+
+Invoice text:
+'+invAT}];
+
+      const jr=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:msgContent}]})
+      });
+      if(jr.ok){
+        const jd=await jr.json();
+        const raw=jd.content?.map(c=>c.text||'').join('').trim();
+        const cleaned=raw.replace(/```json|```/g,'').trim();
+        structuredData=JSON.parse(cleaned);
+      }
+    }catch(je){console.log('JSON extraction failed, saving without structure',je);}
+
+    let humanText=invAT;
 
     // Save invoice with structured data
     const invDoc = await window.F.addDoc(window.F.collection(window.db,'invoices'),{
@@ -1753,6 +1849,144 @@ function renderPriceHistory(items){
       </div>
     </div>`;
   }).join('');
+}
+
+
+// ---- EXPENSES ----
+let exPhotoData = null;
+
+function handleExPhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  const label = document.getElementById('exPhotoLabel');
+  label.textContent = 'Processing...';
+  resizeImage(file, 800).then(b64 => {
+    exPhotoData = b64;
+    label.textContent = '✓ Photo added — tap to change';
+    label.style.color = 'var(--green)';
+  }).catch(() => {
+    label.textContent = 'Error loading photo';
+  });
+}
+
+async function submitExpense(){
+  const amount = parseFloat(document.getElementById('ex-amount').value);
+  const vendor = document.getElementById('ex-vendor').value.trim();
+  if(!amount || amount <= 0){ toast('Enter an amount'); return; }
+  if(!vendor){ toast('Enter vendor or payee name'); return; }
+
+  const btn = document.querySelector('#page-expenses .bprimary');
+  btn.innerHTML = '<span class="spinner"></span>Saving...';
+  btn.disabled = true;
+
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'expenses'),{
+      date: document.getElementById('ex-date')?.value || localDate(),
+      method: document.getElementById('ex-method').value,
+      amount,
+      vendor,
+      category: document.getElementById('ex-category').value,
+      notes: document.getElementById('ex-notes').value,
+      photoData: exPhotoData || '',
+      employee: CU.name,
+      role: CU.role,
+      timestamp: window.F.serverTimestamp()
+    });
+
+    toast('✓ Expense saved!');
+    // Reset form
+    document.getElementById('ex-amount').value = '';
+    document.getElementById('ex-vendor').value = '';
+    document.getElementById('ex-notes').value = '';
+    document.getElementById('exPhoto').value = '';
+    exPhotoData = null;
+    const lbl = document.getElementById('exPhotoLabel');
+    lbl.textContent = 'Tap to add photo';
+    lbl.style.color = '';
+    document.getElementById('ex-date').value = '';
+    loadExpenses();
+    btn.innerHTML = '✓ Saved!';
+    btn.style.background = 'var(--green)';
+    setTimeout(()=>{ btn.innerHTML='Save expense'; btn.disabled=false; btn.style.background=''; }, 2500);
+  }catch(e){
+    toast('Error saving expense');
+    btn.innerHTML = 'Save expense';
+    btn.disabled = false;
+  }
+}
+
+async function loadExpenses(){
+  const el = document.getElementById('exList');
+  const sumEl = document.getElementById('exMTDSummary');
+  if(!el) return;
+
+  const month = document.getElementById('exMonth')?.value || localDate().slice(0,7);
+  const mtdStart = month + '-01';
+  const mtdEnd = month + '-31';
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'expenses'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(200)
+    ));
+    let all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    // Filter by month and role (employees see their own, operator sees all)
+    const filtered = all.filter(x => x.date >= mtdStart && x.date <= mtdEnd);
+    const myFiltered = CU.role === 'operator' ? filtered : filtered.filter(x => x.employee === CU.name);
+
+    // MTD summary
+    const total = myFiltered.reduce((s,x)=>s+(x.amount||0),0);
+    const byMethod = {};
+    myFiltered.forEach(x=>{
+      byMethod[x.method] = (byMethod[x.method]||0) + (x.amount||0);
+    });
+    const byCategory = {};
+    myFiltered.forEach(x=>{
+      byCategory[x.category] = (byCategory[x.category]||0) + (x.amount||0);
+    });
+
+    if(sumEl && myFiltered.length){
+      sumEl.innerHTML = `<div style="background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:13px;color:var(--text2)">Total expenses</span>
+          <span style="font-size:20px;font-weight:700;color:var(--red)">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${Object.entries(byMethod).map(([m,v])=>`<span class="badge bamb">${m}: $${v.toFixed(2)}</span>`).join('')}
+        </div>
+      </div>`;
+    } else if(sumEl){ sumEl.innerHTML = ''; }
+
+    if(!myFiltered.length){
+      el.innerHTML = '<div class="empty"><div class="ei">💸</div>No expenses this month</div>';
+      return;
+    }
+
+    el.innerHTML = myFiltered.map(x => {
+      const methodColor = x.method==='check'?'bblu':x.method==='cash'?'bgrn':'bamb';
+      const catIcons = {delivery:'🚚',repair:'🔧',utilities:'💡',supplies:'📦',labor:'👷',other:'📝'};
+      const photoHtml = x.photoData ? `<img src="${x.photoData}" style="width:100%;border-radius:6px;max-height:120px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','')" />` : '';
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600">${x.vendor}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${catIcons[x.category]||'📝'} ${x.category} · ${x.date}</div>
+            ${x.notes?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${x.notes}</div>`:''}
+            ${CU.role==='operator'&&x.employee?`<div style="font-size:11px;color:var(--text3);margin-top:2px">By ${x.employee}</div>`:''}
+            ${photoHtml}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:700;color:var(--red)">$${(x.amount||0).toFixed(2)}</div>
+            <span class="badge ${methodColor}" style="margin-top:4px">${x.method}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    el.innerHTML = '<div class="empty">Error loading expenses</div>';
+    console.error('loadExpenses',e);
+  }
 }
 
 window.addEventListener('fbReady',()=>{});
