@@ -150,10 +150,15 @@
       <button class="ltab" onclick="switchLTab('emp',this)">Employee</button>
     </div>
     <div id="opLogin">
-      <div style="margin-bottom:10px"><label>Email</label><input type="email" id="opEmail" placeholder="your@email.com" /></div>
-      <div style="margin-bottom:14px"><label>Password</label><input type="password" id="opPass" placeholder="Password" onkeydown="if(event.key==='Enter')doOpLogin()" /></div>
+      <div style="margin-bottom:12px;font-size:14px;font-weight:500;text-align:center;color:var(--text2)">Enter operator PIN</div>
+      <div class="pin-dots" id="opDots"><div class="pin-dot" id="opd0"></div><div class="pin-dot" id="opd1"></div><div class="pin-dot" id="opd2"></div><div class="pin-dot" id="opd3"></div></div>
       <div class="lerr" id="opErr"></div>
-      <button class="btn-login" onclick="doOpLogin()">Sign in</button>
+      <div class="pin-pad">
+        <button class="pk" onclick="opPk('1')">1</button><button class="pk" onclick="opPk('2')">2</button><button class="pk" onclick="opPk('3')">3</button>
+        <button class="pk" onclick="opPk('4')">4</button><button class="pk" onclick="opPk('5')">5</button><button class="pk" onclick="opPk('6')">6</button>
+        <button class="pk" onclick="opPk('7')">7</button><button class="pk" onclick="opPk('8')">8</button><button class="pk" onclick="opPk('9')">9</button>
+        <button class="pk blank" disabled></button><button class="pk" onclick="opPk('0')">0</button><button class="pk del" onclick="opPdel()">⌫</button>
+      </div>
     </div>
     <div id="empLogin" style="display:none">
       <div style="margin-bottom:12px"><label>Your name</label><input type="text" id="empName" placeholder="First name" /></div>
@@ -417,6 +422,29 @@
     <div id="myHoursContent"><div class="empty"><div class="ei">⏱</div>Loading...</div></div>
   </div>
 
+  <!-- PRICE HISTORY (operator only) -->
+  <div class="page" id="page-pricehistory">
+    <div class="card">
+      <div class="ct">Search products</div>
+      <input id="phSearch" placeholder="Type product name e.g. Snickers, Marlboro Red, Monster..." oninput="searchPriceHistory()" style="margin-bottom:10px" />
+      <div class="g2">
+        <div><label>Vendor</label>
+          <select id="phVendor" onchange="searchPriceHistory()">
+            <option value="all">All vendors</option>
+          </select>
+        </div>
+        <div><label>Sort by</label>
+          <select id="phSort" onchange="searchPriceHistory()">
+            <option value="recent">Most recent</option>
+            <option value="name">Product name</option>
+            <option value="change">Price changes first</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="phResults"><div class="empty"><div class="ei">📈</div>Loading price history...</div></div>
+  </div>
+
   <!-- LOGS (operator only) -->
   <div class="page" id="page-logs">
     <div class="card"><div class="ct">Filter</div>
@@ -466,11 +494,11 @@ window.dispatchEvent(new Event('fbReady'));
 </script>
 
 <script>
-const OP_EMAIL='sukhdeep.0393@gmail.com',OP_PASS='Newjersey@2025',LEAD_PIN='1111';
+const OP_PIN='1024',LEAD_PIN='1111';
 let CU=null,pinBuf='',games=[],invFD=null,invAT='',invFN='';
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'logs',l:'📊 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}]
 };
@@ -481,11 +509,20 @@ function switchLTab(t,el){
   document.getElementById('opLogin').style.display=t==='op'?'block':'none';
   document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
 }
-function doOpLogin(){
-  const e=document.getElementById('opEmail').value.trim(),p=document.getElementById('opPass').value;
-  if(e===OP_EMAIL&&p===OP_PASS) loginOK({name:'Sukh',role:'operator'});
-  else{document.getElementById('opErr').textContent='Incorrect email or password';setTimeout(()=>document.getElementById('opErr').textContent='',3000);}
+let opPinBuf='';
+function opPk(d){
+  if(opPinBuf.length>=4) return;
+  opPinBuf+=d;
+  updOpDots();
+  if(opPinBuf.length===4) setTimeout(chkOpPin,200);
 }
+function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
+function updOpDots(){for(let i=0;i<4;i++){const el=document.getElementById('opd'+i);if(el)el.classList.toggle('filled',i<opPinBuf.length);}}
+function chkOpPin(){
+  if(opPinBuf===OP_PIN) loginOK({name:'Sukh',role:'operator'});
+  else{document.getElementById('opErr').textContent='Incorrect PIN';opPinBuf='';updOpDots();setTimeout(()=>document.getElementById('opErr').textContent='',2500);}
+}
+function doOpLogin(){}
 function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
 function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
 function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
@@ -519,7 +556,7 @@ function doLogout(){
   CU=null;pinBuf='';invFD=null;invAT='';invFN='';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
-  document.getElementById('opEmail').value='';document.getElementById('opPass').value='';document.getElementById('empName').value='';updDots();
+  opPinBuf='';updOpDots();document.getElementById('empName').value='';updDots();
 }
 
 // ---- TABS ----
@@ -540,6 +577,7 @@ function showTab(id){
   if(id==='scratch')renderScrRows();
   if(id==='compliance')checkComp();
   if(id==='employees')loadEmployees();
+  if(id==='pricehistory')loadPriceHistory();
   if(id==='myhours')loadMyHours();
 }
 
@@ -1118,13 +1156,72 @@ async function autoScanInvoice(){
 async function saveInv(){
   if(!invAT)return;
   try{
-    await window.F.addDoc(window.F.collection(window.db,'invoices'),{type:'invoices',fileName:invFN,analysis:invAT,employee:CU.name,date:localDate(),timestamp:window.F.serverTimestamp()});
-    toast('✓ Invoice submitted!');invFD=null;invAT='';invFN='';
+    // Split human summary from structured JSON
+    let humanText=invAT, structuredData=null;
+    if(invAT.includes('---JSON---')){
+      const parts=invAT.split('---JSON---');
+      humanText=parts[0].trim();
+      try{
+        const jsonStr=parts[1].trim();
+        structuredData=JSON.parse(jsonStr);
+      }catch(je){console.log('JSON parse error',je);}
+    }
+
+    // Save invoice with structured data
+    const invDoc = await window.F.addDoc(window.F.collection(window.db,'invoices'),{
+      type:'invoices', fileName:invFN, analysis:humanText,
+      vendor:structuredData?.vendor||'Unknown', invoiceNumber:structuredData?.invoiceNumber||'',
+      invoiceDate:structuredData?.invoiceDate||localDate(),
+      items:structuredData?.items||[], employee:CU.name,
+      date:localDate(), timestamp:window.F.serverTimestamp()
+    });
+
+    // Save each line item to priceHistory collection
+    if(structuredData?.items?.length){
+      for(const item of structuredData.items){
+        // Check for previous price of this item from same vendor
+        let prevCost=null, prevDate=null;
+        try{
+          const prev=await window.F.getDocs(window.F.query(
+            window.F.collection(window.db,'priceHistory'),
+            window.F.where('vendor','==',structuredData.vendor||'Unknown'),
+            window.F.where('itemName','==',item.name),
+            window.F.orderBy('timestamp','desc'),
+            window.F.limit(1)
+          ));
+          if(!prev.empty){
+            const pd=prev.docs[0].data();
+            prevCost=pd.unitCost;
+            prevDate=pd.date;
+          }
+        }catch(pe){}
+
+        const priceChange = prevCost!==null ? parseFloat((item.unitCost-prevCost).toFixed(2)) : null;
+        await window.F.addDoc(window.F.collection(window.db,'priceHistory'),{
+          vendor: structuredData.vendor||'Unknown',
+          invoiceNumber: structuredData.invoiceNumber||'',
+          invoiceDate: structuredData.invoiceDate||localDate(),
+          itemName: item.name,
+          qty: item.qty,
+          unitCost: item.unitCost,
+          lineTotal: item.lineTotal,
+          unit: item.unit||'',
+          prevCost, prevDate,
+          priceChange,
+          priceChangePercent: prevCost?parseFloat(((item.unitCost-prevCost)/prevCost*100).toFixed(1)):null,
+          invoiceId: invDoc.id,
+          date: localDate(),
+          timestamp: window.F.serverTimestamp()
+        });
+      }
+    }
+
+    toast('✓ Invoice saved to price history!');invFD=null;invAT='';invFN='';
     document.getElementById('invFName').textContent='Tap to upload invoice';
     document.getElementById('invResult').style.display='none';
     document.getElementById('invFile').value='';
     loadInvoices();
-  }catch(e){toast('Error saving');}
+  }catch(e){console.error('saveInv error',e);toast('Error saving invoice');}
 }
 async function loadInvoices(){
   try{
@@ -1543,6 +1640,119 @@ function showPhotoModal(url, caption){
 function closePhotoModal(){
   document.getElementById('photoModal').style.display = 'none';
   document.body.style.overflow = '';
+}
+
+
+// ---- PRICE HISTORY ----
+let allPriceHistory = [];
+
+async function loadPriceHistory(){
+  const el = document.getElementById('phResults');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'priceHistory'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(500)
+    ));
+    allPriceHistory = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Populate vendor dropdown
+    const vendors = [...new Set(allPriceHistory.map(x=>x.vendor).filter(Boolean))].sort();
+    const sel = document.getElementById('phVendor');
+    if(sel){
+      const existing = Array.from(sel.options).map(o=>o.value);
+      vendors.forEach(v=>{
+        if(!existing.includes(v)){
+          const o=document.createElement('option');
+          o.value=v; o.textContent=v; sel.appendChild(o);
+        }
+      });
+    }
+
+    if(!allPriceHistory.length){
+      el.innerHTML='<div class="empty"><div class="ei">📈</div>No price history yet. Upload invoices to start tracking.</div>';
+      return;
+    }
+    renderPriceHistory(allPriceHistory);
+  }catch(e){
+    el.innerHTML='<div class="empty"><div class="ei">⚠️</div>Error loading price history</div>';
+    console.error('loadPriceHistory',e);
+  }
+}
+
+function searchPriceHistory(){
+  const search = (document.getElementById('phSearch')?.value||'').toLowerCase().trim();
+  const vendor = document.getElementById('phVendor')?.value||'all';
+  const sort = document.getElementById('phSort')?.value||'recent';
+
+  let filtered = allPriceHistory;
+  if(search) filtered = filtered.filter(x=>(x.itemName||'').toLowerCase().includes(search));
+  if(vendor!=='all') filtered = filtered.filter(x=>x.vendor===vendor);
+
+  if(sort==='name') filtered.sort((a,b)=>(a.itemName||'').localeCompare(b.itemName||''));
+  else if(sort==='change') filtered.sort((a,b)=>(Math.abs(b.priceChange||0))-(Math.abs(a.priceChange||0)));
+  else filtered.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+
+  renderPriceHistory(filtered);
+}
+
+function renderPriceHistory(items){
+  const el = document.getElementById('phResults');
+  if(!el) return;
+  if(!items.length){
+    el.innerHTML='<div class="empty"><div class="ei">🔍</div>No items match your search</div>';
+    return;
+  }
+
+  // Group by item name + vendor for latest price view
+  const grouped = {};
+  items.forEach(x=>{
+    const key = (x.vendor||'Unknown')+'|||'+(x.itemName||'');
+    if(!grouped[key]) grouped[key]={vendor:x.vendor||'Unknown',itemName:x.itemName||'',history:[],latest:x};
+    grouped[key].history.push(x);
+  });
+
+  const groups = Object.values(grouped);
+  const sort = document.getElementById('phSort')?.value||'recent';
+  if(sort==='change') groups.sort((a,b)=>Math.abs(b.latest.priceChange||0)-Math.abs(a.latest.priceChange||0));
+
+  el.innerHTML = groups.slice(0,100).map(g=>{
+    const latest = g.history[0];
+    const hasChange = latest.priceChange!==null && latest.priceChange!==undefined && latest.priceChange!==0;
+    const changeColor = latest.priceChange>0?'var(--red)':latest.priceChange<0?'var(--green)':'var(--text3)';
+    const changeIcon = latest.priceChange>0?'⬆':latest.priceChange<0?'⬇':'→';
+    const changeBadge = hasChange
+      ? `<span style="font-size:11px;font-weight:600;color:${changeColor}">${changeIcon} ${latest.priceChange>0?'+':''}$${latest.priceChange.toFixed(2)} (${latest.priceChangePercent>0?'+':''}${latest.priceChangePercent}%)</span>`
+      : latest.prevCost!==null?'<span style="font-size:11px;color:var(--text3)">→ No change</span>':'<span style="font-size:11px;color:var(--text3)">First entry</span>';
+
+    // Show last 3 price points as mini history
+    const historyHtml = g.history.slice(0,5).map(h=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:var(--text2)">${h.invoiceDate||h.date}</span>
+        <span style="color:var(--text2)">${h.vendor}</span>
+        <span style="font-weight:600">$${(h.unitCost||0).toFixed(2)}</span>
+        <span style="color:var(--text3)">${h.qty||''} ${h.unit||''}</span>
+      </div>`).join('');
+
+    return`<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.itemName}</div>
+          <div style="font-size:12px;color:var(--text3)">${g.vendor}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:18px;font-weight:700">$${(latest.unitCost||0).toFixed(2)}</div>
+          ${changeBadge}
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Price history</div>
+        ${historyHtml}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 window.addEventListener('fbReady',()=>{});
