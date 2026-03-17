@@ -160,9 +160,14 @@ function opPk(d){
 function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
 function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
 function chkOpPin(){
-  if(typeof loginOK==='undefined'){setTimeout(chkOpPin,200);return;}
-  if(opPinBuf===OP_PIN)loginOK({name:'Sukh',role:'operator'});
-  else{document.getElementById('opErr').textContent='Incorrect PIN';opPinBuf='';updOpDots();setTimeout(()=>document.getElementById('opErr').textContent='',2500);}
+  if(opPinBuf===OP_PIN){
+    if(typeof loginOK==='function') loginOK({name:'Sukh',role:'operator'});
+    else setTimeout(()=>{ if(typeof loginOK==='function') loginOK({name:'Sukh',role:'operator'}); },500);
+  } else {
+    document.getElementById('opErr').textContent='Incorrect PIN';
+    opPinBuf='';updOpDots();
+    setTimeout(()=>document.getElementById('opErr').textContent='',2500);
+  }
 }
 function doOpLogin(){}
 
@@ -171,11 +176,16 @@ function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length==
 function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
 function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
 function chkPin(){
-  if(typeof loginOK==='undefined'){setTimeout(chkPin,200);return;}
   const n=document.getElementById('empName').value.trim();
   if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
-  if(pinBuf===LEAD_PIN)loginOK({name:n,role:'lead'});
-  else{document.getElementById('pinErr').textContent='Incorrect PIN';pinBuf='';updDots();setTimeout(()=>document.getElementById('pinErr').textContent='',2500);}
+  if(pinBuf===LEAD_PIN){
+    if(typeof loginOK==='function') loginOK({name:n,role:'lead'});
+    else setTimeout(()=>{ if(typeof loginOK==='function') loginOK({name:n,role:'lead'}); },500);
+  } else {
+    document.getElementById('pinErr').textContent='Incorrect PIN';
+    pinBuf='';updDots();
+    setTimeout(()=>document.getElementById('pinErr').textContent='',2500);
+  }
 }
 </script>
 
@@ -599,7 +609,6 @@ const TABS={
 };
 
 // ---- LOGIN ----
-let opPinBuf='';
 function loginOK(u){
   try{
   CU=u;
