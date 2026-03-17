@@ -602,6 +602,20 @@ window.dispatchEvent(new Event('fbReady'));
 <script>
 let CU=null,games=[],invFD=null,invAT='',invFN='';
 
+function localDate(d){
+  const dt=d||new Date();
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+
+function fmtHours(decimalHrs){
+  // Convert decimal hours to h:mm format e.g. 6.17 -> "6h 10min"
+  const totalMins=Math.round(decimalHrs*60);
+  const h=Math.floor(totalMins/60);
+  const m=totalMins%60;
+  if(h===0) return m+'min';
+  return h+'h '+(m>0?m+'min':'');
+}
+
 const TABS={
   operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
@@ -665,19 +679,7 @@ function showTab(id){
 // ---- TOAST ----
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
-function localDate(d){
-  const dt=d||new Date();
-  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-}
 
-function fmtHours(decimalHrs){
-  // Convert decimal hours to h:mm format e.g. 6.17 -> "6h 10min"
-  const totalMins=Math.round(decimalHrs*60);
-  const h=Math.floor(totalMins/60);
-  const m=totalMins%60;
-  if(h===0) return m+'min';
-  return h+'h '+(m>0?m+'min':'');
-}
 
 function calcHours(){
   const s=document.getElementById('d-start').value;
