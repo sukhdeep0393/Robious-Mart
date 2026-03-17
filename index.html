@@ -556,7 +556,7 @@ let CU=null,pinBuf='',games=[],invFD=null,invAT='',invFN='';
 
 const TABS={
   operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'myhours',l:'⏱ My Hours'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
 
@@ -590,6 +590,7 @@ function chkPin(){
   else{document.getElementById('pinErr').textContent='Incorrect PIN';pinBuf='';updDots();setTimeout(()=>document.getElementById('pinErr').textContent='',2500);}
 }
 function loginOK(u){
+  try{
   CU=u;
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').style.display='block';
@@ -599,7 +600,7 @@ function loginOK(u){
   document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
-  const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);
+  try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
   const em=document.getElementById('empMonth');if(em)em.value=ym;
@@ -609,6 +610,7 @@ function loginOK(u){
   loadGames();loadInvFlags();loadInvoices();
   if(u.role==='operator'){checkComp();showTab('dashboard');}
   else showTab('daily');
+  }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
   CU=null;pinBuf='';invFD=null;invAT='';invFN='';
@@ -913,7 +915,7 @@ async function subDaily(){
     document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
-  const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);
+  try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
   const em=document.getElementById('empMonth');if(em)em.value=ym;
