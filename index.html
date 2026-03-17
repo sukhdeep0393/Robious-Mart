@@ -289,24 +289,41 @@
         <div><label>Reporting at</label><select id="s-type" onchange="document.getElementById('scrBtn').textContent=this.value==='start'?'Save opening count':'Save closing count'"><option value="start">Start of shift</option><option value="end">End of shift</option></select></div>
       </div>
     </div>
+
+    <!-- Slot setup card - operator/lead only -->
     <div class="card" id="mgmtCard" style="display:none">
-      <div class="sh2"><div class="ct" style="margin:0">Manage scratch-off games</div><button class="bsm" onclick="togAddGame()">+ Add game</button></div>
-      <div id="addGameForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
-        <div class="g2" style="margin-bottom:8px">
-          <div><label>Game name</label><input id="gname" placeholder="e.g. $1 Lucky Stars" /></div>
-          <div><label>Ticket price ($)</label><input type="number" id="gprice" placeholder="1" min="1" max="30" /></div>
-        </div>
-        <div style="margin-bottom:8px"><label>Game # (1–100)</label><input type="number" id="gnum" placeholder="e.g. 7" min="1" max="100" /></div>
-        <button class="btn bprimary" style="padding:10px;font-size:13px" onclick="addGame()">Add game</button>
+      <div class="ct">Setup slots — tap any slot to edit</div>
+      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue)">
+        Tap a slot number to assign a game. When a game sells out, tap the slot again to replace it with a new game.
       </div>
-      <div id="gmList"></div>
+      <div id="slotSetupGrid"></div>
     </div>
+
+    <!-- Slot edit form (hidden by default) -->
+    <div class="card" id="slotEditCard" style="display:none">
+      <div class="sh2">
+        <div class="ct" style="margin:0" id="slotEditTitle">Edit slot</div>
+        <button class="bsm" onclick="closeSlotEdit()">Cancel</button>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Ticket price ($)</label><input type="number" id="se-price" placeholder="e.g. 50" min="1" max="100" /></div>
+        <div><label>Game name</label><input id="se-name" placeholder="e.g. Gold Rush" /></div>
+      </div>
+      <div style="margin-bottom:12px"><label>Game ticket # (from lottery)</label><input type="number" id="se-gamenum" placeholder="e.g. 1234" /></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bprimary" style="flex:1;padding:11px" onclick="saveSlot()">Save slot</button>
+        <button class="btn" style="padding:11px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1" onclick="clearSlot()">Clear slot</button>
+      </div>
+    </div>
+
+    <!-- Count entry card -->
     <div class="card">
-      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--amber)">Count tickets <strong>remaining in dispenser</strong> for each active game</div>
-      <div class="sh"><div>Game</div><div>Price</div><div>Count</div><div></div></div>
-      <div id="scrRows"><div class="empty"><div class="ei">🎟</div>No games added yet</div></div>
+      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--amber)">
+        Enter ticket count <strong>remaining in dispenser</strong> for each slot
+      </div>
+      <div id="scrRows"><div class="empty"><div class="ei">🎟</div>No slots set up yet</div></div>
       <div id="scrTot" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Estimated value on hand</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Estimated total value on hand</div>
         <div style="font-size:22px;font-weight:700" id="scrTotVal">$0</div>
       </div>
     </div>
@@ -846,43 +863,151 @@ async function subFuel(){
 }
 
 // ---- SCRATCH-OFFS ----
+// ---- SCRATCH-OFF SLOT SYSTEM (32 fixed slots) ----
+const TOTAL_SLOTS = 32;
+let slots = Array(TOTAL_SLOTS).fill(null); // null = empty slot
+let editingSlot = -1;
+
 async function loadGames(){
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'scratchGames'),window.F.orderBy('gameNumber','asc')));
-    games=snap.docs.map(d=>({id:d.id,...d.data()}));renderScrRows();renderGmList();
-  }catch(e){}
+    // Load slots from Firebase (stored as single doc for simplicity)
+    const snap = await window.F.getDocs(window.F.collection(window.db,'scratchSlots'));
+    slots = Array(TOTAL_SLOTS).fill(null);
+    snap.docs.forEach(d => {
+      const x = d.data();
+      if(x.slot >= 0 && x.slot < TOTAL_SLOTS){
+        slots[x.slot] = {docId: d.id, slot: x.slot, price: x.price, name: x.name, gameNum: x.gameNum};
+      }
+    });
+    renderSlotSetupGrid();
+    renderScrRows();
+  }catch(e){ console.error('loadGames',e); }
 }
-function renderScrRows(){
-  const el=document.getElementById('scrRows');
-  if(!games.length){el.innerHTML='<div class="empty"><div class="ei">🎟</div>No games added yet</div>';document.getElementById('scrTot').style.display='none';return;}
-  el.innerHTML=games.map(g=>`<div class="sr"><div class="sn">#${g.gameNumber} ${g.name}</div><div class="sp">$${g.price}</div><input type="number" min="0" placeholder="0" id="sc-${g.id}" oninput="updScrTot()" style="text-align:center;padding:8px" /><div></div></div>`).join('');
+
+function renderSlotSetupGrid(){
+  const el = document.getElementById('slotSetupGrid');
+  if(!el) return;
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">` +
+    Array.from({length: TOTAL_SLOTS}, (_, i) => {
+      const s = slots[i];
+      const filled = s && s.name;
+      return `<div onclick="openSlotEdit(${i})" style="border:1px solid ${filled?'var(--blue)':'var(--border)'};border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;background:${filled?'var(--blue-light)':'var(--bg2)'}">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">Slot ${i+1}</div>
+        ${filled
+          ? `<div style="font-size:11px;font-weight:600;color:var(--blue)">$${s.price}</div><div style="font-size:10px;color:var(--blue);line-height:1.2">${s.name.substring(0,12)}</div>`
+          : `<div style="font-size:18px;color:var(--border)">+</div>`
+        }
+      </div>`;
+    }).join('') + `</div>`;
 }
-function renderGmList(){
-  const el=document.getElementById('gmList');if(!el)return;
-  if(!games.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">No games added yet</div>';return;}
-  el.innerHTML=games.map(g=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px">#${g.gameNumber} ${g.name} <span style="color:var(--text3)">$${g.price}</span></div><button class="bdsm" onclick="delGame('${g.id}')">Remove</button></div>`).join('');
+
+function openSlotEdit(slotIdx){
+  editingSlot = slotIdx;
+  const s = slots[slotIdx];
+  document.getElementById('slotEditTitle').textContent = `Slot ${slotIdx+1}`;
+  document.getElementById('se-price').value = s ? s.price : '';
+  document.getElementById('se-name').value = s ? s.name : '';
+  document.getElementById('se-gamenum').value = s ? s.gameNum : '';
+  document.getElementById('slotEditCard').style.display = 'block';
+  document.getElementById('slotEditCard').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
-function updScrTot(){
-  const tot=games.reduce((s,g)=>s+(parseFloat(document.getElementById('sc-'+g.id)?.value)||0)*g.price,0);
-  const has=games.some(g=>document.getElementById('sc-'+g.id)?.value);
-  document.getElementById('scrTot').style.display=has?'block':'none';
-  document.getElementById('scrTotVal').textContent='$'+tot.toLocaleString();
+
+function closeSlotEdit(){
+  editingSlot = -1;
+  document.getElementById('slotEditCard').style.display = 'none';
 }
-function togAddGame(){const f=document.getElementById('addGameForm');f.style.display=f.style.display==='none'?'block':'none';}
-async function addGame(){
-  const n=document.getElementById('gname').value.trim(),p=parseFloat(document.getElementById('gprice').value),num=parseInt(document.getElementById('gnum').value);
-  if(!n||!p||!num){toast('Fill in all fields');return;}
-  if(num<1||num>100){toast('Game # must be 1–100');return;}
-  if(games.find(g=>g.gameNumber===num)){toast('Game # already exists');return;}
-  try{await window.F.addDoc(window.F.collection(window.db,'scratchGames'),{name:n,price:p,gameNumber:num,timestamp:window.F.serverTimestamp()});document.getElementById('gname').value='';document.getElementById('gprice').value='';document.getElementById('gnum').value='';document.getElementById('addGameForm').style.display='none';toast('✓ Game added');loadGames();}catch(e){toast('Error adding game');}
-}
-async function delGame(id){try{await window.F.deleteDoc(window.F.doc(window.db,'scratchGames',id));toast('Game removed');loadGames();}catch(e){toast('Error');}}
-async function subScratch(){
-  const counts={};games.forEach(g=>{counts['g_'+g.id]=parseFloat(document.getElementById('sc-'+g.id)?.value)||0;});
+
+async function saveSlot(){
+  if(editingSlot < 0) return;
+  const price = parseFloat(document.getElementById('se-price').value);
+  const name = document.getElementById('se-name').value.trim();
+  const gameNum = document.getElementById('se-gamenum').value.trim();
+  if(!price || !name){ toast('Enter price and game name'); return; }
   try{
-    await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{type:'scratchCounts',employee:CU.name,shiftType:document.getElementById('s-type').value,counts,games:games.map(g=>({id:g.id,name:g.name,price:g.price,gameNumber:g.gameNumber})),totalValue:games.reduce((s,g)=>s+(counts['g_'+g.id]*g.price),0),date:new Date().toISOString().split('T')[0],timestamp:window.F.serverTimestamp()});
-    toast('✓ Scratch count saved!');games.forEach(g=>{const el=document.getElementById('sc-'+g.id);if(el)el.value='';});document.getElementById('scrTot').style.display='none';
-  }catch(e){toast('Error saving');}
+    const existing = slots[editingSlot];
+    if(existing && existing.docId){
+      // Update existing slot doc
+      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots',existing.docId),{price, name, gameNum, updatedAt: new Date().toISOString()});
+    } else {
+      // Create new slot doc
+      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{slot: editingSlot, price, name, gameNum, createdAt: new Date().toISOString()});
+    }
+    toast('✓ Slot saved');
+    closeSlotEdit();
+    loadGames();
+  }catch(e){ toast('Error saving slot'); }
+}
+
+async function clearSlot(){
+  if(editingSlot < 0) return;
+  const existing = slots[editingSlot];
+  if(!existing || !existing.docId){ closeSlotEdit(); return; }
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'scratchSlots',existing.docId));
+    toast('Slot cleared');
+    closeSlotEdit();
+    loadGames();
+  }catch(e){ toast('Error clearing slot'); }
+}
+
+function renderScrRows(){
+  const el = document.getElementById('scrRows');
+  if(!el) return;
+  const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
+  if(!activeSlots.length){
+    el.innerHTML = '<div class="empty"><div class="ei">🎟</div>No slots set up yet — operator or lead can set up slots above</div>';
+    document.getElementById('scrTot').style.display = 'none';
+    return;
+  }
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Slot</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Game</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:center">Count</div>
+    </div>` +
+    activeSlots.map(s => `
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px">
+      <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap">${s.slotIdx+1}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
+        ${s.gameNum ? `<div style="font-size:11px;color:var(--text3)">#${s.gameNum}</div>` : ''}
+      </div>
+      <input type="number" min="0" placeholder="0" id="sc-slot-${s.slotIdx}" oninput="updScrTot()" style="text-align:center;padding:8px;font-size:15px;font-weight:600" />
+    </div>`).join('');
+  updScrTot();
+}
+
+function updScrTot(){
+  const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
+  const tot = activeSlots.reduce((sum,s) => {
+    const v = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    return sum + v * s.price;
+  }, 0);
+  const has = activeSlots.some(s => document.getElementById('sc-slot-'+s.slotIdx)?.value);
+  document.getElementById('scrTot').style.display = has ? 'block' : 'none';
+  document.getElementById('scrTotVal').textContent = '$' + tot.toLocaleString();
+}
+
+async function subScratch(){
+  const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
+  const counts = {};
+  activeSlots.forEach(s => {
+    counts['slot_'+s.slotIdx] = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+  });
+  const totalValue = activeSlots.reduce((sum,s) => sum + (counts['slot_'+s.slotIdx]||0)*s.price, 0);
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{
+      type:'scratchCounts', employee:CU.name,
+      shiftType: document.getElementById('s-type').value,
+      counts, slots: activeSlots.map(s=>({slot:s.slotIdx+1,price:s.price,name:s.name,gameNum:s.gameNum})),
+      totalValue,
+      date: new Date().toISOString().split('T')[0],
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Scratch count saved!');
+    activeSlots.forEach(s => { const el=document.getElementById('sc-slot-'+s.slotIdx); if(el) el.value=''; });
+    document.getElementById('scrTot').style.display = 'none';
+  }catch(e){ toast('Error saving count'); }
 }
 
 // ---- COMPLIANCE ----
