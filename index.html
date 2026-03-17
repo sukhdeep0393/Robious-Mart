@@ -424,16 +424,31 @@ function chkPin(){
     <div class="card"><div class="ct">Upload invoice</div>
       <div class="uzone" onclick="document.getElementById('invFile').click()">
         <div style="font-size:32px;margin-bottom:8px">🧾</div>
-        <div style="font-size:14px;color:var(--text2)" id="invFName">Tap to upload invoice</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">Photo or PDF — AI scans automatically</div>
+        <div style="font-size:14px;color:var(--text2)" id="invFName">Tap to upload — multiple photos supported</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Select all pages at once — AI reads them together</div>
       </div>
-      <input type="file" id="invFile" accept="image/*,application/pdf" style="display:none" onchange="handleInv(this)" />
-      <div id="autoScanMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>AI is scanning your invoice...</div>
+      <input type="file" id="invFile" accept="image/*,application/pdf" multiple style="display:none" onchange="handleInv(this)" />
+      <div id="invPhotoPreview" style="display:none;margin-top:10px;display:none">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="invPhotoCount"></div>
+        <div id="invPhotoThumbs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div id="autoScanMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>AI is reading all invoice pages...</div>
     </div>
     <div id="invResult" style="display:none">
       <div class="card">
         <div class="ct">AI invoice breakdown</div>
         <div class="aibox" id="invAI"></div>
+
+        <!-- Correction prompt -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Something wrong? Tell Claude what to fix:</div>
+          <div style="display:flex;gap:8px">
+            <input id="invCorrection" placeholder="e.g. Vendor is Layman not Walmart, price on Snickers is $28 not $38..." style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')fixInvoice()" />
+            <button class="bsm" onclick="fixInvoice()" id="fixBtn" style="white-space:nowrap;padding:8px 14px">Fix it</button>
+          </div>
+          <div id="fixMsg" style="display:none" class="auto-scanning" style="margin-top:8px"><span class="spinner" style="border-top-color:var(--amber)"></span>Claude is fixing...</div>
+        </div>
+
         <button class="btn bprimary" style="margin-top:12px;padding:11px" onclick="saveInv()">Save & submit invoice</button>
       </div>
     </div>
@@ -1229,25 +1244,59 @@ function addLic(){
 }
 
 // ---- INVOICES ----
-function handleInv(i){
-  const f=i.files[0];if(!f)return;
-  invFN=f.name;document.getElementById('invFName').textContent=f.name;
-  const r=new FileReader();
-  r.onload=()=>{invFD={b64:r.result.split(',')[1],type:f.type};autoScanInvoice();};
-  r.readAsDataURL(f);
+// Store multiple invoice files
+let invFiles = [];
+
+function handleInv(input){
+  const files = Array.from(input.files);
+  if(!files.length) return;
+  invFiles = [];
+  invFN = files.map(f=>f.name).join(', ');
+  document.getElementById('invFName').textContent = files.length === 1 ? files[0].name : files.length + ' photos selected';
+
+  // Show thumbnails
+  const preview = document.getElementById('invPhotoPreview');
+  const thumbs = document.getElementById('invPhotoThumbs');
+  const countEl = document.getElementById('invPhotoCount');
+  preview.style.display = 'block';
+  thumbs.innerHTML = '';
+  countEl.textContent = files.length + ' photo' + (files.length>1?'s':'') + ' — AI will read all pages together';
+
+  let loaded = 0;
+  files.forEach((f, idx) => {
+    const r = new FileReader();
+    r.onload = () => {
+      invFiles[idx] = {b64: r.result.split(',')[1], type: f.type, name: f.name};
+      // Show thumbnail
+      const img = document.createElement('img');
+      img.src = r.result;
+      img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)';
+      thumbs.appendChild(img);
+      loaded++;
+      if(loaded === files.length) autoScanInvoice();
+    };
+    r.readAsDataURL(f);
+  });
 }
 async function autoScanInvoice(){
-  if(!invFD)return;
+  if(!invFiles.length)return;
   document.getElementById('autoScanMsg').style.display='flex';
   document.getElementById('invResult').style.display='none';
+
+  // Build content array with ALL images
+  const imgBlocks = invFiles.map(f => {
+    const isImg = f.type.startsWith('image/');
+    return isImg
+      ? {type:'image',source:{type:'base64',media_type:f.type,data:f.b64}}
+      : {type:'document',source:{type:'base64',media_type:'application/pdf',data:f.b64}};
+  });
+
+  // Use first file for backward compat
+  const invFD = invFiles[0];
   const isImg=invFD.type.startsWith('image/');
+  const imgBlock = imgBlocks[0];
 
-  // Build content array
-  const imgBlock=isImg
-    ?{type:'image',source:{type:'base64',media_type:invFD.type,data:invFD.b64}}
-    :{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}};
-
-  const prompt='You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice and provide: 1) Vendor name and invoice number, 2) Invoice date, 3) Complete itemized list with product name, quantity, unit cost, and line total, 4) Invoice total, 5) Flag any price increases or unusual quantities, 6) One-line summary. Be concise and practical.';
+  const prompt='You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice carefully and provide:\n\n1) Vendor name and invoice/PO number\n2) Invoice date\n3) ITEMIZED LIST - for each line item provide:\n   - Product name\n   - Quantity ordered (NOT discount percentage)\n   - Unit cost (price per unit)\n   - Line total\n   Note: Be careful to distinguish between QTY (quantity of units) and DISC (discount percentage) columns\n4) Any discounts or promotions applied (list separately from quantities)\n5) Invoice subtotal and total\n6) Flag any price changes vs typical c-store pricing\n7) One-line summary\n\nBe precise and practical for a gas station operator.';
 
   try{
     const resp=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
@@ -1255,8 +1304,8 @@ async function autoScanInvoice(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:1200,
-        messages:[{role:'user',content:[imgBlock,{type:'text',text:prompt}]}]
+        max_tokens:1500,
+        messages:[{role:'user',content:[...imgBlocks,{type:'text',text:prompt}]}]
       })
     });
     if(!resp.ok){
@@ -1275,6 +1324,39 @@ async function autoScanInvoice(){
   }
   document.getElementById('autoScanMsg').style.display='none';
 }
+async function fixInvoice(){
+  const correction = document.getElementById('invCorrection').value.trim();
+  if(!correction){ toast('Enter what needs to be fixed'); return; }
+  const fixBtn = document.getElementById('fixBtn');
+  const fixMsg = document.getElementById('fixMsg');
+  fixBtn.disabled = true;
+  fixMsg.style.display = 'flex';
+
+  try{
+    const prompt = 'Here is an invoice analysis that needs correction:\n\n' + invAT + '\n\nCorrection needed: ' + correction + '\n\nPlease provide the corrected invoice analysis with the same format but with the specified correction applied. Be concise.';
+
+    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    const data = await resp.json();
+    const fixed = data.content?.map(c=>c.text||'').join('') || invAT;
+    invAT = fixed;
+    document.getElementById('invAI').textContent = fixed;
+    document.getElementById('invCorrection').value = '';
+    toast('✓ Invoice updated');
+  }catch(e){
+    toast('Error fixing invoice. Try again.');
+  }
+  fixBtn.disabled = false;
+  fixMsg.style.display = 'none';
+}
+
 async function saveInv(){
   if(!invAT||invAT.startsWith('Error'))return;
   try{
@@ -1360,12 +1442,34 @@ async function saveInv(){
     loadInvoices();
   }catch(e){console.error('saveInv error',e);toast('Error saving invoice');}
 }
+async function deleteInvoice(id){
+  if(!confirm('Delete this invoice permanently?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'invoices',id));
+    toast('Invoice deleted');
+    loadInvoices();
+  }catch(e){toast('Error deleting invoice');}
+}
+
 async function loadInvoices(){
   try{
     const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'invoices'),window.F.orderBy('timestamp','desc'),window.F.limit(10)));
     const el=document.getElementById('savedInvList');
     if(snap.empty){el.innerHTML='<div class="empty"><div class="ei">🧾</div>No invoices submitted yet</div>';return;}
-    el.innerHTML=snap.docs.map(d=>{const x=d.data();return`<div class="litem"><div class="ltitle"><span>${x.fileName||'Invoice'}</span><span class="badge bblu">${x.date}</span></div><div class="lmeta">By ${x.employee||'Unknown'}</div><div class="ldet">${(x.analysis||'').substring(0,100)}...</div></div>`;}).join('');
+    el.innerHTML=snap.docs.map(d=>{
+      const x=d.data();
+      const isOp=CU&&CU.role==='operator';
+      return`<div class="litem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div class="ltitle"><span>${x.fileName||'Invoice'}</span><span class="badge bblu">${x.date}</span></div>
+            <div class="lmeta">By ${x.employee||'Unknown'}</div>
+            <div class="ldet">${(x.analysis||'').substring(0,120)}...</div>
+          </div>
+          ${isOp?`<button class="bdsm" style="flex-shrink:0;margin-top:4px" onclick="deleteInvoice('${d.id}')">Delete</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
   }catch(e){}
 }
 
