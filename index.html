@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Robious Mart">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{--blue:#1a5ca8;--blue-dark:#154d91;--blue-light:#e8f0fb;--green:#3B6D11;--green-light:#EAF3DE;--red:#A32D2D;--red-light:#FCEBEB;--amber:#854F0B;--amber-light:#FAEEDA;--border:#e2e2de;--text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;--bg:#ffffff;--bg2:#f8f8f6;--r:10px;--rl:14px;}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -120,6 +121,44 @@
   .alert-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
   .alert-item:last-child{border-bottom:none;}
   .loading-dash{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;}
+
+  /* REDESIGNED DASHBOARD */
+  .dash-hero{background:linear-gradient(135deg,#1a5ca8 0%,#0e3d75 60%,#0a2d58 100%);border-radius:var(--rl);padding:22px 20px 20px;margin-bottom:12px;position:relative;overflow:hidden;}
+  .dash-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:160px;height:160px;background:rgba(255,255,255,.05);border-radius:50%;}
+  .dash-hero::after{content:'';position:absolute;bottom:-50px;right:30px;width:100px;height:100px;background:rgba(255,255,255,.04);border-radius:50%;}
+  .dash-hero-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+  .dash-hero-val{font-size:38px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1;margin-bottom:4px;}
+  .dash-hero-sub{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:16px;}
+  .dash-hero-chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .dash-chip{background:rgba(255,255,255,.12);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;color:rgba(255,255,255,.9);}
+  .dash-chip.good{background:rgba(59,109,17,.35);border-color:rgba(59,109,17,.5);}
+  .dash-chip.bad{background:rgba(163,45,45,.35);border-color:rgba(163,45,45,.5);}
+  .dash-kpi-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+  .dash-kpi{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;position:relative;overflow:hidden;}
+  .dash-kpi-accent{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 var(--rl) var(--rl);}
+  .dash-kpi-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
+  .dash-kpi-val{font-size:19px;font-weight:800;line-height:1;}
+  .dash-kpi-sub{font-size:10px;color:var(--text3);margin-top:3px;}
+  .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px;}
+  .dash-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;}
+  .dash-section-link{font-size:12px;color:var(--blue);font-weight:500;}
+  .scr-dash-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:12px;}
+  .scr-dash-top{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .scr-dash-cell{padding:14px 16px;}
+  .scr-dash-cell:first-child{border-right:1px solid var(--border);}
+  .scr-dash-cell-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+  .scr-dash-cell-val{font-size:22px;font-weight:800;}
+  .act-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);gap:8px;}
+  .act-row:last-child{border-bottom:none;}
+  .act-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
+  .fuel-bar-row{display:grid;grid-template-columns:60px 1fr 52px;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);}
+  .fuel-bar-row:last-child{border-bottom:none;}
+  .incident-pill{display:flex;align-items:flex-start;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);}
+  .incident-pill:last-child{border-bottom:none;}
+  .incident-icon{width:28px;height:28px;border-radius:8px;background:var(--amber-light);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:1px;}
+  /* SCRATCH ACTIVATION LOG (in scratch tab) */
+  .act-log-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;font-size:13px;}
+  .act-log-row:last-child{border-bottom:none;}
 
   /* EDIT LOG MODAL */
   .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -438,6 +477,42 @@
       </div>
     </div>
     <button class="btn bprimary" id="scrBtn" onclick="subScratch()">Save opening count</button>
+
+    <!-- Activation log card — all roles -->
+    <div class="card" style="margin-top:12px">
+      <div class="sh2">
+        <div class="ct" style="margin:0">🎟 New book activations</div>
+        <button class="bsm" onclick="togActForm()">+ Log activation</button>
+      </div>
+      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.5">
+        Whenever you activate a new scratch-off book, log it here so the operator can track inventory added.
+      </div>
+
+      <!-- Add activation form -->
+      <div id="actForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:14px">
+        <div class="g2" style="margin-bottom:10px">
+          <div><label>Game name</label><input id="act-name" placeholder="e.g. Gold Rush $5" /></div>
+          <div><label>Ticket price ($)</label><input type="number" id="act-price" placeholder="e.g. 5" /></div>
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><label>Books / packs activated</label><input type="number" id="act-qty" placeholder="e.g. 1" min="1" /></div>
+          <div><label>Tickets per book</label><input type="number" id="act-tix" placeholder="e.g. 60" /></div>
+        </div>
+        <div style="margin-bottom:10px"><label>Pack / book number (optional)</label><input id="act-booknum" placeholder="e.g. 003214" /></div>
+        <div style="margin-bottom:12px"><label>Slot # assigned to</label>
+          <select id="act-slot">
+            <option value="">— select slot —</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="submitActivation()">Log activation</button>
+          <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togActForm()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Activation log list -->
+      <div id="actLogList"><div class="empty" style="padding:16px"><div class="ei">🎟</div>No activations logged yet</div></div>
+    </div>
   </div>
 
   <!-- COMPLIANCE -->
@@ -666,6 +741,77 @@
     </div>
     <div id="mg-search-results" style="display:none">
       <div class="card" id="mg-search-list"></div>
+    </div>
+
+    <!-- Spreadsheet import card -->
+    <div class="card" id="mg-import-card">
+      <div class="sh2" style="margin-bottom:10px">
+        <div class="ct" style="margin:0">Import from spreadsheet</div>
+        <button class="bsm" onclick="togMgImport()">▼ Show</button>
+      </div>
+      <div id="mg-import-body" style="display:none">
+        <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue);line-height:1.6">
+          📊 Upload any <strong>.xlsx</strong> or <strong>.csv</strong> file — Claude will find the product names, costs, and sell prices automatically, even if your columns have different headings. It will also suggest categories.
+        </div>
+
+        <!-- Drop zone -->
+        <div class="uzone" id="mg-dropzone" onclick="document.getElementById('mgXlsxFile').click()"
+             ondragover="event.preventDefault();this.style.borderColor='var(--blue)'"
+             ondragleave="this.style.borderColor=''"
+             ondrop="handleMgDrop(event)">
+          <div style="font-size:32px;margin-bottom:8px">📊</div>
+          <div style="font-size:14px;color:var(--text2)" id="mgXlsxLabel">Tap to upload spreadsheet</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">.xlsx · .xls · .csv supported</div>
+        </div>
+        <input type="file" id="mgXlsxFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleMgXlsx(this)" />
+
+        <!-- Scanning state -->
+        <div id="mgImportScanMsg" style="display:none;margin-top:10px" class="auto-scanning">
+          <span class="spinner" style="border-top-color:var(--amber)"></span>
+          <span id="mgImportScanTxt">Reading spreadsheet...</span>
+        </div>
+
+        <!-- Preview & confirm -->
+        <div id="mgImportPreview" style="display:none;margin-top:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px" id="mgImportSummary"></div>
+
+          <!-- Column mapping override (shown if AI wasn't confident) -->
+          <div id="mgColMapWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📋 Confirm column mapping</div>
+            <div class="g3">
+              <div><label>Product name column</label><select id="mgColName" onchange="remapMgPreview()"></select></div>
+              <div><label>Cost / purchase price</label><select id="mgColCost" onchange="remapMgPreview()"></select></div>
+              <div><label>Sell price</label><select id="mgColSell" onchange="remapMgPreview()"></select></div>
+            </div>
+            <div class="g2" style="margin-top:8px">
+              <div><label>Category column (optional)</label><select id="mgColCat" onchange="remapMgPreview()"></select></div>
+            </div>
+          </div>
+
+          <!-- Product preview table -->
+          <div id="mgImportTable" style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px;max-height:320px;overflow-y:auto"></div>
+
+          <!-- Import options -->
+          <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Import options</div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;font-weight:400">
+              <input type="checkbox" id="mgImportSkipNoCost" checked style="width:auto;margin:0" onchange="if(mgMapped.length)renderMgImportPreview()" />
+              Skip rows with no cost or sell price
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400">
+              <input type="checkbox" id="mgImportMerge" checked style="width:auto;margin:0" onchange="if(mgMapped.length)renderMgImportPreview()" />
+              Skip duplicates (same product name already in system)
+            </label>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button class="btn bprimary" style="flex:1;padding:11px" onclick="commitMgImport()">
+              Import <span id="mgImportCount">0</span> products
+            </button>
+            <button class="btn bsecondary" style="padding:11px" onclick="clearMgImport()">Clear</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Add category button -->
@@ -935,7 +1081,7 @@ function showTab(id){
   if(id==='logs')loadLogs();
   if(id==='invoices')loadInvoices();
   if(id==='inventory')loadInvFlags();
-  if(id==='scratch')renderScrRows();
+  if(id==='scratch'){renderScrRows();loadActLog();}
   if(id==='compliance')checkComp();
   if(id==='employees')loadEmployees();
   if(id==='pricehistory')loadPriceHistory();
@@ -968,141 +1114,183 @@ function calcHours(){
 // ---- DASHBOARD ----
 async function loadDashboard(){
   const el=document.getElementById('dashContent');
-  el.innerHTML='<div class="loading-dash"><div style="font-size:28px;margin-bottom:8px">⏳</div>Loading your dashboard...</div>';
+  el.innerHTML='<div class="loading-dash"><div style="font-size:28px;margin-bottom:8px">⏳</div>Loading dashboard...</div>';
 
   const today=localDate();
   const now=new Date();
+  const monthName=now.toLocaleDateString('en-US',{month:'long'});
   const mtdStart=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
   const yesterday=localDate(new Date(now-864e5));
 
   try{
-    const {getDocs,query,collection,orderBy,where,limit}=window.F;
+    const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    // Fetch all daily reports for this month
-    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('timestamp','desc'),limit(200)));
+    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('timestamp','desc'),limit(300)));
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
-
+    const mtdR=allReports.filter(r=>r.date>=mtdStart);
     const todayR=allReports.filter(r=>r.date===today);
     const yestR=allReports.filter(r=>r.date===yesterday);
-    const mtdR=allReports.filter(r=>r.date>=mtdStart);
 
-    // Totals
-    const sum=(arr,key)=>arr.reduce((s,r)=>s+(parseFloat(r[key])||0),0);
-    const todaySales=sum(todayR,'totalSales');
-    const yestSales=sum(yestR,'totalSales');
+    const sum=(arr,k)=>arr.reduce((s,r)=>s+(parseFloat(r[k])||0),0);
     const mtdSales=sum(mtdR,'totalSales');
     const mtdCash=sum(mtdR,'cashSales');
     const mtdCredit=sum(mtdR,'creditSales');
     const mtdRegGal=sum(mtdR,'regularGal');
     const mtdPremGal=sum(mtdR,'premiumGal');
     const mtdDiesGal=sum(mtdR,'dieselGal');
+    const mtdTotalGal=mtdRegGal+mtdPremGal+mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
-    const todayLotNet=sum(todayR,'lotteryTotal')-sum(todayR,'lotteryPayout');
+    const todaySales=sum(todayR,'totalSales');
+    const yestSales=sum(yestR,'totalSales');
+    const salesVsYest=yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
-    // Sales change
-    const salesChange=yestSales>0?((todaySales-yestSales)/yestSales*100):0;
-    const changeClass=salesChange>0?'ch-up':salesChange<0?'ch-dn':'ch-neu';
-    const changeText=salesChange===0?'—':(salesChange>0?'▲':'▼')+' '+Math.abs(salesChange).toFixed(1)+'% vs yesterday';
-
-    // Cash short/over by employee (MTD)
-    const empMap={};
-    mtdR.forEach(r=>{
-      if(!r.employee)return;
-      if(!empMap[r.employee])empMap[r.employee]={name:r.employee,shifts:0,shortOver:0,short:0,over:0};
-      empMap[r.employee].shifts++;
-      if(r.cashDifference){
-        empMap[r.employee].shortOver+=r.cashDifference;
-        if(r.cashDifference<0) empMap[r.employee].short++;
-        else if(r.cashDifference>0) empMap[r.employee].over++;
-      }
-    });
-
-    // Scratch-off MTD
-    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(100)));
+    // Scratch-off MTD + activations
+    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(60)));
     const scrMTD=scrSnap.docs.map(d=>d.data()).filter(d=>d.date>=mtdStart);
-    const scrVal=scrMTD.length>0?scrMTD[scrMTD.length-1].totalValue||0:0;
+    const latestScr=scrMTD.length>0?scrMTD[0]:null;
+    const scrVal=latestScr?.totalValue||0;
 
-    // Low inventory flags
+    const actSnap=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(20)));
+    const recentActs=actSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const mtdActs=recentActs.filter(a=>a.date>=mtdStart);
+    const mtdActValue=mtdActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+
+    // Inventory flags
     let openFlags=0;
     try{
       const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
       openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
-    }catch(e2){openFlags=0;}
+    }catch(e2){}
 
-    // Compliance alerts
     const urgLics=lics.filter(l=>!l.ack&&du(l.due)<=30);
-
-    // Recent incidents
-    const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!='').slice(0,5);
-
+    const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!='').slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    const fmtMon=()=>new Date().toLocaleDateString('en-US',{month:'long'});
 
     el.innerHTML=`
-      <div class="dash-greeting">Good ${getGreeting()}, Sukh 👋</div>
-      <div class="dash-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
+      <!-- Greeting row -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:8px">
+        <div>
+          <div style="font-size:21px;font-weight:800;line-height:1.2">Good ${getGreeting()}, Sukh 👋</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+        </div>
+        <button onclick="loadDashboard()" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:7px 12px;font-size:12px;font-weight:500;color:var(--text2);white-space:nowrap;flex-shrink:0">↻ Refresh</button>
+      </div>
 
-      ${urgLics.length||openFlags?`<div class="card" style="border-color:#f7c1c1;background:var(--red-light);margin-bottom:12px">
-        <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px">⚑ Needs your attention</div>
-        ${urgLics.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:3px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+' days left'}</div>`).join('')}
-        ${openFlags?`<div style="font-size:12px;color:var(--red);margin-bottom:3px">• ${openFlags} open low inventory flag${openFlags>1?'s':''}</div>`:''}
+      ${urgLics.length||openFlags?`
+      <div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:13px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:18px;margin-top:1px">⚑</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px">Needs your attention</div>
+          ${urgLics.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+'d left'}</div>`).join('')}
+          ${openFlags?`<div style="font-size:12px;color:var(--red)">• ${openFlags} open low-inventory flag${openFlags>1?'s':''}</div>`:''}
+        </div>
       </div>`:''}
 
-      <div class="dash-section">Today — ${fmtDate(today)}</div>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-label">Total sales</div>
-          <div class="stat-val">$${todaySales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-          <div class="stat-change ${changeClass}">${changeText}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Net lottery</div>
-          <div class="stat-val" style="color:${todayLotNet>=0?'var(--green)':'var(--red)'}">$${todayLotNet.toFixed(2)}</div>
-          <div class="stat-sub">${todayR.length} report${todayR.length!==1?'s':''} submitted</div>
+      <!-- HERO: Monthly Sales -->
+      <div class="dash-hero">
+        <div class="dash-hero-label">${monthName} sales</div>
+        <div class="dash-hero-val">$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="dash-hero-sub">${mtdR.length} shift report${mtdR.length!==1?'s':''} · ${today.slice(8)} day${today.slice(8)!=='1'?'s':''} in</div>
+        <div class="dash-hero-chips">
+          <div class="dash-chip">💵 Cash $${mtdCash.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          <div class="dash-chip">💳 Credit $${mtdCredit.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          ${mtdLotNet>=0?`<div class="dash-chip good">🎟 Lottery +$${mtdLotNet.toFixed(0)}</div>`:`<div class="dash-chip bad">🎟 Lottery -$${Math.abs(mtdLotNet).toFixed(0)}</div>`}
+          ${salesVsYest!==null?`<div class="dash-chip ${salesVsYest>=0?'good':'bad'}">${salesVsYest>=0?'▲':'▼'} ${Math.abs(salesVsYest).toFixed(1)}% vs yesterday</div>`:''}
         </div>
       </div>
 
-      <div class="dash-section">Month to date — ${fmtMon()}</div>
-      <div class="card">
-        <div class="mtd-row"><span style="color:var(--text2)">Total sales</span><strong>$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Cash sales</span><strong>$${mtdCash.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Credit sales</span><strong>$${mtdCredit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Net lottery</span><strong style="color:${mtdLotNet>=0?'var(--green)':'var(--red)'}">$${mtdLotNet.toFixed(2)}</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Regular fuel</span><strong>${mtdRegGal.toFixed(1)} gal</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Premium fuel</span><strong>${mtdPremGal.toFixed(1)} gal</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Diesel fuel</span><strong>${mtdDiesGal.toFixed(1)} gal</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Total fuel sold</span><strong>${(mtdRegGal+mtdPremGal+mtdDiesGal).toFixed(1)} gal</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Shift reports submitted</span><strong>${mtdR.length}</strong></div>
+      <!-- KPI strip -->
+      <div class="dash-kpi-row">
+        <div class="dash-kpi">
+          <div class="dash-kpi-accent" style="background:var(--blue)"></div>
+          <div class="dash-kpi-label">Today</div>
+          <div class="dash-kpi-val">$${todaySales.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          <div class="dash-kpi-sub">${todayR.length} report${todayR.length!==1?'s':''}</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-accent" style="background:var(--green)"></div>
+          <div class="dash-kpi-label">Fuel sold</div>
+          <div class="dash-kpi-val">${mtdTotalGal>=1000?(mtdTotalGal/1000).toFixed(1)+'k':mtdTotalGal.toFixed(0)}</div>
+          <div class="dash-kpi-sub">gal · ${monthName}</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-accent" style="background:${mtdLotNet>=0?'var(--green)':'var(--red)'}"></div>
+          <div class="dash-kpi-label">Net lottery</div>
+          <div class="dash-kpi-val" style="color:${mtdLotNet>=0?'var(--green)':'var(--red)'};font-size:17px">${mtdLotNet>=0?'+':''}$${mtdLotNet.toFixed(0)}</div>
+          <div class="dash-kpi-sub">${monthName}</div>
+        </div>
       </div>
 
-      <div class="dash-section">Cash accountability — ${fmtMon()}</div>
-      <div class="card">
-        ${Object.values(empMap).length===0?'<div class="empty" style="padding:16px"><div class="ei">👤</div>No employee data yet</div>':
-        Object.values(empMap).map(e=>{
-          const diff=e.shortOver;
-          const col=Math.abs(diff)<0.01?'var(--text2)':diff<0?'var(--red)':'var(--green)';
-          const label=Math.abs(diff)<0.01?'Balanced':diff<0?`Short $${Math.abs(diff).toFixed(2)}`:`Over $${diff.toFixed(2)}`;
-          return`<div class="emp-row">
-            <div><div class="emp-name">${e.name}</div><div class="emp-detail">${e.shifts} shift${e.shifts!==1?'s':''} · ${e.short} short · ${e.over} over</div></div>
-            <div style="font-size:13px;font-weight:600;color:${col}">${label}</div>
+      <!-- Fuel breakdown -->
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">⛽ Fuel — ${monthName}</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${[
+          {label:'Regular',   val:mtdRegGal,  cap:10000, color:'#1a5ca8'},
+          {label:'Premium',   val:mtdPremGal, cap:8000,  color:'#854F0B'},
+          {label:'Diesel',    val:mtdDiesGal, cap:6000,  color:'#3B6D11'},
+        ].map(f=>{
+          const pct=Math.min(100,f.val/f.cap*100);
+          return`<div class="fuel-bar-row">
+            <div style="font-size:12px;font-weight:600;color:var(--text2)">${f.label}</div>
+            <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${f.color};border-radius:4px;transition:width .4s"></div>
+            </div>
+            <div style="font-size:12px;font-weight:700;text-align:right">${f.val.toFixed(0)}<span style="font-size:10px;font-weight:400;color:var(--text3)"> gal</span></div>
           </div>`;
         }).join('')}
       </div>
 
-      <div class="dash-section">Scratch-off inventory</div>
-      <div class="card">
-        <div class="mtd-row"><span style="color:var(--text2)">Last recorded value on hand</span><strong>$${scrVal.toLocaleString()}</strong></div>
-        <div class="mtd-row"><span style="color:var(--text2)">Counts submitted this month</span><strong>${scrMTD.length}</strong></div>
+      <!-- Scratch-off dashboard -->
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">🎟 Scratch-offs</span>
+        <span class="dash-section-link" onclick="showTab('scratch')" style="cursor:pointer">Go to tab →</span>
+      </div>
+      <div class="scr-dash-card">
+        <div class="scr-dash-top">
+          <div class="scr-dash-cell">
+            <div class="scr-dash-cell-label">Value on hand</div>
+            <div class="scr-dash-cell-val">$${scrVal.toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${latestScr?'Last count '+fmtDate(latestScr.date):'No counts yet'}</div>
+          </div>
+          <div class="scr-dash-cell">
+            <div class="scr-dash-cell-label">Activations — ${monthName}</div>
+            <div class="scr-dash-cell-val">${mtdActs.length}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${mtdActValue>0?'$'+mtdActValue.toLocaleString()+' activated':'No activations yet'}</div>
+          </div>
+        </div>
+        ${recentActs.length?`
+        <div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;">Recent activations</div>
+        ${recentActs.slice(0,5).map(a=>`
+          <div class="act-row">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="act-dot"></div>
+              <div>
+                <div style="font-size:13px;font-weight:600">${a.gameName||'Unknown game'}</div>
+                <div style="font-size:11px;color:var(--text3)">${a.employee} · ${fmtDate(a.date)}${a.slotNum?' · Slot '+a.slotNum:''}</div>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:13px;font-weight:700">$${a.price||0}</div>
+              <div style="font-size:10px;color:var(--text3)">${a.qty||1} book${(a.qty||1)!==1?'s':''}</div>
+            </div>
+          </div>`).join('')}` : `<div class="empty" style="padding:14px">No activations logged yet</div>`}
       </div>
 
-      ${incidents.length?`<div class="dash-section">Recent incidents</div>
-      <div class="card">
-        ${incidents.map(r=>`<div class="alert-item"><div><div style="font-size:13px">${r.incidents.substring(0,80)}${r.incidents.length>80?'...':''}</div><div style="font-size:11px;color:var(--text3)">${r.employee} · ${fmtDate(r.date)}</div></div></div>`).join('')}
+      ${incidents.length?`
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">⚠️ Recent incidents</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${incidents.map(r=>`<div class="incident-pill">
+          <div class="incident-icon">⚠️</div>
+          <div>
+            <div style="font-size:13px;line-height:1.4">${r.incidents.substring(0,90)}${r.incidents.length>90?'...':''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${r.employee} · ${fmtDate(r.date)} · ${r.shift||''} shift</div>
+          </div>
+        </div>`).join('')}
       </div>`:''}
-
-      <div style="margin-top:8px">
-        <button class="btn bsecondary" onclick="loadDashboard()" style="font-size:13px;padding:10px">↻ Refresh dashboard</button>
-      </div>
     `;
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">⚠️</div><div style="margin-bottom:8px">Error loading dashboard</div><div style="font-size:11px;background:#f0f0f0;padding:8px;border-radius:6px;text-align:left;word-break:break-all;color:#333">${e.message||e.toString()}</div><button class="btn bsecondary" style="margin-top:12px;font-size:13px;padding:10px" onclick="loadDashboard()">Try again</button></div>`;
@@ -3094,6 +3282,448 @@ async function sendShiftCaptures(){
 
   msgEl.style.display = 'none';
   sendBtn.disabled    = false;
+}
+
+// ---- MARGINS SPREADSHEET IMPORT ----
+let mgRawRows    = [];   // raw parsed rows from XLSX [{col:val,...}]
+let mgRawHeaders = [];   // column header names
+let mgMapped     = [];   // [{name,cost,sell,category}] after AI mapping
+let mgColMapping = {name:'',cost:'',sell:'',cat:''};
+
+function togMgImport(){
+  const body = document.getElementById('mg-import-body');
+  const btn  = document.querySelector('#mg-import-card .bsm');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(btn) btn.textContent = open ? '▼ Show' : '▲ Hide';
+}
+
+function handleMgDrop(e){
+  e.preventDefault();
+  document.getElementById('mg-dropzone').style.borderColor='';
+  const file = e.dataTransfer?.files?.[0];
+  if(file) processMgFile(file);
+}
+
+function handleMgXlsx(input){
+  const file = input.files?.[0];
+  if(file) processMgFile(file);
+  input.value='';
+}
+
+async function processMgFile(file){
+  const label   = document.getElementById('mgXlsxLabel');
+  const scanMsg = document.getElementById('mgImportScanMsg');
+  const scanTxt = document.getElementById('mgImportScanTxt');
+  const preview = document.getElementById('mgImportPreview');
+
+  label.textContent = file.name;
+  preview.style.display = 'none';
+  scanMsg.style.display = 'flex';
+  scanTxt.textContent   = 'Reading spreadsheet...';
+
+  try{
+    // 1. Parse with SheetJS
+    const ab   = await file.arrayBuffer();
+    const wb   = XLSX.read(ab, {type:'array'});
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+    if(!json.length){ toast('Spreadsheet appears empty'); scanMsg.style.display='none'; return; }
+
+    mgRawRows    = json;
+    mgRawHeaders = Object.keys(json[0]);
+
+    // 2. Send first 40 rows + headers to Claude for intelligent column detection
+    scanTxt.textContent = 'Claude is reading column headers...';
+    const sample = json.slice(0,40).map(r=>{
+      const clean={};
+      mgRawHeaders.forEach(h=>{ clean[h]=String(r[h]||'').substring(0,60); });
+      return clean;
+    });
+
+    const prompt = `You are reading a spreadsheet from a gas station convenience store (Robious Mart, Virginia) that contains product pricing data.
+
+Headers: ${JSON.stringify(mgRawHeaders)}
+
+Sample rows (first ${sample.length}):
+${JSON.stringify(sample, null, 1)}
+
+Your job is to identify which columns contain:
+1. Product/item name
+2. Purchase cost (what the store pays)
+3. Sell price / retail price (what customers pay)
+4. Category (beer, tobacco, snacks, etc.) — optional, may not exist
+
+Rules:
+- Costs are typically lower numbers than sell prices
+- "Cost", "Unit Cost", "Invoice", "Purchase", "Wholesale", "NET" usually = purchase cost
+- "Retail", "Price", "Sell", "Sale", "MSRP", "RSP" usually = sell price
+- "Item", "Description", "Product", "Name", "SKU desc" usually = product name
+- If there is no category column, suggest categories based on product names
+
+Return ONLY a JSON object, no other text:
+{
+  "nameCol": "exact column header for product name",
+  "costCol": "exact column header for cost (or null)",
+  "sellCol": "exact column header for sell price (or null)",
+  "catCol":  "exact column header for category (or null)",
+  "confident": true,
+  "notes": "brief explanation of your mapping"
+}`;
+
+    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:400,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    const raw  = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    const mapping = JSON.parse(raw);
+
+    mgColMapping = {
+      name: mapping.nameCol || mgRawHeaders[0],
+      cost: mapping.costCol || '',
+      sell: mapping.sellCol || '',
+      cat:  mapping.catCol  || ''
+    };
+
+    // Populate column dropdowns
+    populateMgColDropdowns();
+
+    // Show mapping panel if not confident
+    document.getElementById('mgColMapWrap').style.display = mapping.confident ? 'none' : 'block';
+
+    // 3. Now ask Claude to categorize all products if no category column
+    scanTxt.textContent = 'Categorizing products...';
+
+    if(!mgColMapping.cat){
+      // Extract just product names for batch categorization
+      const names = mgRawRows.map(r=>String(r[mgColMapping.name]||'').trim()).filter(Boolean).slice(0,200);
+      const catPrompt = `You are categorizing convenience store products for Robious Mart (gas station c-store in Virginia).
+
+Product names: ${JSON.stringify(names)}
+
+Assign each product to one of these categories (or suggest a new one):
+Beer & Malt Beverages, Wine & Spirits, Tobacco & Vaping, Cold Beverages, Water & Sports Drinks, Energy Drinks, Hot Beverages, Snacks & Chips, Candy & Gum, Packaged Foods, Dairy & Deli, Automotive, Health & Beauty, Household, Lottery, Other
+
+Return ONLY a JSON object mapping exact product name → category name. No other text.
+Example: {"Budweiser 6pk": "Beer & Malt Beverages", "Marlboro Red": "Tobacco & Vaping"}`;
+
+      try{
+        const cr = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:catPrompt}]})
+        });
+        const cd = await cr.json();
+        const craw = (cd.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+        window._mgCatMap = JSON.parse(craw);
+      }catch(ce){ window._mgCatMap = {}; }
+    } else {
+      window._mgCatMap = {};
+    }
+
+    buildMgMapped();
+    renderMgImportPreview();
+
+    scanMsg.style.display = 'none';
+    preview.style.display = 'block';
+
+  }catch(err){
+    console.error('Import error:',err);
+    scanMsg.style.display = 'none';
+    toast('Error reading file: '+err.message);
+    document.getElementById('mgXlsxLabel').textContent = 'Tap to upload spreadsheet';
+  }
+}
+
+function populateMgColDropdowns(){
+  const opts = ['(none)', ...mgRawHeaders].map(h=>`<option value="${h}">${h}</option>`).join('');
+  ['mgColName','mgColCost','mgColSell','mgColCat'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(sel){ sel.innerHTML = opts; }
+  });
+  const setVal = (id, val)=>{ const el=document.getElementById(id); if(el&&val) el.value=val; };
+  setVal('mgColName', mgColMapping.name);
+  setVal('mgColCost', mgColMapping.cost||'(none)');
+  setVal('mgColSell', mgColMapping.sell||'(none)');
+  setVal('mgColCat',  mgColMapping.cat||'(none)');
+}
+
+function remapMgPreview(){
+  mgColMapping.name = document.getElementById('mgColName')?.value||'';
+  mgColMapping.cost = document.getElementById('mgColCost')?.value||'';
+  mgColMapping.sell = document.getElementById('mgColSell')?.value||'';
+  mgColMapping.cat  = document.getElementById('mgColCat')?.value||'';
+  buildMgMapped();
+  renderMgImportPreview();
+}
+
+function parsePrice(val){
+  if(val===null||val===undefined||val==='') return null;
+  const n = parseFloat(String(val).replace(/[^0-9.\-]/g,''));
+  return isNaN(n) ? null : n;
+}
+
+function buildMgMapped(){
+  mgMapped = mgRawRows.map(row=>{
+    const name = String(row[mgColMapping.name]||'').trim();
+    const cost = parsePrice(mgColMapping.cost ? row[mgColMapping.cost] : null);
+    const sell = parsePrice(mgColMapping.sell ? row[mgColMapping.sell] : null);
+    const cat  = mgColMapping.cat
+      ? String(row[mgColMapping.cat]||'').trim()
+      : (window._mgCatMap?.[name] || 'Other');
+    return {name, cost, sell, category: cat};
+  }).filter(r=>r.name);
+}
+
+function renderMgImportPreview(){
+  const skipNoCost = document.getElementById('mgImportSkipNoCost')?.checked;
+  const skipDup    = document.getElementById('mgImportMerge')?.checked;
+
+  const existingNames = new Set(mgProducts.map(p=>(p.name||'').toLowerCase().trim()));
+
+  let visible = mgMapped;
+  if(skipNoCost) visible = visible.filter(r=>r.cost!==null && r.sell!==null);
+  if(skipDup)    visible = visible.filter(r=>!existingNames.has(r.name.toLowerCase().trim()));
+
+  const totalAll   = mgMapped.length;
+  const totalShown = visible.length;
+
+  document.getElementById('mgImportSummary').textContent =
+    `${totalAll} rows read · ${totalShown} will be imported${totalAll-totalShown>0?' · '+(totalAll-totalShown)+' skipped':''}`;
+  document.getElementById('mgImportCount').textContent = totalShown;
+
+  // Group by category for preview
+  const groups = {};
+  visible.forEach(r=>{
+    const c = r.category||'Other';
+    if(!groups[c]) groups[c]=[];
+    groups[c].push(r);
+  });
+
+  const tableEl = document.getElementById('mgImportTable');
+  if(!visible.length){
+    tableEl.innerHTML='<div class="empty" style="padding:16px">Nothing to import with current settings</div>';
+    return;
+  }
+
+  tableEl.innerHTML = Object.entries(groups).map(([cat,rows])=>`
+    <div style="background:var(--bg2);padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);position:sticky;top:0">
+      ${cat} <span style="font-weight:400;color:var(--text3)">(${rows.length})</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;padding:6px 12px;background:var(--bg2);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">
+      <div>Product</div><div>Cost</div><div>Sell</div><div>Margin</div>
+    </div>
+    ${rows.map(r=>{
+      const mg = (r.cost&&r.sell) ? ((r.sell-r.cost)/r.sell*100) : null;
+      const mgColor = mg===null?'var(--text3)':mg>=30?'var(--green)':mg>=15?'var(--amber)':'var(--red)';
+      return`<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+        <div style="font-weight:500;line-height:1.3">${r.name}</div>
+        <div style="color:var(--text2)">${r.cost!==null?'$'+r.cost.toFixed(2):'—'}</div>
+        <div style="color:var(--text2)">${r.sell!==null?'$'+r.sell.toFixed(2):'—'}</div>
+        <div style="font-weight:700;color:${mgColor}">${mg!==null?mg.toFixed(1)+'%':'—'}</div>
+      </div>`;
+    }).join('')}`
+  ).join('');
+}
+
+async function commitMgImport(){
+  const skipNoCost = document.getElementById('mgImportSkipNoCost')?.checked;
+  const skipDup    = document.getElementById('mgImportMerge')?.checked;
+  const existingNames = new Set(mgProducts.map(p=>(p.name||'').toLowerCase().trim()));
+
+  let toImport = mgMapped;
+  if(skipNoCost) toImport = toImport.filter(r=>r.cost!==null && r.sell!==null);
+  if(skipDup)    toImport = toImport.filter(r=>!existingNames.has(r.name.toLowerCase().trim()));
+
+  if(!toImport.length){ toast('Nothing to import'); return; }
+
+  const btn = document.querySelector('#mgImportPreview .bprimary');
+  btn.innerHTML='<span class="spinner"></span>Importing...';
+  btn.disabled=true;
+
+  try{
+    // Build or find categories
+    const catCache = {};
+    mgCategories.forEach(c=>{ catCache[c.name.toLowerCase()] = c.id; });
+
+    // Category icon suggestions
+    const iconMap = {
+      'beer':'🍺','wine':'🍷','spirit':'🥃','alcohol':'🍻','malt':'🍺',
+      'tobacco':'🚬','vap':'🚬','cigar':'🚬',
+      'cold bev':'🥤','soda':'🥤','beverage':'🥤',
+      'water':'💧','sport':'⚡',
+      'energy':'⚡',
+      'hot bev':'☕','coffee':'☕',
+      'snack':'🍿','chip':'🍿',
+      'candy':'🍬','gum':'🍬','chocolate':'🍫',
+      'food':'🥪','packaged':'📦','dairy':'🥛','deli':'🥪',
+      'auto':'🚗','motor':'🚗',
+      'health':'💊','beauty':'💄',
+      'household':'🧹','clean':'🧹',
+      'lottery':'🎟',
+    };
+    function getCatIcon(name){
+      const nl = name.toLowerCase();
+      for(const [k,v] of Object.entries(iconMap)) if(nl.includes(k)) return v;
+      return '📦';
+    }
+
+    let imported=0, skipped=0;
+    // Batch writes — process in groups for speed
+    for(const row of toImport){
+      const catName = row.category||'Other';
+      const catKey  = catName.toLowerCase();
+
+      // Create category if new
+      if(!catCache[catKey]){
+        const newCat = await window.F.addDoc(window.F.collection(window.db,'mgCategories'),{
+          name: catName,
+          icon: getCatIcon(catName),
+          order: Object.keys(catCache).length,
+          createdAt: new Date().toISOString()
+        });
+        catCache[catKey] = newCat.id;
+      }
+
+      try{
+        const mg = (row.cost&&row.sell) ? ((row.sell-row.cost)/row.sell*100) : null;
+        await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
+          categoryId: catCache[catKey],
+          name:   row.name,
+          cost:   row.cost  || 0,
+          sell:   row.sell  || 0,
+          margin: mg,
+          markup: (row.cost&&row.sell&&row.cost>0) ? ((row.sell-row.cost)/row.cost*100) : null,
+          importedAt: new Date().toISOString(),
+          createdAt:  new Date().toISOString(),
+          updatedAt:  new Date().toISOString()
+        });
+        imported++;
+      }catch(e){ skipped++; }
+    }
+
+    toast(`✓ Imported ${imported} products${skipped?', '+skipped+' failed':''}`);
+    clearMgImport();
+    // Reload everything
+    await loadMargins();
+
+  }catch(e){
+    toast('Import error: '+e.message);
+    console.error('commitMgImport',e);
+  }
+  btn.innerHTML=`Import <span id="mgImportCount">${toImport.length}</span> products`;
+  btn.disabled=false;
+}
+
+function clearMgImport(){
+  mgRawRows=[]; mgRawHeaders=[]; mgMapped=[]; mgColMapping={name:'',cost:'',sell:'',cat:''};
+  window._mgCatMap={};
+  document.getElementById('mgXlsxLabel').textContent='Tap to upload spreadsheet';
+  document.getElementById('mgImportPreview').style.display='none';
+  document.getElementById('mgImportScanMsg').style.display='none';
+  document.getElementById('mgColMapWrap').style.display='none';
+}
+
+// ---- SCRATCH ACTIVATION LOG ----
+function togActForm(){
+  const f = document.getElementById('actForm');
+  const open = f.style.display !== 'none';
+  f.style.display = open ? 'none' : 'block';
+  if(!open){
+    // Populate slot dropdown from current slots
+    const sel = document.getElementById('act-slot');
+    sel.innerHTML = '<option value="">— select slot —</option>' +
+      slots.map((s,i)=> s && s.name
+        ? `<option value="${i+1}">Slot ${i+1} — $${s.price} ${s.name}</option>`
+        : ''
+      ).join('');
+    setTimeout(()=>document.getElementById('act-name')?.focus(), 80);
+  }
+}
+
+async function submitActivation(){
+  const name    = document.getElementById('act-name')?.value.trim();
+  const price   = parseFloat(document.getElementById('act-price')?.value)||0;
+  const qty     = parseInt(document.getElementById('act-qty')?.value)||1;
+  const tix     = parseInt(document.getElementById('act-tix')?.value)||0;
+  const booknum = document.getElementById('act-booknum')?.value.trim();
+  const slotNum = document.getElementById('act-slot')?.value;
+
+  if(!name){ toast('Enter game name'); return; }
+  if(!price){ toast('Enter ticket price'); return; }
+
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
+      gameName: name,
+      price,
+      qty,
+      ticketsPerBook: tix,
+      bookNumber: booknum,
+      slotNum: slotNum || '',
+      employee: CU.name,
+      date: localDate(),
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Activation logged!');
+    // Reset form fields
+    ['act-name','act-price','act-qty','act-tix','act-booknum'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.getElementById('actForm').style.display = 'none';
+    loadActLog();
+  }catch(e){ toast('Error saving activation'); }
+}
+
+async function loadActLog(){
+  const el = document.getElementById('actLogList');
+  if(!el) return;
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'scratchActivations'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(30)
+    ));
+    if(snap.empty){
+      el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">🎟</div>No activations logged yet</div>';
+      return;
+    }
+    const isOp = CU?.role==='operator';
+    el.innerHTML = snap.docs.map(d=>{
+      const x = d.data();
+      const totalTix = (x.qty||1) * (x.ticketsPerBook||0);
+      const totalVal = totalTix * (x.price||0);
+      return`<div class="act-log-row">
+        <div style="flex:1">
+          <div style="font-weight:600">${x.gameName||'Unknown'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">
+            ${x.employee} · ${x.date}
+            ${x.slotNum?' · Slot '+x.slotNum:''}
+            ${x.bookNumber?' · Book #'+x.bookNumber:''}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700">$${x.price} × ${x.qty||1} book${(x.qty||1)!==1?'s':''}</div>
+          ${totalTix?`<div style="font-size:11px;color:var(--text3)">${totalTix} tickets${totalVal?` · $${totalVal.toLocaleString()} value`:''}</div>`:''}
+        </div>
+        ${isOp?`<button onclick="deleteActivation('${d.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--red);cursor:pointer;flex-shrink:0">Del</button>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div class="empty">Error loading activations</div>'; }
+}
+
+async function deleteActivation(id){
+  if(!confirm('Delete this activation log?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'scratchActivations',id));
+    toast('Deleted');
+    loadActLog();
+  }catch(e){ toast('Error deleting'); }
 }
 
 window.addEventListener('fbReady',()=>{});
