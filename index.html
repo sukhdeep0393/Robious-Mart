@@ -2478,7 +2478,11 @@ function renderMgCategories(filterText){
     if(filterText) displayProds = catProds.filter(p=>(p.name||'').toLowerCase().includes(filterText.toLowerCase()));
     if(filterText && !displayProds.length) return ''; // hide category if no matches
 
-    const avgMg = catProds.length ? catProds.reduce((s,p)=>{const m=calcMg(p.cost,p.sell);return s+(m||0);},0)/catProds.filter(p=>calcMg(p.cost,p.sell)!==null).length||0 : 0;
+    const avgMg = catProds.length ? (()=>{
+      const valid = catProds.filter(p=>{ const cpu=(p.units&&p.units>0)?p.cost/p.units:(p.costPerUnit||p.cost); return calcMg(cpu,p.sell)!==null; });
+      if(!valid.length) return 0;
+      return valid.reduce((s,p)=>{ const cpu=(p.units&&p.units>0)?p.cost/p.units:(p.costPerUnit||p.cost); return s+(calcMg(cpu,p.sell)||0); },0)/valid.length;
+    })() : 0;
     const isOpen = mgOpenCats[cat.id] !== false; // default open
 
     const bgColors = {
@@ -2882,14 +2886,15 @@ function searchMargins(){
   }
   srWrap.style.display = 'block';
   srList.innerHTML = `<div class="ct" style="margin-bottom:10px">${matches.length} result${matches.length!==1?'s':''} for "${q}"</div>` +
-    `<div class="prod-head"><div>Product</div><div>Cost</div><div>Sell</div><div>Margin</div><div></div></div>` +
+    `<div class="prod-head"><div>Product</div><div>Case cost</div><div>Sell / unit</div><div>Margin</div><div></div></div>` +
     matches.map(p=>{
       const cat = mgCategories.find(c=>c.id===p.categoryId);
-      const mg = calcMg(p.cost, p.sell);
+      const cpu = (p.units&&p.units>0) ? p.cost/p.units : (p.costPerUnit||p.cost);
+      const mg  = calcMg(cpu, p.sell);
       return `<div class="prod-row">
         <div>
           <div class="prod-name">${p.name}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${cat?.icon||'📦'} ${cat?.name||'Uncategorized'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${cat?.icon||'📦'} ${cat?.name||'Uncategorized'}${p.units?' · '+p.units+' units · $'+cpu.toFixed(4)+'/unit':''}</div>
         </div>
         <div class="prod-price">$${(p.cost||0).toFixed(2)}</div>
         <div class="prod-price">$${(p.sell||0).toFixed(2)}</div>
