@@ -1326,7 +1326,7 @@ async function autoScanInvoice(){
   const isImg=invFD.type.startsWith('image/');
   const imgBlock = imgBlocks[0];
 
-  const prompt='You are a back-office assistant for Robious Mart gas station & convenience store in Virginia. Analyze this vendor invoice carefully and provide:\n\n1) Vendor name and invoice/PO number\n2) Invoice date\n3) ITEMIZED LIST - for each line item provide:\n   - Product name\n   - Quantity ordered (NOT discount percentage)\n   - Unit cost (price per unit)\n   - Line total\n   Note: Be careful to distinguish between QTY (quantity of units) and DISC (discount percentage) columns\n4) Any discounts or promotions applied (list separately from quantities)\n5) Invoice subtotal and total\n6) Flag any price changes vs typical c-store pricing\n7) One-line summary\n\nBe precise and practical for a gas station operator.';
+  const prompt='You are reading a vendor delivery invoice for Robious Mart, a gas station convenience store in Virginia. Read every line carefully.\n\nProvide:\n1) VENDOR: Name and invoice number\n2) DATE: Invoice date\n3) LINE ITEMS (list every single product):\n   Format each as: [Product Name] | Qty: X | Unit Cost: $X.XX | Total: $X.XX\n   IMPORTANT: The columns on c-store invoices are typically: Item description, Pack size, Qty ordered, Unit cost, Extension/Total\n   Do NOT confuse DISC% (discount column) with QTY (quantity column)\n   Do NOT confuse case cost with unit cost\n4) DISCOUNTS: List any discounts or promotions separately\n5) INVOICE TOTAL: $X.XX\n6) SUMMARY: One line summary\n\nIf the image is blurry or hard to read, do your best and note which items were unclear.';
 
   try{
     const resp=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
@@ -1998,13 +1998,14 @@ function renderPriceHistory(items){
       ? `<span style="font-size:11px;font-weight:600;color:${changeColor}">${changeIcon} ${latest.priceChange>0?'+':''}$${latest.priceChange.toFixed(2)} (${latest.priceChangePercent>0?'+':''}${latest.priceChangePercent}%)</span>`
       : latest.prevCost!==null?'<span style="font-size:11px;color:var(--text3)">→ No change</span>':'<span style="font-size:11px;color:var(--text3)">First entry</span>';
 
-    // Show last 3 price points as mini history
+    // Show price history rows with edit/delete
     const historyHtml = g.history.slice(0,5).map(h=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
-        <span style="color:var(--text2)">${h.invoiceDate||h.date}</span>
-        <span style="color:var(--text2)">${h.vendor}</span>
-        <span style="font-weight:600">$${(h.unitCost||0).toFixed(2)}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px">
+        <span style="color:var(--text2);min-width:72px">${h.invoiceDate||h.date}</span>
+        <span style="font-weight:600;flex:1">$${(h.unitCost||0).toFixed(2)}</span>
         <span style="color:var(--text3)">${h.qty||''} ${h.unit||''}</span>
+        <button onclick="editPriceEntry('${h.id}','${(h.itemName||'').replace(/'/g,'\\'')}','${h.vendor||''}',${h.unitCost||0},${h.qty||0},'${h.unit||''}','${h.invoiceDate||h.date}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--blue)">Edit</button>
+        <button onclick="deletePriceEntry('${h.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--red)">Del</button>
       </div>`).join('');
 
     return`<div class="card" style="margin-bottom:10px">
@@ -2164,7 +2165,70 @@ async function loadExpenses(){
   }
 }
 
+
+function editPriceEntry(id, name, vendor, cost, qty, unit, date){
+  document.getElementById('phEditId').value = id;
+  document.getElementById('phEditName').value = name;
+  document.getElementById('phEditVendor').value = vendor;
+  document.getElementById('phEditCost').value = cost;
+  document.getElementById('phEditQty').value = qty;
+  document.getElementById('phEditUnit').value = unit;
+  document.getElementById('phEditDate').value = date;
+  document.getElementById('phEditModal').style.display = 'flex';
+}
+
+async function savePriceEdit(){
+  const id = document.getElementById('phEditId').value;
+  const cost = parseFloat(document.getElementById('phEditCost').value);
+  if(!id || !cost){ toast('Fill in all fields'); return; }
+  try{
+    await window.F.updateDoc(window.F.doc(window.db,'priceHistory',id),{
+      itemName: document.getElementById('phEditName').value,
+      vendor: document.getElementById('phEditVendor').value,
+      unitCost: cost,
+      qty: parseFloat(document.getElementById('phEditQty').value)||0,
+      unit: document.getElementById('phEditUnit').value,
+      invoiceDate: document.getElementById('phEditDate').value,
+    });
+    document.getElementById('phEditModal').style.display = 'none';
+    toast('✓ Entry updated');
+    loadPriceHistory();
+  }catch(e){ toast('Error saving'); }
+}
+
+async function deletePriceEntry(id){
+  if(!confirm('Delete this price entry? This cannot be undone.')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'priceHistory',id));
+    toast('✓ Entry deleted');
+    // Remove from local array and re-render
+    allPriceHistory = allPriceHistory.filter(x=>x.id!==id);
+    searchPriceHistory();
+  }catch(e){ toast('Error deleting'); }
+}
 window.addEventListener('fbReady',()=>{});
 </script>
+
+<!-- PRICE HISTORY EDIT MODAL -->
+<div id="phEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card);border-radius:var(--r);padding:20px;width:100%;max-width:400px">
+    <div class="ct" style="margin-bottom:16px">Edit price entry</div>
+    <input type="hidden" id="phEditId" />
+    <div style="margin-bottom:10px"><label>Product name</label><input id="phEditName" /></div>
+    <div style="margin-bottom:10px"><label>Vendor</label><input id="phEditVendor" /></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label>Unit cost ($)</label><input type="number" id="phEditCost" step="0.01" /></div>
+      <div><label>Qty</label><input type="number" id="phEditQty" /></div>
+    </div>
+    <div class="g2" style="margin-bottom:16px">
+      <div><label>Unit</label><input id="phEditUnit" placeholder="each/case/pack" /></div>
+      <div><label>Date</label><input type="date" id="phEditDate" /></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn" style="flex:1;padding:11px;background:var(--bg2)" onclick="document.getElementById('phEditModal').style.display='none'">Cancel</button>
+      <button class="btn bprimary" style="flex:1;padding:11px" onclick="savePriceEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
