@@ -2006,7 +2006,7 @@ function renderPriceHistory(items){
         <span style="color:var(--text2);min-width:72px">${h.invoiceDate||h.date}</span>
         <span style="font-weight:600;flex:1">$${(h.unitCost||0).toFixed(2)}</span>
         <span style="color:var(--text3)">${h.qty||''} ${h.unit||''}</span>
-        <button onclick="editPriceEntry('${h.id}','${(h.itemName||'').replace(/'/g,'\\'')}','${h.vendor||''}',${h.unitCost||0},${h.qty||0},'${h.unit||''}','${h.invoiceDate||h.date}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--blue)">Edit</button>
+        <button onclick="openPhEdit('${h.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--blue)">Edit</button>
         <button onclick="deletePriceEntry('${h.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--red)">Del</button>
       </div>`).join('');
 
@@ -2168,14 +2168,16 @@ async function loadExpenses(){
 }
 
 
-function editPriceEntry(id, name, vendor, cost, qty, unit, date){
+function openPhEdit(id){
+  const h = allPriceHistory.find(x=>x.id===id);
+  if(!h) return;
   document.getElementById('phEditId').value = id;
-  document.getElementById('phEditName').value = name;
-  document.getElementById('phEditVendor').value = vendor;
-  document.getElementById('phEditCost').value = cost;
-  document.getElementById('phEditQty').value = qty;
-  document.getElementById('phEditUnit').value = unit;
-  document.getElementById('phEditDate').value = date;
+  document.getElementById('phEditName').value = h.itemName||'';
+  document.getElementById('phEditVendor').value = h.vendor||'';
+  document.getElementById('phEditCost').value = h.unitCost||0;
+  document.getElementById('phEditQty').value = h.qty||0;
+  document.getElementById('phEditUnit').value = h.unit||'';
+  document.getElementById('phEditDate').value = h.invoiceDate||h.date||'';
   document.getElementById('phEditModal').style.display = 'flex';
 }
 
