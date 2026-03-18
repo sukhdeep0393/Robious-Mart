@@ -539,130 +539,6 @@
     </div>
   </div>
 
-  <!-- INVOICES -->
-  <div class="page" id="page-invoices">
-
-    <!-- Category management (operator only) -->
-    <div class="card" id="invCatMgmtCard" style="display:none">
-      <div class="sh2">
-        <div class="ct" style="margin:0">Invoice categories</div>
-        <button class="bsm" onclick="togInvCatForm()">+ Add</button>
-      </div>
-      <div id="invCatFormWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
-        <div class="g2" style="margin-bottom:8px">
-          <div><label>Category name</label><input id="invCatName" placeholder="e.g. Beer Delivery, Maintenance" /></div>
-          <div><label>Icon / Emoji</label><input id="invCatIcon" placeholder="🍺" maxlength="2" style="font-size:20px;text-align:center" /></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="addInvCategory()">Save</button>
-          <button class="btn bsecondary" style="padding:9px;font-size:13px" onclick="togInvCatForm()">Cancel</button>
-        </div>
-      </div>
-      <div id="invCatList"><div style="font-size:12px;color:var(--text3)">No categories yet</div></div>
-    </div>
-
-    <!-- Add invoice card -->
-    <div class="card">
-      <div class="ct">Add invoice</div>
-
-      <!-- Category + analyze row -->
-      <div class="g2" style="margin-bottom:12px">
-        <div>
-          <label>Category</label>
-          <select id="invCatSel">
-            <option value="">— select category —</option>
-          </select>
-        </div>
-        <div>
-          <label>AI analysis</label>
-          <select id="invAnalyzeSel" onchange="toggleInvAnalyzeUI()">
-            <option value="yes">✅ Analyze with AI</option>
-            <option value="no">📁 Save for reference only</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Optional description (shown for reference-only) -->
-      <div id="invRefNote" style="display:none;margin-bottom:12px">
-        <label>Description / note (optional)</label>
-        <input id="invRefNoteText" placeholder="e.g. AC repair invoice from Handyman Joe" />
-      </div>
-
-      <!-- Mode tabs -->
-      <div class="inv-mode-tabs">
-        <div class="inv-mode-tab active" id="inv-tab-scan"   onclick="setInvMode('scan')">📷 Scan with camera</div>
-        <div class="inv-mode-tab"        id="inv-tab-upload" onclick="setInvMode('upload')">🗂 Upload photo</div>
-      </div>
-
-      <!-- SCAN MODE -->
-      <div id="inv-scan-mode">
-        <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue);line-height:1.5">
-          📐 Scanner captures at full resolution so Claude reads every line clearly. Scan each page separately — they'll be sent together.
-        </div>
-        <div id="inv-captures-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:8px" id="inv-captures-label">0 pages scanned</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="inv-captures-thumbs"></div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn bsecondary" style="flex:1;padding:13px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openScanner()">
-            <span style="font-size:20px">📷</span>
-            <span id="inv-open-scanner-label">Open scanner</span>
-          </button>
-          <button id="inv-send-btn" class="btn bprimary" style="flex:1;padding:13px;font-size:14px;display:none" onclick="invSendOrSave()">
-            Analyze pages →
-          </button>
-        </div>
-      </div>
-
-      <!-- UPLOAD MODE -->
-      <div id="inv-upload-mode" style="display:none">
-        <div class="uzone" onclick="document.getElementById('invFile').click()">
-          <div style="font-size:32px;margin-bottom:8px">🧾</div>
-          <div style="font-size:14px;color:var(--text2)" id="invFName">Tap to upload — multiple photos supported</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Select all pages at once</div>
-        </div>
-        <input type="file" id="invFile" accept="image/*,application/pdf" multiple style="display:none" onchange="handleInv(this)" />
-        <div id="invPhotoPreview" style="display:none;margin-top:10px">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="invPhotoCount"></div>
-          <div id="invPhotoThumbs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-        </div>
-      </div>
-
-      <div id="autoScanMsg" style="display:none;margin-top:10px" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>AI is reading all invoice pages...</div>
-
-      <!-- Save reference-only button (no AI) -->
-      <button id="invSaveRefBtn" class="btn bsecondary" style="display:none;margin-top:12px;padding:13px" onclick="saveRefInvoice()">💾 Save invoice (no analysis)</button>
-    </div>
-
-    <!-- AI result card -->
-    <div id="invResult" style="display:none">
-      <div class="card">
-        <div class="ct">AI invoice breakdown</div>
-        <div class="aibox" id="invAI"></div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Something wrong? Tell Claude what to fix:</div>
-          <div style="display:flex;gap:8px">
-            <input id="invCorrection" placeholder="e.g. Vendor is Layman not Walmart..." style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')fixInvoice()" />
-            <button class="bsm" onclick="fixInvoice()" id="fixBtn" style="white-space:nowrap;padding:8px 14px">Fix it</button>
-          </div>
-          <div id="fixMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>Claude is fixing...</div>
-        </div>
-        <button class="btn bprimary" style="margin-top:12px;padding:11px" onclick="saveInv()">Save & submit invoice</button>
-      </div>
-    </div>
-
-    <!-- Saved invoices with category tabs -->
-    <div class="card">
-      <div class="sh2" style="margin-bottom:10px">
-        <div class="ct" style="margin:0">Saved invoices</div>
-      </div>
-      <!-- Category filter tabs -->
-      <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px" id="invCatTabs">
-        <button class="bsm" style="white-space:nowrap" onclick="loadInvoices('')" id="invtab-all">All</button>
-      </div>
-      <div id="savedInvList"><div class="empty"><div class="ei">🧾</div>No invoices submitted yet</div></div>
-    </div>
-  </div>
 
   <!-- INVENTORY -->
   <div class="page" id="page-inventory">
@@ -901,7 +777,7 @@
   <div class="page" id="page-logs">
     <div class="card"><div class="ct">Filter</div>
       <div class="g2">
-        <div><label>Type</label><select id="logFilt" onchange="loadLogs()"><option value="all">All entries</option><option value="dailyReports">Daily reports</option><option value="fuelReports">Fuel reports</option><option value="scratchCounts">Scratch counts</option><option value="invoices">Invoices</option></select></div>
+        <div><label>Type</label><select id="logFilt" onchange="loadLogs()"><option value="all">All entries</option><option value="dailyReports">Daily reports</option><option value="fuelReports">Fuel reports</option><option value="scratchCounts">Scratch counts</option></select></div>
         <div><label>Date</label><input type="date" id="logDate" onchange="loadLogs()" /></div>
       </div>
     </div>
@@ -1074,7 +950,7 @@ function chkPin(){
   }
 }
 
-let CU=null,games=[],invFD=null,invAT='',invFN='';
+let CU=null,games=[];
 
 function localDate(d){
   const dt=d||new Date();
@@ -1091,9 +967,9 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
 
 // ---- LOGIN ----
@@ -1116,13 +992,13 @@ function loginOK(u){
   const dm=document.getElementById('dashMonth');if(dm)dm.value=ym;
   buildTabs();
   if(u.role==='operator'||u.role==='lead') document.getElementById('mgmtCard').style.display='block';
-  loadGames();loadInvFlags();loadInvoices('');
+  loadGames();loadInvFlags();
   if(u.role==='operator'){checkComp();showTab('dashboard');}
   else showTab('daily');
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
-  CU=null;pinBuf='';invFD=null;invAT='';invFN='';
+  CU=null;pinBuf='';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
   opPinBuf='';updOpDots();document.getElementById('empName').value='';updDots();
@@ -1141,7 +1017,6 @@ function showTab(id){
   if(id==='dashboard')loadDashboard();
   if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();}
   if(id==='logs')loadLogs();
-  if(id==='invoices'){loadInvoices('');initInvPage();}
   if(id==='inventory')loadInvFlags();
   if(id==='scratch'){renderScrRows();loadActLog();}
   if(id==='compliance')checkComp();
@@ -1766,289 +1641,6 @@ function addLic(){
   checkComp();toast('✓ License added');
 }
 
-// ---- INVOICES ----
-// Store multiple invoice files
-let invFiles = [];
-
-function handleInv(input){
-  const files = Array.from(input.files);
-  if(!files.length) return;
-  invFiles = [];
-  invFN = files.map(f=>f.name).join(', ');
-  document.getElementById('invFName').textContent = files.length === 1 ? files[0].name : files.length + ' photos selected';
-
-  // Show thumbnails
-  const preview = document.getElementById('invPhotoPreview');
-  const thumbs = document.getElementById('invPhotoThumbs');
-  const countEl = document.getElementById('invPhotoCount');
-  preview.style.display = 'block';
-  thumbs.innerHTML = '';
-  countEl.textContent = files.length + ' photo' + (files.length>1?'s':'') + ' — AI will read all pages together';
-
-  // Add thumbnail placeholders immediately
-  files.forEach(() => {
-    const placeholder = document.createElement('div');
-    placeholder.style.cssText = 'width:60px;height:60px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px';
-    placeholder.textContent = '⏳';
-    thumbs.appendChild(placeholder);
-  });
-
-  let loaded = 0;
-  files.forEach((f, idx) => {
-    // Compress all images to max 1200px width and 0.6 quality to stay under 1MB worker limit
-    if(f.type.startsWith('image/')){
-      const img = new Image();
-      const url = URL.createObjectURL(f);
-      img.onload = () => {
-        const maxW = 1200;
-        const ratio = Math.min(1, maxW / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width * ratio;
-        canvas.height = img.height * ratio;
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        const compressed = canvas.toDataURL('image/jpeg', 0.6);
-        URL.revokeObjectURL(url);
-        invFiles[idx] = {b64: compressed.split(',')[1], type: 'image/jpeg', name: f.name};
-        // Update thumbnail
-        const thumb = document.createElement('img');
-        thumb.src = compressed;
-        thumb.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)';
-        thumbs.children[idx].replaceWith(thumb);
-        loaded++;
-        if(loaded === files.length){
-          if(document.getElementById('invAnalyzeSel')?.value==='yes') autoScanInvoice();
-          else{ document.getElementById('invSaveRefBtn').style.display='block'; }
-        }
-      };
-      img.src = url;
-    } else {
-      // PDF - read as-is
-      const r = new FileReader();
-      r.onload = () => {
-        invFiles[idx] = {b64: r.result.split(',')[1], type: f.type, name: f.name};
-        thumbs.children[idx].textContent = '📄';
-        loaded++;
-        if(loaded === files.length){
-          if(document.getElementById('invAnalyzeSel')?.value==='yes') autoScanInvoice();
-          else{ document.getElementById('invSaveRefBtn').style.display='block'; }
-        }
-      };
-      r.readAsDataURL(f);
-    }
-  });
-}
-async function autoScanInvoice(){
-  if(!invFiles.length)return;
-  document.getElementById('autoScanMsg').style.display='flex';
-  document.getElementById('invResult').style.display='none';
-
-  // Build content array with ALL images
-  const imgBlocks = invFiles.map(f => {
-    const isImg = f.type.startsWith('image/');
-    return isImg
-      ? {type:'image',source:{type:'base64',media_type:f.type,data:f.b64}}
-      : {type:'document',source:{type:'base64',media_type:'application/pdf',data:f.b64}};
-  });
-
-  // Use first file for backward compat
-  const invFD = invFiles[0];
-  const isImg=invFD.type.startsWith('image/');
-  const imgBlock = imgBlocks[0];
-
-  const prompt='You are reading a vendor delivery invoice for Robious Mart, a gas station convenience store in Virginia. Read every line carefully.\n\nProvide:\n1) VENDOR: Name and invoice number\n2) DATE: Invoice date\n3) LINE ITEMS (list every single product):\n   Format each as: [Product Name] | Qty: X | Unit Cost: $X.XX | Total: $X.XX\n   IMPORTANT: The columns on c-store invoices are typically: Item description, Pack size, Qty ordered, Unit cost, Extension/Total\n   Do NOT confuse DISC% (discount column) with QTY (quantity column)\n   Do NOT confuse case cost with unit cost\n4) DISCOUNTS: List any discounts or promotions separately\n5) INVOICE TOTAL: $X.XX\n6) SUMMARY: One line summary\n\nIf the image is blurry or hard to read, do your best and note which items were unclear.';
-
-  try{
-    const resp=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1500,
-        messages:[{role:'user',content:[...imgBlocks,{type:'text',text:prompt}]}]
-      })
-    });
-    if(!resp.ok){
-      const errData=await resp.json().catch(()=>({}));
-      throw new Error(errData.error?.message||'API error '+resp.status);
-    }
-    const data=await resp.json();
-    invAT=data.content?.map(c=>c.text||'').join('')||'Could not read invoice.';
-    document.getElementById('invAI').textContent=invAT;
-    document.getElementById('invResult').style.display='block';
-  }catch(e){
-    console.error('Invoice scan error:',e);
-    invAT='';
-    document.getElementById('invAI').textContent='Error: '+e.message+'. Please try again.';
-    document.getElementById('invResult').style.display='block';
-  }
-  document.getElementById('autoScanMsg').style.display='none';
-}
-async function fixInvoice(){
-  const correction = document.getElementById('invCorrection').value.trim();
-  if(!correction){ toast('Enter what needs to be fixed'); return; }
-  const fixBtn = document.getElementById('fixBtn');
-  const fixMsg = document.getElementById('fixMsg');
-  fixBtn.disabled = true;
-  fixMsg.style.display = 'flex';
-
-  try{
-    const prompt = 'Here is an invoice analysis that needs correction:\n\n' + invAT + '\n\nCorrection needed: ' + correction + '\n\nPlease provide the corrected invoice analysis with the same format but with the specified correction applied. Be concise.';
-
-    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
-        messages: [{role: 'user', content: prompt}]
-      })
-    });
-    const data = await resp.json();
-    const fixed = data.content?.map(c=>c.text||'').join('') || invAT;
-    invAT = fixed;
-    document.getElementById('invAI').textContent = fixed;
-    document.getElementById('invCorrection').value = '';
-    toast('✓ Invoice updated');
-  }catch(e){
-    toast('Error fixing invoice. Try again.');
-  }
-  fixBtn.disabled = false;
-  fixMsg.style.display = 'none';
-}
-
-async function saveInv(){
-  if(!invAT||invAT.startsWith('Error'))return;
-
-  const saveBtn = document.querySelector('#invResult .bprimary');
-  if(saveBtn){ saveBtn.innerHTML='<span class="spinner"></span>Saving & extracting products...'; saveBtn.disabled=true; }
-
-  try{
-    // Extract structured data via second API call
-    // Use invFiles (works for both scanner and upload paths); invFD is upload-only legacy
-    let structuredData=null;
-    try{
-      // Build image blocks from ALL captured pages for best accuracy
-      const imgBlocks = (invFiles||[]).map(f=>{
-        const isImg = f.type.startsWith('image/');
-        return isImg
-          ? {type:'image', source:{type:'base64', media_type:f.type, data:f.b64}}
-          : {type:'document', source:{type:'base64', media_type:'application/pdf', data:f.b64}};
-      });
-
-      const jsonPrompt = `You are extracting structured product data from a vendor delivery invoice for a convenience store.
-
-Read every single line item carefully. Return ONLY valid JSON with NO other text, markdown, or explanation:
-{"vendor":"exact vendor name","invoiceNumber":"inv#","invoiceDate":"YYYY-MM-DD","items":[{"name":"exact product name","qty":1,"unitCost":0.00,"lineTotal":0.00,"unit":"each/case/pack"}]}
-
-Rules:
-- Include EVERY line item — do not skip any products
-- unitCost = the per-unit cost the store pays (not retail price)
-- lineTotal = qty × unitCost
-- If the invoice has discounts as separate lines, include them as negative unitCost items
-- qty must be a number, unitCost and lineTotal must be numbers (no $ signs)`;
-
-      // Prefer images for accuracy; fall back to text analysis if no images available
-      const msgContent = imgBlocks.length > 0
-        ? [...imgBlocks, {type:'text', text:jsonPrompt}]
-        : [{type:'text', text:'Extract structured product data from this invoice analysis text. '+jsonPrompt+'\n\nInvoice analysis:\n'+invAT}];
-
-      const jr = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens: 4000,   // raised from 800 — large invoices need room
-          messages:[{role:'user', content:msgContent}]
-        })
-      });
-      if(jr.ok){
-        const jd = await jr.json();
-        const raw = jd.content?.map(c=>c.text||'').join('').trim();
-        const cleaned = raw.replace(/```json|```/g,'').trim();
-        structuredData = JSON.parse(cleaned);
-      }
-    }catch(je){
-      console.warn('JSON extraction failed — saving invoice without price history:', je);
-    }
-
-    let humanText = invAT;
-    const catId = document.getElementById('invCatSel')?.value||'';
-    const cat   = invCategories.find(c=>c.id===catId);
-
-    // Save invoice document
-    const invDoc = await window.F.addDoc(window.F.collection(window.db,'invoices'),{
-      type:'invoices', fileName:invFN, analysis:humanText,
-      analyzed: true,
-      categoryId: catId,
-      categoryName: cat?.name||'',
-      vendor: structuredData?.vendor||'Unknown',
-      invoiceNumber: structuredData?.invoiceNumber||'',
-      invoiceDate: structuredData?.invoiceDate||localDate(),
-      items: structuredData?.items||[],
-      employee: CU.name,
-      date: localDate(),
-      timestamp: window.F.serverTimestamp()
-    });
-
-    // Save each line item to priceHistory
-    let savedItems = 0;
-    if(structuredData?.items?.length){
-      for(const item of structuredData.items){
-        if(!item.name) continue;
-        let prevCost=null, prevDate=null;
-        try{
-          const prev = await window.F.getDocs(window.F.query(
-            window.F.collection(window.db,'priceHistory'),
-            window.F.where('vendor','==',structuredData.vendor||'Unknown'),
-            window.F.where('itemName','==',item.name),
-            window.F.orderBy('timestamp','desc'),
-            window.F.limit(1)
-          ));
-          if(!prev.empty){ const pd=prev.docs[0].data(); prevCost=pd.unitCost; prevDate=pd.date; }
-        }catch(pe){}
-
-        const priceChange = prevCost!==null ? parseFloat((item.unitCost-prevCost).toFixed(2)) : null;
-        await window.F.addDoc(window.F.collection(window.db,'priceHistory'),{
-          vendor: structuredData.vendor||'Unknown',
-          invoiceNumber: structuredData.invoiceNumber||'',
-          invoiceDate: structuredData.invoiceDate||localDate(),
-          itemName: item.name,
-          qty: item.qty,
-          unitCost: item.unitCost,
-          lineTotal: item.lineTotal,
-          unit: item.unit||'',
-          prevCost, prevDate,
-          priceChange,
-          priceChangePercent: prevCost ? parseFloat(((item.unitCost-prevCost)/prevCost*100).toFixed(1)) : null,
-          invoiceId: invDoc.id,
-          date: localDate(),
-          timestamp: window.F.serverTimestamp()
-        });
-        savedItems++;
-      }
-    }
-
-    const msg = savedItems > 0
-      ? `✓ Invoice saved — ${savedItems} product${savedItems!==1?'s':''} added to Price History!`
-      : '✓ Invoice saved (no line items extracted — check Price History tab)';
-    toast(msg);
-    resetInvForm();
-    loadInvoices('');
-  }catch(e){
-    console.error('saveInv error',e);
-    toast('Error saving invoice: '+e.message);
-    if(saveBtn){ saveBtn.innerHTML='Save & submit invoice'; saveBtn.disabled=false; }
-  }
-}
-async function deleteInvoice(id){
-  if(!confirm('Delete this invoice permanently?')) return;
-  try{
-    await window.F.deleteDoc(window.F.doc(window.db,'invoices',id));
-    toast('Invoice deleted');
-    loadInvoices('');
-  }catch(e){toast('Error deleting invoice');}
-}
-
 // ---- INVENTORY ----
 async function flagInv(){
   const item=document.getElementById('invItem').value.trim();
@@ -2140,7 +1732,7 @@ async function loadLogs(){
   const el=document.getElementById('logsList');if(!el)return;
   el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
   try{
-    const cols=filt==='all'?['dailyReports','fuelReports','scratchCounts','invoices']:[filt];
+    const cols=filt==='all'?['dailyReports','fuelReports','scratchCounts']:[filt];
     let all=[];
     for(const col of cols){const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));snap.docs.forEach(d=>all.push({id:d.id,col,...d.data()}));}
     if(df)all=all.filter(d=>d.date===df);
@@ -2159,7 +1751,6 @@ async function loadLogs(){
       }
       else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
       else if(d.col==='scratchCounts'){t=`${d.shiftType==='start'?'Opening':'Closing'} count — ${d.employee}`;det=`Est. value: $${(d.totalValue||0).toLocaleString()}`;b='<span class="badge bamb">Scratch</span>';}
-      else if(d.col==='invoices'){t=d.fileName||'Invoice';det=`By ${d.employee||'Unknown'} — ${(d.analysis||'').substring(0,70)}...`;b='<span class="badge bred">Invoice</span>';}
       const editBtn=`<button class="bsm" onclick="openEditModalById('${d.id}','${d.col}')" style="flex-shrink:0">✏️ Edit</button>`;
       return`<div class="litem">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
@@ -2560,7 +2151,7 @@ async function loadPriceHistory(){
     }
 
     if(!allPriceHistory.length){
-      el.innerHTML='<div class="empty"><div class="ei">📈</div>No price history yet. Upload invoices to start tracking.</div>';
+      el.innerHTML='<div class="empty"><div class="ei">📈</div>No price history yet. Add products via Margins or import a spreadsheet.</div>';
       return;
     }
     renderPriceHistory(allPriceHistory);
@@ -2905,9 +2496,24 @@ function renderMgCategories(filterText){
             <div class="cat-meta">${catProds.length} product${catProds.length!==1?'s':''} ${catProds.length?'· avg margin '+avgMg.toFixed(1)+'%':''}</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <button onclick="event.stopPropagation();exportMgCategory('${cat.id}')" style="background:var(--green-light);border:1px solid #b8dfa0;color:var(--green);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">↓ Export</button>
+          <button onclick="event.stopPropagation();openMgCatEdit('${cat.id}')" style="background:var(--blue-light);border:1px solid #b8d0f5;color:var(--blue);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
           <button onclick="event.stopPropagation();confirmDeleteMgCat('${cat.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;padding:4px;cursor:pointer">🗑</button>
           <span class="cat-chevron ${isOpen?'open':''}">▼</span>
+        </div>
+      </div>
+
+      <!-- Category edit form (hidden by default) -->
+      <div id="catedit-${cat.id}" style="display:none;padding:14px 16px;background:var(--bg2);border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Edit category</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><label>Category name</label><input id="ce-name-${cat.id}" value="${cat.name.replace(/"/g,'&quot;')}" /></div>
+          <div><label>Icon / Emoji</label><input id="ce-icon-${cat.id}" value="${cat.icon||'📦'}" maxlength="2" style="font-size:22px;text-align:center" /></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="saveMgCatEdit('${cat.id}')">Save</button>
+          <button class="btn bsecondary" style="padding:9px;font-size:13px" onclick="closeMgCatEdit('${cat.id}')">Cancel</button>
         </div>
       </div>
 
@@ -3041,7 +2647,6 @@ async function confirmDeleteMgCat(id){
     : `Delete category "${cat?.name}"?`;
   if(!confirm(msg)) return;
   try{
-    // Delete all products in category
     const toDelete = mgProducts.filter(p=>p.categoryId===id);
     for(const p of toDelete){
       await window.F.deleteDoc(window.F.doc(window.db,'mgProducts',p.id));
@@ -3050,6 +2655,69 @@ async function confirmDeleteMgCat(id){
     toast('Category deleted');
     loadMargins();
   }catch(e){ toast('Error deleting category'); }
+}
+
+function openMgCatEdit(id){
+  // Close any other open edit forms first
+  document.querySelectorAll('[id^="catedit-"]').forEach(el=>el.style.display='none');
+  const form = document.getElementById('catedit-'+id);
+  if(form) form.style.display='block';
+}
+
+function closeMgCatEdit(id){
+  const form = document.getElementById('catedit-'+id);
+  if(form) form.style.display='none';
+}
+
+async function saveMgCatEdit(id){
+  const name = document.getElementById('ce-name-'+id)?.value.trim();
+  const icon = document.getElementById('ce-icon-'+id)?.value.trim()||'📦';
+  if(!name){ toast('Enter a category name'); return; }
+  try{
+    await window.F.updateDoc(window.F.doc(window.db,'mgCategories',id),{
+      name, icon, updatedAt: new Date().toISOString()
+    });
+    toast('✓ Category updated');
+    loadMargins();
+  }catch(e){ toast('Error saving category'); }
+}
+
+function exportMgCategory(id){
+  const cat   = mgCategories.find(c=>c.id===id);
+  const prods = mgProducts.filter(p=>p.categoryId===id);
+  if(!prods.length){ toast('No products to export'); return; }
+
+  // Build CSV
+  const headers = ['Product Name','Purchase Cost ($)','Units per Case','Cost per Unit ($)','Sell Price ($)','Gross Margin (%)','Markup (%)','Profit per Unit ($)','Profit per Case ($)'];
+  const rows = prods.map(p=>{
+    const cpu    = (p.units&&p.units>0) ? p.cost/p.units : (p.costPerUnit||p.cost);
+    const mg     = (cpu&&p.sell) ? ((p.sell-cpu)/p.sell*100) : 0;
+    const markup = (cpu&&p.sell&&cpu>0) ? ((p.sell-cpu)/cpu*100) : 0;
+    const profit = (cpu&&p.sell) ? p.sell-cpu : 0;
+    const profitCase = (p.units&&profit) ? profit*p.units : '';
+    return [
+      `"${(p.name||'').replace(/"/g,'""')}"`,
+      (p.cost||0).toFixed(2),
+      p.units||'',
+      cpu ? cpu.toFixed(4) : '',
+      (p.sell||0).toFixed(2),
+      mg.toFixed(2),
+      markup.toFixed(2),
+      profit.toFixed(2),
+      profitCase!==''?profitCase.toFixed(2):''
+    ].join(',');
+  });
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = `${(cat?.name||'category').replace(/\s+/g,'-')}-margins-${date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`✓ Exported ${prods.length} products`);
 }
 
 function togAddProdForm(catId){
@@ -3231,14 +2899,6 @@ function searchMargins(){
     }).join('');
 }
 
-// ---- INVOICE MODE TOGGLE ----
-function setInvMode(mode){
-  document.getElementById('inv-scan-mode').style.display   = mode==='scan'   ? 'block' : 'none';
-  document.getElementById('inv-upload-mode').style.display = mode==='upload' ? 'block' : 'none';
-  document.getElementById('inv-tab-scan').classList.toggle('active',   mode==='scan');
-  document.getElementById('inv-tab-upload').classList.toggle('active', mode==='upload');
-}
-
 function setShiftMode(mode){
   document.getElementById('shift-scan-mode').style.display   = mode==='scan'   ? 'block' : 'none';
   document.getElementById('shift-upload-mode').style.display = mode==='upload' ? 'block' : 'none';
@@ -3309,15 +2969,9 @@ function closeScanner(){
 }
 
 function closeScannerAndSend(){
-  const ctx = scanContext;
   closeScanner();
-  if(ctx==='shift'){
-    updateShiftCapturesPreview();
-    if(shiftCaptures.length) sendShiftCaptures();
-  } else {
-    updateInvCapturesPreview();
-    if(scanCaptures.length) sendCapturedInvoice();
-  }
+  updateShiftCapturesPreview();
+  if(shiftCaptures.length) sendShiftCaptures();
 }
 
 function captureFrame(){
@@ -3392,58 +3046,6 @@ function updateScannerUI(){
   }
 }
 
-function updateInvCapturesPreview(){
-  const wrap   = document.getElementById('inv-captures-wrap');
-  const label  = document.getElementById('inv-captures-label');
-  const thumbs = document.getElementById('inv-captures-thumbs');
-  const sendBtn= document.getElementById('inv-send-btn');
-  const openLbl= document.getElementById('inv-open-scanner-label');
-
-  if(!scanCaptures.length){
-    wrap.style.display  = 'none';
-    sendBtn.style.display = 'none';
-    openLbl.textContent = 'Open scanner';
-    return;
-  }
-
-  wrap.style.display  = 'block';
-  sendBtn.style.display = 'block';
-  label.textContent   = `${scanCaptures.length} page${scanCaptures.length!==1?'s':''} scanned — ready to analyze`;
-  openLbl.textContent = '+ Scan more pages';
-
-  thumbs.innerHTML = scanCaptures.map((c,i)=>`
-    <div style="position:relative;display:inline-block">
-      <img src="${c.dataUrl}" style="width:56px;height:74px;object-fit:cover;border-radius:6px;border:2px solid var(--border);display:block" />
-      <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;">p.${i+1}</div>
-      <button onclick="removeScanPage(${i})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
-    </div>`).join('');
-}
-
-function removeScanPage(idx){
-  scanCaptures.splice(idx,1);
-  updateInvCapturesPreview();
-  if(!scanCaptures.length){
-    document.getElementById('inv-send-btn').style.display='none';
-    document.getElementById('inv-captures-wrap').style.display='none';
-    document.getElementById('inv-open-scanner-label').textContent='Open scanner';
-  }
-}
-
-async function sendCapturedInvoice(){
-  if(!scanCaptures.length){ toast('No pages scanned yet'); return; }
-
-  invFiles = scanCaptures.map((c,i)=>({
-    b64:  c.b64,
-    type: 'image/jpeg',
-    name: `scanned-page-${i+1}.jpg`
-  }));
-  invFN = `${scanCaptures.length} scanned page${scanCaptures.length!==1?'s':''}`;
-
-  document.getElementById('invFName') && (document.getElementById('invFName').textContent = invFN);
-  document.getElementById('inv-captures-label').textContent = `${scanCaptures.length} page${scanCaptures.length!==1?'s':''} — analyzing with AI...`;
-
-  await autoScanInvoice();
-}
 
 // ---- SHIFT CAPTURES ----
 function updateShiftCapturesPreview(){
@@ -3973,204 +3575,6 @@ async function deleteActivation(id){
   }catch(e){ toast('Error deleting'); }
 }
 
-// ---- INVOICE CATEGORIES ----
-let invCategories = [];
-
-async function loadInvCategories(){
-  try{
-    const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'invCategories'),
-      window.F.orderBy('order','asc')
-    ));
-    invCategories = snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderInvCatMgmt();
-    populateInvCatDropdown();
-    renderInvCatTabs('');
-  }catch(e){ console.error('loadInvCategories',e); }
-}
-
-function renderInvCatMgmt(){
-  const el = document.getElementById('invCatList');
-  if(!el) return;
-  if(!invCategories.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3)">No categories yet — add one above</div>'; return; }
-  el.innerHTML = invCategories.map(c=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
-      <span>${c.icon||'📁'} ${c.name}</span>
-      <button onclick="deleteInvCategory('${c.id}')" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer">Delete</button>
-    </div>`).join('');
-}
-
-function populateInvCatDropdown(){
-  const sel = document.getElementById('invCatSel');
-  if(!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— select category —</option>' +
-    invCategories.map(c=>`<option value="${c.id}">${c.icon||'📁'} ${c.name}</option>`).join('');
-  if(cur) sel.value = cur;
-}
-
-function renderInvCatTabs(activeId){
-  const bar = document.getElementById('invCatTabs');
-  if(!bar) return;
-  bar.innerHTML = `<button class="bsm" style="white-space:nowrap;${!activeId?'background:var(--blue);color:#fff;border-color:var(--blue)':''}" onclick="loadInvoices('')">All</button>` +
-    invCategories.map(c=>`<button class="bsm" style="white-space:nowrap;${activeId===c.id?'background:var(--blue);color:#fff;border-color:var(--blue)':''}" onclick="loadInvoices('${c.id}')">${c.icon||'📁'} ${c.name}</button>`).join('');
-}
-
-function togInvCatForm(){
-  const w = document.getElementById('invCatFormWrap');
-  w.style.display = w.style.display==='none' ? 'block' : 'none';
-}
-
-async function addInvCategory(){
-  const name = document.getElementById('invCatName')?.value.trim();
-  const icon = document.getElementById('invCatIcon')?.value.trim() || '📁';
-  if(!name){ toast('Enter a category name'); return; }
-  try{
-    await window.F.addDoc(window.F.collection(window.db,'invCategories'),{
-      name, icon, order: invCategories.length, createdAt: new Date().toISOString()
-    });
-    document.getElementById('invCatName').value='';
-    document.getElementById('invCatIcon').value='';
-    document.getElementById('invCatFormWrap').style.display='none';
-    toast('✓ Category added');
-    loadInvCategories();
-  }catch(e){ toast('Error adding category'); }
-}
-
-async function deleteInvCategory(id){
-  if(!confirm('Delete this category? Invoices in it will move to "uncategorized".')) return;
-  try{
-    await window.F.deleteDoc(window.F.doc(window.db,'invCategories',id));
-    toast('Category deleted');
-    loadInvCategories();
-    loadInvoices('');
-  }catch(e){ toast('Error deleting'); }
-}
-
-// Show/hide category management card for operators
-function initInvPage(){
-  const mgmt = document.getElementById('invCatMgmtCard');
-  if(mgmt && CU?.role==='operator') mgmt.style.display='block';
-  loadInvCategories();
-}
-
-// Analyze toggle
-function toggleInvAnalyzeUI(){
-  const analyze = document.getElementById('invAnalyzeSel')?.value === 'yes';
-  document.getElementById('invRefNote').style.display = analyze ? 'none' : 'block';
-  // Update scan button label
-  const sendBtn = document.getElementById('inv-send-btn');
-  if(sendBtn) sendBtn.textContent = analyze ? 'Analyze pages →' : '💾 Save pages';
-  const saveRefBtn = document.getElementById('invSaveRefBtn');
-  if(saveRefBtn) saveRefBtn.style.display = analyze ? 'none' : 'block';
-}
-
-// invSendOrSave: called from scanner Done when scan mode is active
-function invSendOrSave(){
-  const analyze = document.getElementById('invAnalyzeSel')?.value === 'yes';
-  if(analyze) sendCapturedInvoice();
-  else saveRefInvoice();
-}
-
-// Save invoice without AI analysis
-async function saveRefInvoice(){
-  if(!invFiles.length && !scanCaptures.length){
-    toast('No files attached');
-    return;
-  }
-
-  // Build files if coming from scanner
-  if(!invFiles.length && scanCaptures.length){
-    invFiles = scanCaptures.map((c,i)=>({b64:c.b64,type:'image/jpeg',name:`scanned-page-${i+1}.jpg`}));
-    invFN = `${scanCaptures.length} scanned page${scanCaptures.length!==1?'s':''}`;
-  }
-
-  const catId = document.getElementById('invCatSel')?.value||'';
-  const cat   = invCategories.find(c=>c.id===catId);
-  const note  = document.getElementById('invRefNoteText')?.value.trim()||'';
-
-  const btn = document.getElementById('invSaveRefBtn');
-  if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
-
-  try{
-    // Store first page as a small thumbnail for reference
-    let thumbUrl='';
-    if(invFiles[0]){
-      // Downsize to thumbnail
-      const img=new Image();
-      await new Promise(res=>{img.onload=res;img.src='data:'+invFiles[0].type+';base64,'+invFiles[0].b64;});
-      const canvas=document.createElement('canvas');
-      const ratio=Math.min(1,400/img.width);
-      canvas.width=img.width*ratio; canvas.height=img.height*ratio;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      thumbUrl=canvas.toDataURL('image/jpeg',0.6);
-    }
-
-    await window.F.addDoc(window.F.collection(window.db,'invoices'),{
-      type:'invoices',
-      fileName: invFN||'Invoice',
-      analysis: note || '(No AI analysis — saved for reference)',
-      analyzed: false,
-      categoryId: catId,
-      categoryName: cat?.name||'',
-      vendor:'',invoiceNumber:'',invoiceDate:localDate(),items:[],
-      employee:CU.name, date:localDate(),
-      thumbUrl,
-      timestamp:window.F.serverTimestamp()
-    });
-
-    toast('✓ Invoice saved for reference');
-    resetInvForm();
-    loadInvoices('');
-  }catch(e){ toast('Error saving invoice'); console.error(e); }
-  if(btn){ btn.innerHTML='💾 Save invoice (no analysis)'; btn.disabled=false; }
-}
-
-function resetInvForm(){
-  invFD=null; invAT=''; invFN=''; scanCaptures=[];
-  document.getElementById('inv-captures-wrap').style.display='none';
-  document.getElementById('inv-send-btn').style.display='none';
-  document.getElementById('inv-open-scanner-label').textContent='Open scanner';
-  const fn=document.getElementById('invFName'); if(fn) fn.textContent='Tap to upload invoice';
-  document.getElementById('invResult').style.display='none';
-  document.getElementById('invFile').value='';
-  const rn=document.getElementById('invRefNoteText'); if(rn) rn.value='';
-}
-
-async function loadInvoices(filterCatId){
-  renderInvCatTabs(filterCatId||'');
-  try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'invoices'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
-    const el=document.getElementById('savedInvList');
-    let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(filterCatId) docs=docs.filter(d=>d.categoryId===filterCatId);
-    if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">🧾</div>No invoices '+(filterCatId?'in this category':'submitted yet')+'</div>';return;}
-    const isOp=CU&&CU.role==='operator';
-    el.innerHTML=docs.map(d=>{
-      const x=d.data?d.data():d;
-      const cat=invCategories.find(c=>c.id===x.categoryId);
-      const analyzed=x.analyzed!==false;
-      return`<div class="litem">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          ${x.thumbUrl?`<img src="${x.thumbUrl}" style="width:44px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;cursor:pointer" onclick="showPhotoModal('${x.thumbUrl}','')" />`:''}
-          <div style="flex:1;min-width:0">
-            <div class="ltitle" style="flex-wrap:wrap;gap:4px">
-              <span style="font-weight:600">${x.fileName||'Invoice'}</span>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                ${cat?`<span class="badge bblu">${cat.icon||'📁'} ${cat.name}</span>`:''}
-                <span class="badge ${analyzed?'bgrn':'bamb'}">${analyzed?'✓ Analyzed':'📁 Reference'}</span>
-                <span class="badge" style="background:var(--bg2);color:var(--text3)">${x.date}</span>
-              </div>
-            </div>
-            <div class="lmeta">By ${x.employee||'Unknown'}</div>
-            <div class="ldet">${(x.analysis||'').substring(0,100)}${(x.analysis||'').length>100?'...':''}</div>
-          </div>
-          ${isOp?`<button class="bdsm" style="flex-shrink:0;margin-top:4px" onclick="deleteInvoice('${d.id||x.id}')">Delete</button>`:''}
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){ console.error(e); }
-}
 
 window.addEventListener('fbReady',()=>{});
 </script>
