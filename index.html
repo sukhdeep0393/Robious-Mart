@@ -1306,7 +1306,7 @@ async function loadDashboard(){
         <span class="dash-section-link" onclick="showTab('expenses')" style="cursor:pointer">View all →</span>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
+        <div style="display:grid;grid-template-columns:1fr 1fr">
           <div style="padding:14px 16px;border-right:1px solid var(--border)">
             <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total expenses</div>
             <div style="font-size:22px;font-weight:800;color:var(--red)">$${mtdExpTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
@@ -1316,11 +1316,6 @@ async function loadDashboard(){
             <div style="font-size:22px;font-weight:800;color:${mtdSales-mtdExpTotal>=0?'var(--green)':'var(--red)'}">$${(mtdSales-mtdExpTotal).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
           </div>
         </div>
-        ${Object.keys(expByCategory).length?Object.entries(expByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px">
-            <span style="color:var(--text2)">${catIcons[cat]||'📝'} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</span>
-            <strong>$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
-          </div>`).join(''):`<div class="empty" style="padding:14px">No expenses recorded</div>`}
       </div>
 
       <!-- Fuel breakdown -->
