@@ -2917,15 +2917,30 @@ function renderMgCategories(filterText){
           <div>Product</div><div>Cost</div><div>Sell</div><div>Margin</div><div></div>
         </div>
         ${displayProds.map(p=>{
-          const mg = calcMg(p.cost, p.sell);
-          const markup = calcMarkup(p.cost, p.sell);
+          const cpu = (p.units && p.units>0) ? p.cost/p.units : (p.costPerUnit || p.cost);
+          const mg = calcMg(cpu, p.sell);
+          const markup = calcMarkup(cpu, p.sell);
           if(mgEditingProd === p.id){
+            const cpu = (p.units&&p.units>0) ? p.cost/p.units : p.cost;
             return `<div class="prod-edit-form" id="pedit-${p.id}">
               <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Edit: ${p.name}</div>
-              <div class="g3" style="margin-bottom:10px">
+              <div class="g2" style="margin-bottom:8px">
                 <div><label>Product name</label><input id="pef-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}" /></div>
-                <div><label>Purchase cost ($)</label><input type="number" step="0.01" id="pef-cost-${p.id}" value="${p.cost||''}" oninput="liveCalcMg('${p.id}')" /></div>
-                <div><label>Selling price ($)</label><input type="number" step="0.01" id="pef-sell-${p.id}" value="${p.sell||''}" oninput="liveCalcMg('${p.id}')" /></div>
+                <div><label>Purchase cost ($) — total</label><input type="number" step="0.01" id="pef-cost-${p.id}" value="${p.cost||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 24.00" /></div>
+              </div>
+              <div class="g2" style="margin-bottom:8px">
+                <div>
+                  <label>Units per case / pack</label>
+                  <input type="number" step="1" min="1" id="pef-units-${p.id}" value="${p.units||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 24" />
+                </div>
+                <div>
+                  <label>Cost per unit (auto)</label>
+                  <input id="pef-cpu-${p.id}" readonly style="background:var(--bg2);font-weight:700;color:var(--blue)" placeholder="—" value="${p.units&&p.units>0?'$'+(p.cost/p.units).toFixed(4):''}" />
+                </div>
+              </div>
+              <div class="g2" style="margin-bottom:10px">
+                <div><label>Selling price per unit ($)</label><input type="number" step="0.01" id="pef-sell-${p.id}" value="${p.sell||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 1.99" /></div>
+                <div style="display:flex;align-items:flex-end"><div id="pef-inline-mg-${p.id}" style="font-size:13px;padding:10px 0;color:var(--text2)"></div></div>
               </div>
               <div id="pef-result-${p.id}" style="margin-bottom:10px"></div>
               <div style="display:flex;gap:8px">
@@ -2936,7 +2951,10 @@ function renderMgCategories(filterText){
             </div>`;
           }
           return `<div class="prod-row">
-            <div class="prod-name">${p.name||'Unnamed'}</div>
+            <div class="prod-name">
+              ${p.name||'Unnamed'}
+              ${p.units?`<div style="font-size:10px;color:var(--text3);margin-top:1px">${p.units} units · $${(p.cost/p.units).toFixed(4)}/unit</div>`:''}
+            </div>
             <div class="prod-price">$${(p.cost||0).toFixed(2)}</div>
             <div class="prod-price">$${(p.sell||0).toFixed(2)}</div>
             <div>${mgPill(mg)}</div>
@@ -2948,10 +2966,23 @@ function renderMgCategories(filterText){
         <div class="add-prod-row">
           <div id="addprod-form-${cat.id}" style="display:none;margin-bottom:10px">
             <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">New product in ${cat.name}</div>
-            <div class="g3" style="margin-bottom:8px">
+            <div class="g2" style="margin-bottom:8px">
               <div><label>Product name</label><input id="np-name-${cat.id}" placeholder="e.g. Budweiser 6-pack" /></div>
-              <div><label>Purchase cost ($)</label><input type="number" step="0.01" id="np-cost-${cat.id}" placeholder="0.00" oninput="liveCalcNew('${cat.id}')" /></div>
-              <div><label>Selling price ($)</label><input type="number" step="0.01" id="np-sell-${cat.id}" placeholder="0.00" oninput="liveCalcNew('${cat.id}')" /></div>
+              <div><label>Purchase cost ($) — total</label><input type="number" step="0.01" id="np-cost-${cat.id}" placeholder="e.g. 24.00" oninput="liveCalcNew('${cat.id}')" /></div>
+            </div>
+            <div class="g2" style="margin-bottom:8px">
+              <div>
+                <label>Units per case / pack</label>
+                <input type="number" step="1" min="1" id="np-units-${cat.id}" placeholder="e.g. 24" oninput="liveCalcNew('${cat.id}')" />
+              </div>
+              <div>
+                <label>Cost per unit (auto)</label>
+                <input id="np-cpu-${cat.id}" readonly style="background:var(--bg2);font-weight:700;color:var(--blue)" placeholder="—" />
+              </div>
+            </div>
+            <div class="g2" style="margin-bottom:8px">
+              <div><label>Selling price per unit ($)</label><input type="number" step="0.01" id="np-sell-${cat.id}" placeholder="e.g. 1.99" oninput="liveCalcNew('${cat.id}')" /></div>
+              <div style="display:flex;align-items:flex-end"><div id="np-inline-mg-${cat.id}" style="font-size:13px;padding:10px 0;color:var(--text2)"></div></div>
             </div>
             <div id="np-result-${cat.id}" style="margin-bottom:10px"></div>
             <div style="display:flex;gap:8px">
@@ -3032,53 +3063,81 @@ function togAddProdForm(catId){
 }
 
 function liveCalcNew(catId){
-  const cost = parseFloat(document.getElementById('np-cost-'+catId)?.value)||0;
-  const sell = parseFloat(document.getElementById('np-sell-'+catId)?.value)||0;
-  renderMgCalcResult('np-result-'+catId, cost, sell);
+  const totalCost = parseFloat(document.getElementById('np-cost-'+catId)?.value)||0;
+  const units     = parseFloat(document.getElementById('np-units-'+catId)?.value)||0;
+  const sell      = parseFloat(document.getElementById('np-sell-'+catId)?.value)||0;
+  // Cost per unit
+  const cpu = (totalCost && units) ? totalCost/units : totalCost;
+  const cpuEl = document.getElementById('np-cpu-'+catId);
+  if(cpuEl) cpuEl.value = (totalCost && units) ? '$'+(cpu).toFixed(4) : (totalCost ? '$'+totalCost.toFixed(4) : '');
+  // Inline quick margin next to sell field
+  const mgInline = document.getElementById('np-inline-mg-'+catId);
+  if(mgInline && cpu && sell){
+    const mg = calcMg(cpu, sell);
+    mgInline.innerHTML = `<span class="margin-pill ${mg>=30?'mg-hi':mg>=15?'mg-md':'mg-lo'}">${mg.toFixed(1)}%</span>`;
+  } else if(mgInline){ mgInline.innerHTML=''; }
+  renderMgCalcResult('np-result-'+catId, cpu, sell, totalCost, units);
 }
 
 function liveCalcMg(prodId){
-  const cost = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
-  const sell = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
-  renderMgCalcResult('pef-result-'+prodId, cost, sell);
+  const totalCost = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
+  const units     = parseFloat(document.getElementById('pef-units-'+prodId)?.value)||0;
+  const sell      = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
+  // Cost per unit
+  const cpu = (totalCost && units) ? totalCost/units : totalCost;
+  const cpuEl = document.getElementById('pef-cpu-'+prodId);
+  if(cpuEl) cpuEl.value = (totalCost && units) ? '$'+(cpu).toFixed(4) : (totalCost ? '$'+totalCost.toFixed(4) : '');
+  // Inline quick margin
+  const mgInline = document.getElementById('pef-inline-mg-'+prodId);
+  if(mgInline && cpu && sell){
+    const mg = calcMg(cpu, sell);
+    mgInline.innerHTML = `<span class="margin-pill ${mg>=30?'mg-hi':mg>=15?'mg-md':'mg-lo'}">${mg.toFixed(1)}%</span>`;
+  } else if(mgInline){ mgInline.innerHTML=''; }
+  renderMgCalcResult('pef-result-'+prodId, cpu, sell, totalCost, units);
 }
 
-function renderMgCalcResult(elId, cost, sell){
+function renderMgCalcResult(elId, costPerUnit, sell, totalCost, units){
   const el = document.getElementById(elId);
   if(!el) return;
-  if(!cost || !sell){ el.innerHTML=''; return; }
-  const mg = calcMg(cost, sell);
-  const markup = calcMarkup(cost, sell);
-  const profit = sell - cost;
-  const mgCls = mg >= 30 ? 'bgrn' : mg >= 15 ? 'bamb' : 'bred';
-  el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:90px">
+  if(!costPerUnit || !sell){ el.innerHTML=''; return; }
+  const mg     = calcMg(costPerUnit, sell);
+  const markup = calcMarkup(costPerUnit, sell);
+  const profit = sell - costPerUnit;
+  const profitPerCase = (units && profit) ? profit * units : null;
+  el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:80px">
       <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Gross Margin</div>
       <div style="font-size:20px;font-weight:800;color:${mg>=30?'var(--green)':mg>=15?'var(--amber)':'var(--red)'}">${mg.toFixed(1)}%</div>
     </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:90px">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:80px">
       <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Markup</div>
       <div style="font-size:20px;font-weight:800;color:var(--blue)">${markup.toFixed(1)}%</div>
     </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:90px">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:80px">
       <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Profit / unit</div>
       <div style="font-size:20px;font-weight:800;color:var(--green)">$${profit.toFixed(2)}</div>
     </div>
+    ${profitPerCase!==null?`<div style="background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:8px 12px;flex:1;min-width:80px">
+      <div style="font-size:10px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Profit / case</div>
+      <div style="font-size:20px;font-weight:800;color:var(--green)">$${profitPerCase.toFixed(2)}</div>
+    </div>`:''}
   </div>`;
 }
 
 async function addMgProduct(catId){
-  const name = document.getElementById('np-name-'+catId)?.value.trim();
-  const cost = parseFloat(document.getElementById('np-cost-'+catId)?.value)||0;
-  const sell = parseFloat(document.getElementById('np-sell-'+catId)?.value)||0;
+  const name  = document.getElementById('np-name-'+catId)?.value.trim();
+  const cost  = parseFloat(document.getElementById('np-cost-'+catId)?.value)||0;
+  const units = parseFloat(document.getElementById('np-units-'+catId)?.value)||0;
+  const sell  = parseFloat(document.getElementById('np-sell-'+catId)?.value)||0;
   if(!name){ toast('Enter a product name'); return; }
   if(!cost || !sell){ toast('Enter cost and sell price'); return; }
+  const cpu = (cost && units) ? cost/units : cost;
   try{
     await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
       categoryId: catId,
-      name, cost, sell,
-      margin: calcMg(cost,sell),
-      markup: calcMarkup(cost,sell),
+      name, cost, units, costPerUnit: cpu, sell,
+      margin:  calcMg(cpu, sell),
+      markup:  calcMarkup(cpu, sell),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
@@ -3102,16 +3161,18 @@ function cancelMgEdit(){
 }
 
 async function saveMgProduct(prodId, catId){
-  const name = document.getElementById('pef-name-'+prodId)?.value.trim();
-  const cost = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
-  const sell = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
+  const name  = document.getElementById('pef-name-'+prodId)?.value.trim();
+  const cost  = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
+  const units = parseFloat(document.getElementById('pef-units-'+prodId)?.value)||0;
+  const sell  = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
   if(!name){ toast('Enter a product name'); return; }
   if(!cost || !sell){ toast('Enter cost and sell price'); return; }
+  const cpu = (cost && units) ? cost/units : cost;
   try{
     await window.F.updateDoc(window.F.doc(window.db,'mgProducts',prodId),{
-      name, cost, sell,
-      margin: calcMg(cost,sell),
-      markup: calcMarkup(cost,sell),
+      name, cost, units, costPerUnit: cpu, sell,
+      margin:  calcMg(cpu, sell),
+      markup:  calcMarkup(cpu, sell),
       updatedAt: new Date().toISOString()
     });
     mgEditingProd = null;
