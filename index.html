@@ -1918,65 +1918,93 @@ async function fixInvoice(){
 
 async function saveInv(){
   if(!invAT||invAT.startsWith('Error'))return;
+
+  const saveBtn = document.querySelector('#invResult .bprimary');
+  if(saveBtn){ saveBtn.innerHTML='<span class="spinner"></span>Saving & extracting products...'; saveBtn.disabled=true; }
+
   try{
     // Extract structured data via second API call
+    // Use invFiles (works for both scanner and upload paths); invFD is upload-only legacy
     let structuredData=null;
     try{
-      const isImg=invFD&&invFD.type.startsWith('image/');
-      const imgBlock=invFD?(isImg
-        ?{type:'image',source:{type:'base64',media_type:invFD.type,data:invFD.b64}}
-        :{type:'document',source:{type:'base64',media_type:'application/pdf',data:invFD.b64}}):null;
+      // Build image blocks from ALL captured pages for best accuracy
+      const imgBlocks = (invFiles||[]).map(f=>{
+        const isImg = f.type.startsWith('image/');
+        return isImg
+          ? {type:'image', source:{type:'base64', media_type:f.type, data:f.b64}}
+          : {type:'document', source:{type:'base64', media_type:'application/pdf', data:f.b64}};
+      });
 
-      const jsonPrompt='Extract structured data from this invoice. Return ONLY valid JSON, no other text: {"vendor":"vendor name","invoiceNumber":"inv#","invoiceDate":"YYYY-MM-DD","items":[{"name":"exact product name","qty":1,"unitCost":0.00,"lineTotal":0.00,"unit":"each/case/pack"}]}';
-      const msgContent=imgBlock?[imgBlock,{type:'text',text:jsonPrompt}]:[{type:'text',text:'Based on this invoice text, '+jsonPrompt+'\n\nInvoice text:\n'+invAT}];
+      const jsonPrompt = `You are extracting structured product data from a vendor delivery invoice for a convenience store.
 
-      const jr=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
+Read every single line item carefully. Return ONLY valid JSON with NO other text, markdown, or explanation:
+{"vendor":"exact vendor name","invoiceNumber":"inv#","invoiceDate":"YYYY-MM-DD","items":[{"name":"exact product name","qty":1,"unitCost":0.00,"lineTotal":0.00,"unit":"each/case/pack"}]}
+
+Rules:
+- Include EVERY line item — do not skip any products
+- unitCost = the per-unit cost the store pays (not retail price)
+- lineTotal = qty × unitCost
+- If the invoice has discounts as separate lines, include them as negative unitCost items
+- qty must be a number, unitCost and lineTotal must be numbers (no $ signs)`;
+
+      // Prefer images for accuracy; fall back to text analysis if no images available
+      const msgContent = imgBlocks.length > 0
+        ? [...imgBlocks, {type:'text', text:jsonPrompt}]
+        : [{type:'text', text:'Extract structured product data from this invoice analysis text. '+jsonPrompt+'\n\nInvoice analysis:\n'+invAT}];
+
+      const jr = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:msgContent}]})
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens: 4000,   // raised from 800 — large invoices need room
+          messages:[{role:'user', content:msgContent}]
+        })
       });
       if(jr.ok){
-        const jd=await jr.json();
-        const raw=jd.content?.map(c=>c.text||'').join('').trim();
-        const cleaned=raw.replace(/```json|```/g,'').trim();
-        structuredData=JSON.parse(cleaned);
+        const jd = await jr.json();
+        const raw = jd.content?.map(c=>c.text||'').join('').trim();
+        const cleaned = raw.replace(/```json|```/g,'').trim();
+        structuredData = JSON.parse(cleaned);
       }
-    }catch(je){console.log('JSON extraction failed, saving without structure',je);}
+    }catch(je){
+      console.warn('JSON extraction failed — saving invoice without price history:', je);
+    }
 
-    let humanText=invAT;
+    let humanText = invAT;
     const catId = document.getElementById('invCatSel')?.value||'';
     const cat   = invCategories.find(c=>c.id===catId);
 
-    // Save invoice with structured data
+    // Save invoice document
     const invDoc = await window.F.addDoc(window.F.collection(window.db,'invoices'),{
       type:'invoices', fileName:invFN, analysis:humanText,
       analyzed: true,
       categoryId: catId,
       categoryName: cat?.name||'',
-      vendor:structuredData?.vendor||'Unknown', invoiceNumber:structuredData?.invoiceNumber||'',
-      invoiceDate:structuredData?.invoiceDate||localDate(),
-      items:structuredData?.items||[], employee:CU.name,
-      date:localDate(), timestamp:window.F.serverTimestamp()
+      vendor: structuredData?.vendor||'Unknown',
+      invoiceNumber: structuredData?.invoiceNumber||'',
+      invoiceDate: structuredData?.invoiceDate||localDate(),
+      items: structuredData?.items||[],
+      employee: CU.name,
+      date: localDate(),
+      timestamp: window.F.serverTimestamp()
     });
 
-    // Save each line item to priceHistory collection
+    // Save each line item to priceHistory
+    let savedItems = 0;
     if(structuredData?.items?.length){
       for(const item of structuredData.items){
-        // Check for previous price of this item from same vendor
+        if(!item.name) continue;
         let prevCost=null, prevDate=null;
         try{
-          const prev=await window.F.getDocs(window.F.query(
+          const prev = await window.F.getDocs(window.F.query(
             window.F.collection(window.db,'priceHistory'),
             window.F.where('vendor','==',structuredData.vendor||'Unknown'),
             window.F.where('itemName','==',item.name),
             window.F.orderBy('timestamp','desc'),
             window.F.limit(1)
           ));
-          if(!prev.empty){
-            const pd=prev.docs[0].data();
-            prevCost=pd.unitCost;
-            prevDate=pd.date;
-          }
+          if(!prev.empty){ const pd=prev.docs[0].data(); prevCost=pd.unitCost; prevDate=pd.date; }
         }catch(pe){}
 
         const priceChange = prevCost!==null ? parseFloat((item.unitCost-prevCost).toFixed(2)) : null;
@@ -1991,18 +2019,26 @@ async function saveInv(){
           unit: item.unit||'',
           prevCost, prevDate,
           priceChange,
-          priceChangePercent: prevCost?parseFloat(((item.unitCost-prevCost)/prevCost*100).toFixed(1)):null,
+          priceChangePercent: prevCost ? parseFloat(((item.unitCost-prevCost)/prevCost*100).toFixed(1)) : null,
           invoiceId: invDoc.id,
           date: localDate(),
           timestamp: window.F.serverTimestamp()
         });
+        savedItems++;
       }
     }
 
-    toast('✓ Invoice saved to price history!');
+    const msg = savedItems > 0
+      ? `✓ Invoice saved — ${savedItems} product${savedItems!==1?'s':''} added to Price History!`
+      : '✓ Invoice saved (no line items extracted — check Price History tab)';
+    toast(msg);
     resetInvForm();
     loadInvoices('');
-  }catch(e){console.error('saveInv error',e);toast('Error saving invoice');}
+  }catch(e){
+    console.error('saveInv error',e);
+    toast('Error saving invoice: '+e.message);
+    if(saveBtn){ saveBtn.innerHTML='Save & submit invoice'; saveBtn.disabled=false; }
+  }
 }
 async function deleteInvoice(id){
   if(!confirm('Delete this invoice permanently?')) return;
