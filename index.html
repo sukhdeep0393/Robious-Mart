@@ -137,6 +137,38 @@
   .filter-bar{display:flex;gap:8px;margin-bottom:12px;}
   .filter-bar input,.filter-bar select{flex:1;}
 
+  /* MARGINS TAB */
+  .cat-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:12px;overflow:hidden;}
+  .cat-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none;gap:8px;}
+  .cat-header:active{background:var(--bg2);}
+  .cat-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .cat-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .cat-meta{font-size:12px;color:var(--text3);}
+  .cat-chevron{font-size:12px;color:var(--text3);transition:transform .2s;}
+  .cat-chevron.open{transform:rotate(180deg);}
+  .cat-body{border-top:1px solid var(--border);display:none;}
+  .cat-body.open{display:block;}
+  .prod-row{display:grid;grid-template-columns:1fr 80px 80px 72px 44px;gap:6px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .prod-row:last-child{border-bottom:none;}
+  .prod-head{display:grid;grid-template-columns:1fr 80px 80px 72px 44px;gap:6px;padding:8px 16px;background:var(--bg2);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);}
+  .prod-name{font-weight:500;line-height:1.3;}
+  .prod-price{font-size:13px;color:var(--text2);}
+  .margin-pill{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;min-width:52px;}
+  .mg-hi{background:#d1fae5;color:#065f46;}
+  .mg-md{background:#fef3c7;color:#92400e;}
+  .mg-lo{background:#fee2e2;color:#991b1b;}
+  .mg-na{background:var(--bg2);color:var(--text3);}
+  .add-prod-row{padding:12px 16px;border-top:1px solid var(--border);}
+  .add-cat-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:var(--bg);border:2px dashed var(--border);border-radius:var(--rl);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;margin-bottom:12px;}
+  .add-cat-btn:active{background:var(--bg2);}
+  .mg-search-wrap{position:relative;margin-bottom:12px;}
+  .mg-search-wrap input{padding-left:36px;}
+  .mg-search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+  .prod-edit-form{background:var(--bg2);padding:14px 16px;border-top:1px solid var(--border);}
+  .cat-summary-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+  .mg-empty-cat{padding:20px 16px;text-align:center;color:var(--text3);font-size:13px;}
+  .search-result-tag{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--blue-light);color:var(--blue);text-transform:uppercase;letter-spacing:.05em;}
+
 </style>
 </head>
 <body>
@@ -519,6 +551,40 @@
     <div id="phResults"><div class="empty"><div class="ei">📈</div>Loading price history...</div></div>
   </div>
 
+  <!-- MARGINS (operator only) -->
+  <div class="page" id="page-margins">
+
+    <!-- Top search -->
+    <div class="mg-search-wrap">
+      <span class="mg-search-icon">🔍</span>
+      <input id="mg-search" placeholder="Search all products by name..." oninput="searchMargins()" />
+    </div>
+    <div id="mg-search-results" style="display:none">
+      <div class="card" id="mg-search-list"></div>
+    </div>
+
+    <!-- Add category button -->
+    <button class="add-cat-btn" onclick="togMgAddCat()">
+      <span style="font-size:20px;line-height:1">＋</span> Add Category
+    </button>
+
+    <!-- Add category form -->
+    <div class="card" id="mg-add-cat-card" style="display:none;margin-bottom:12px">
+      <div class="ct">New category</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Category name</label><input id="mg-cat-name" placeholder="e.g. Beer, Tobacco, Snacks" /></div>
+        <div><label>Icon / Emoji</label><input id="mg-cat-icon" placeholder="🍺" maxlength="2" style="font-size:22px;text-align:center" /></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="addMgCategory()">Save category</button>
+        <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togMgAddCat()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Category blocks rendered here -->
+    <div id="mg-categories"><div class="empty"><div class="ei">⏳</div>Loading...</div></div>
+  </div>
+
   <!-- LOGS (operator only) -->
   <div class="page" id="page-logs">
     <div class="card"><div class="ct">Filter</div>
@@ -654,7 +720,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'logs',l:'📊 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'pricehistory',l:'📈 Price History'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'invoices',l:'🧾 Invoices'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
@@ -711,6 +777,7 @@ function showTab(id){
   if(id==='pricehistory')loadPriceHistory();
   if(id==='expenses')loadExpenses();
   if(id==='myhours')loadMyHours();
+  if(id==='margins')loadMargins();
 }
 
 // ---- TOAST ----
@@ -2210,6 +2277,351 @@ async function deletePriceEntry(id){
     searchPriceHistory();
   }catch(e){ toast('Error deleting'); }
 }
+// ---- MARGINS ----
+let mgCategories = [];   // [{id, name, icon, order}]
+let mgProducts   = [];   // [{id, categoryId, name, cost, sell}]
+let mgOpenCats   = {};   // track which cats are expanded
+let mgEditingProd = null; // id of product being edited inline
+
+function calcMg(cost, sell){
+  if(!cost || !sell || sell === 0) return null;
+  return ((sell - cost) / sell * 100);
+}
+function calcMarkup(cost, sell){
+  if(!cost || !sell || cost === 0) return null;
+  return ((sell - cost) / cost * 100);
+}
+function mgPill(pct){
+  if(pct === null) return '<span class="margin-pill mg-na">—</span>';
+  const cls = pct >= 30 ? 'mg-hi' : pct >= 15 ? 'mg-md' : 'mg-lo';
+  return `<span class="margin-pill ${cls}">${pct.toFixed(1)}%</span>`;
+}
+
+async function loadMargins(){
+  const el = document.getElementById('mg-categories');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+  try{
+    // Load categories
+    const catSnap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'mgCategories'),
+      window.F.orderBy('order','asc')
+    ));
+    mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Load products
+    const prodSnap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'mgProducts'),
+      window.F.orderBy('name','asc')
+    ));
+    mgProducts = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    renderMgCategories();
+  }catch(e){
+    el.innerHTML=`<div class="empty"><div class="ei">⚠️</div>Error loading: ${e.message}</div>`;
+  }
+}
+
+function renderMgCategories(filterText){
+  const el = document.getElementById('mg-categories');
+  if(!el) return;
+  if(!mgCategories.length){
+    el.innerHTML='<div class="empty" style="padding:32px"><div class="ei">💰</div><div style="margin-bottom:4px;font-size:14px;font-weight:500">No categories yet</div><div>Tap "+ Add Category" to create your first one</div></div>';
+    return;
+  }
+
+  let searchProds = mgProducts;
+  if(filterText) searchProds = mgProducts.filter(p=>(p.name||'').toLowerCase().includes(filterText.toLowerCase()));
+
+  el.innerHTML = mgCategories.map(cat=>{
+    const catProds = mgProducts.filter(p=>p.categoryId===cat.id);
+    let displayProds = catProds;
+    if(filterText) displayProds = catProds.filter(p=>(p.name||'').toLowerCase().includes(filterText.toLowerCase()));
+    if(filterText && !displayProds.length) return ''; // hide category if no matches
+
+    const avgMg = catProds.length ? catProds.reduce((s,p)=>{const m=calcMg(p.cost,p.sell);return s+(m||0);},0)/catProds.filter(p=>calcMg(p.cost,p.sell)!==null).length||0 : 0;
+    const isOpen = mgOpenCats[cat.id] !== false; // default open
+
+    const bgColors = {
+      '🍺':'#fef3c7','🚬':'#f5f3ff','🥤':'#e0f2fe','🍬':'#fce7f3','🥛':'#f0fdf4',
+      '🧴':'#fff7ed','⛽':'#f0f9ff','🍕':'#fef9c3','🔧':'#f8fafc','📦':'#f5f5f4'
+    };
+    const catColor = bgColors[cat.icon] || 'var(--blue-light)';
+
+    return `<div class="cat-block" id="catblock-${cat.id}">
+      <div class="cat-header" onclick="toggleMgCat('${cat.id}')">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <div class="cat-icon" style="background:${catColor}">${cat.icon||'📦'}</div>
+          <div style="min-width:0">
+            <div class="cat-title">${cat.name}</div>
+            <div class="cat-meta">${catProds.length} product${catProds.length!==1?'s':''} ${catProds.length?'· avg margin '+avgMg.toFixed(1)+'%':''}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <button onclick="event.stopPropagation();confirmDeleteMgCat('${cat.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;padding:4px;cursor:pointer">🗑</button>
+          <span class="cat-chevron ${isOpen?'open':''}">▼</span>
+        </div>
+      </div>
+
+      <div class="cat-body ${isOpen?'open':''}" id="catbody-${cat.id}">
+        ${displayProds.length ? `
+        <div class="prod-head">
+          <div>Product</div><div>Cost</div><div>Sell</div><div>Margin</div><div></div>
+        </div>
+        ${displayProds.map(p=>{
+          const mg = calcMg(p.cost, p.sell);
+          const markup = calcMarkup(p.cost, p.sell);
+          if(mgEditingProd === p.id){
+            return `<div class="prod-edit-form" id="pedit-${p.id}">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Edit: ${p.name}</div>
+              <div class="g3" style="margin-bottom:10px">
+                <div><label>Product name</label><input id="pef-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}" /></div>
+                <div><label>Purchase cost ($)</label><input type="number" step="0.01" id="pef-cost-${p.id}" value="${p.cost||''}" oninput="liveCalcMg('${p.id}')" /></div>
+                <div><label>Selling price ($)</label><input type="number" step="0.01" id="pef-sell-${p.id}" value="${p.sell||''}" oninput="liveCalcMg('${p.id}')" /></div>
+              </div>
+              <div id="pef-result-${p.id}" style="margin-bottom:10px"></div>
+              <div style="display:flex;gap:8px">
+                <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="saveMgProduct('${p.id}','${cat.id}')">Save</button>
+                <button class="btn bsecondary" style="padding:9px;font-size:13px" onclick="cancelMgEdit()">Cancel</button>
+                <button onclick="deleteMgProduct('${p.id}')" style="padding:9px 13px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1;border-radius:var(--r);font-size:13px;cursor:pointer">Delete</button>
+              </div>
+            </div>`;
+          }
+          return `<div class="prod-row">
+            <div class="prod-name">${p.name||'Unnamed'}</div>
+            <div class="prod-price">$${(p.cost||0).toFixed(2)}</div>
+            <div class="prod-price">$${(p.sell||0).toFixed(2)}</div>
+            <div>${mgPill(mg)}</div>
+            <div><button onclick="openMgEdit('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--blue)">✏️</button></div>
+          </div>`;
+        }).join('')}` : `<div class="mg-empty-cat">No products yet — add one below</div>`}
+
+        <!-- Add product inline form -->
+        <div class="add-prod-row">
+          <div id="addprod-form-${cat.id}" style="display:none;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">New product in ${cat.name}</div>
+            <div class="g3" style="margin-bottom:8px">
+              <div><label>Product name</label><input id="np-name-${cat.id}" placeholder="e.g. Budweiser 6-pack" /></div>
+              <div><label>Purchase cost ($)</label><input type="number" step="0.01" id="np-cost-${cat.id}" placeholder="0.00" oninput="liveCalcNew('${cat.id}')" /></div>
+              <div><label>Selling price ($)</label><input type="number" step="0.01" id="np-sell-${cat.id}" placeholder="0.00" oninput="liveCalcNew('${cat.id}')" /></div>
+            </div>
+            <div id="np-result-${cat.id}" style="margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="addMgProduct('${cat.id}')">Add product</button>
+              <button class="btn bsecondary" style="padding:9px;font-size:13px" onclick="togAddProdForm('${cat.id}')">Cancel</button>
+            </div>
+          </div>
+          <button class="bsm" onclick="togAddProdForm('${cat.id}')" id="addprod-btn-${cat.id}" style="width:100%;text-align:center;padding:9px;font-size:13px;border-radius:var(--r)">＋ Add product</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Re-init live calc for any open edit forms
+  if(mgEditingProd) setTimeout(()=>liveCalcMg(mgEditingProd), 50);
+}
+
+function toggleMgCat(id){
+  mgOpenCats[id] = !( mgOpenCats[id] !== false );
+  const body = document.getElementById('catbody-'+id);
+  const chev = document.querySelector(`#catblock-${id} .cat-chevron`);
+  if(body) body.classList.toggle('open', mgOpenCats[id] !== false);
+  if(chev) chev.classList.toggle('open', mgOpenCats[id] !== false);
+}
+
+function togMgAddCat(){
+  const card = document.getElementById('mg-add-cat-card');
+  const isOpen = card.style.display !== 'none';
+  card.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) setTimeout(()=>document.getElementById('mg-cat-name')?.focus(), 100);
+}
+
+async function addMgCategory(){
+  const name = document.getElementById('mg-cat-name')?.value.trim();
+  const icon = document.getElementById('mg-cat-icon')?.value.trim() || '📦';
+  if(!name){ toast('Enter a category name'); return; }
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'mgCategories'),{
+      name, icon,
+      order: mgCategories.length,
+      createdAt: new Date().toISOString()
+    });
+    document.getElementById('mg-cat-name').value='';
+    document.getElementById('mg-cat-icon').value='';
+    document.getElementById('mg-add-cat-card').style.display='none';
+    toast('✓ Category added');
+    loadMargins();
+  }catch(e){ toast('Error adding category'); }
+}
+
+async function confirmDeleteMgCat(id){
+  const cat = mgCategories.find(c=>c.id===id);
+  const prodCount = mgProducts.filter(p=>p.categoryId===id).length;
+  const msg = prodCount
+    ? `Delete "${cat?.name}" and its ${prodCount} product${prodCount!==1?'s':''}? This cannot be undone.`
+    : `Delete category "${cat?.name}"?`;
+  if(!confirm(msg)) return;
+  try{
+    // Delete all products in category
+    const toDelete = mgProducts.filter(p=>p.categoryId===id);
+    for(const p of toDelete){
+      await window.F.deleteDoc(window.F.doc(window.db,'mgProducts',p.id));
+    }
+    await window.F.deleteDoc(window.F.doc(window.db,'mgCategories',id));
+    toast('Category deleted');
+    loadMargins();
+  }catch(e){ toast('Error deleting category'); }
+}
+
+function togAddProdForm(catId){
+  const form = document.getElementById('addprod-form-'+catId);
+  const btn  = document.getElementById('addprod-btn-'+catId);
+  if(!form) return;
+  const isOpen = form.style.display !== 'none';
+  form.style.display = isOpen ? 'none' : 'block';
+  if(btn) btn.style.display = isOpen ? 'block' : 'none';
+  if(!isOpen) setTimeout(()=>document.getElementById('np-name-'+catId)?.focus(), 80);
+}
+
+function liveCalcNew(catId){
+  const cost = parseFloat(document.getElementById('np-cost-'+catId)?.value)||0;
+  const sell = parseFloat(document.getElementById('np-sell-'+catId)?.value)||0;
+  renderMgCalcResult('np-result-'+catId, cost, sell);
+}
+
+function liveCalcMg(prodId){
+  const cost = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
+  const sell = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
+  renderMgCalcResult('pef-result-'+prodId, cost, sell);
+}
+
+function renderMgCalcResult(elId, cost, sell){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!cost || !sell){ el.innerHTML=''; return; }
+  const mg = calcMg(cost, sell);
+  const markup = calcMarkup(cost, sell);
+  const profit = sell - cost;
+  const mgCls = mg >= 30 ? 'bgrn' : mg >= 15 ? 'bamb' : 'bred';
+  el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:90px">
+      <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Gross Margin</div>
+      <div style="font-size:20px;font-weight:800;color:${mg>=30?'var(--green)':mg>=15?'var(--amber)':'var(--red)'}">${mg.toFixed(1)}%</div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:90px">
+      <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Markup</div>
+      <div style="font-size:20px;font-weight:800;color:var(--blue)">${markup.toFixed(1)}%</div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:90px">
+      <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Profit / unit</div>
+      <div style="font-size:20px;font-weight:800;color:var(--green)">$${profit.toFixed(2)}</div>
+    </div>
+  </div>`;
+}
+
+async function addMgProduct(catId){
+  const name = document.getElementById('np-name-'+catId)?.value.trim();
+  const cost = parseFloat(document.getElementById('np-cost-'+catId)?.value)||0;
+  const sell = parseFloat(document.getElementById('np-sell-'+catId)?.value)||0;
+  if(!name){ toast('Enter a product name'); return; }
+  if(!cost || !sell){ toast('Enter cost and sell price'); return; }
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
+      categoryId: catId,
+      name, cost, sell,
+      margin: calcMg(cost,sell),
+      markup: calcMarkup(cost,sell),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    toast('✓ Product added');
+    loadMargins();
+  }catch(e){ toast('Error adding product'); }
+}
+
+function openMgEdit(prodId){
+  mgEditingProd = prodId;
+  // Cancel any open add-forms first
+  document.querySelectorAll('[id^="addprod-form-"]').forEach(f=>{ f.style.display='none'; });
+  document.querySelectorAll('[id^="addprod-btn-"]').forEach(b=>{ b.style.display='block'; });
+  renderMgCategories(document.getElementById('mg-search')?.value||'');
+  setTimeout(()=>{ liveCalcMg(prodId); document.getElementById('pef-name-'+prodId)?.focus(); }, 80);
+}
+
+function cancelMgEdit(){
+  mgEditingProd = null;
+  renderMgCategories(document.getElementById('mg-search')?.value||'');
+}
+
+async function saveMgProduct(prodId, catId){
+  const name = document.getElementById('pef-name-'+prodId)?.value.trim();
+  const cost = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
+  const sell = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
+  if(!name){ toast('Enter a product name'); return; }
+  if(!cost || !sell){ toast('Enter cost and sell price'); return; }
+  try{
+    await window.F.updateDoc(window.F.doc(window.db,'mgProducts',prodId),{
+      name, cost, sell,
+      margin: calcMg(cost,sell),
+      markup: calcMarkup(cost,sell),
+      updatedAt: new Date().toISOString()
+    });
+    mgEditingProd = null;
+    toast('✓ Product updated');
+    loadMargins();
+  }catch(e){ toast('Error saving product'); }
+}
+
+async function deleteMgProduct(prodId){
+  if(!confirm('Delete this product?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'mgProducts',prodId));
+    mgEditingProd = null;
+    toast('Product deleted');
+    loadMargins();
+  }catch(e){ toast('Error deleting product'); }
+}
+
+function searchMargins(){
+  const q = (document.getElementById('mg-search')?.value||'').trim();
+  const srWrap = document.getElementById('mg-search-results');
+  const srList = document.getElementById('mg-search-list');
+
+  if(!q){
+    srWrap.style.display = 'none';
+    renderMgCategories('');
+    return;
+  }
+
+  // Full category re-render with filter
+  renderMgCategories(q);
+
+  // Also show flat search results panel
+  const matches = mgProducts.filter(p=>(p.name||'').toLowerCase().includes(q.toLowerCase()));
+  if(!matches.length){
+    srWrap.style.display = 'block';
+    srList.innerHTML = '<div class="empty" style="padding:16px">No products match</div>';
+    return;
+  }
+  srWrap.style.display = 'block';
+  srList.innerHTML = `<div class="ct" style="margin-bottom:10px">${matches.length} result${matches.length!==1?'s':''} for "${q}"</div>` +
+    `<div class="prod-head"><div>Product</div><div>Cost</div><div>Sell</div><div>Margin</div><div></div></div>` +
+    matches.map(p=>{
+      const cat = mgCategories.find(c=>c.id===p.categoryId);
+      const mg = calcMg(p.cost, p.sell);
+      return `<div class="prod-row">
+        <div>
+          <div class="prod-name">${p.name}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${cat?.icon||'📦'} ${cat?.name||'Uncategorized'}</div>
+        </div>
+        <div class="prod-price">$${(p.cost||0).toFixed(2)}</div>
+        <div class="prod-price">$${(p.sell||0).toFixed(2)}</div>
+        <div>${mgPill(mg)}</div>
+        <div><button onclick="openMgEdit('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--blue)">✏️</button></div>
+      </div>`;
+    }).join('');
+}
+
 window.addEventListener('fbReady',()=>{});
 </script>
 </body>
