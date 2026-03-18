@@ -140,74 +140,7 @@
 </style>
 </head>
 <body>
-<script>
-// PIN constants and functions loaded immediately before Firebase
-const OP_PIN='1024', LEAD_PIN='1111';
-let pinBuf='', opPinBuf='';
 
-function switchLTab(t,el){
-  document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('opLogin').style.display=t==='op'?'block':'none';
-  document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
-}
-
-// Operator PIN
-function opPk(d){
-  if(opPinBuf.length>=4)return;
-  opPinBuf+=d; updOpDots();
-  if(opPinBuf.length===4)setTimeout(chkOpPin,200);
-}
-function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
-function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
-function chkOpPin(){
-  if(opPinBuf===OP_PIN){
-    // Keep retrying until loginOK is available
-    function tryLogin(attempts){
-      if(typeof loginOK==='function'){
-        loginOK({name:'Sukh',role:'operator'});
-      } else if(attempts < 20){
-        setTimeout(()=>tryLogin(attempts+1), 100);
-      } else {
-        document.getElementById('opErr').textContent='App still loading, try again';
-        opPinBuf=''; updOpDots();
-      }
-    }
-    tryLogin(0);
-  } else {
-    document.getElementById('opErr').textContent='Incorrect PIN';
-    opPinBuf='';updOpDots();
-    setTimeout(()=>document.getElementById('opErr').textContent='',2500);
-  }
-}
-function doOpLogin(){}
-
-// Employee PIN
-function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
-function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
-function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
-function chkPin(){
-  const n=document.getElementById('empName').value.trim();
-  if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
-  if(pinBuf===LEAD_PIN){
-    function tryEmpLogin(attempts){
-      if(typeof loginOK==='function'){
-        loginOK({name:n,role:'lead'});
-      } else if(attempts < 20){
-        setTimeout(()=>tryEmpLogin(attempts+1), 100);
-      } else {
-        document.getElementById('pinErr').textContent='App still loading, try again';
-        pinBuf=''; updDots();
-      }
-    }
-    tryEmpLogin(0);
-  } else {
-    document.getElementById('pinErr').textContent='Incorrect PIN';
-    pinBuf='';updDots();
-    setTimeout(()=>document.getElementById('pinErr').textContent='',2500);
-  }
-}
-</script>
 
 <!-- LOGIN -->
 <div id="loginScreen">
@@ -634,7 +567,76 @@ window.F={collection,addDoc,getDocs,deleteDoc,updateDoc,query,orderBy,limit,wher
 window.dispatchEvent(new Event('fbReady'));
 </script>
 
+
+
+<!-- PRICE HISTORY EDIT MODAL -->
+<div id="phEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card);border-radius:var(--r);padding:20px;width:100%;max-width:400px">
+    <div class="ct" style="margin-bottom:16px">Edit price entry</div>
+    <input type="hidden" id="phEditId" />
+    <div style="margin-bottom:10px"><label>Product name</label><input id="phEditName" /></div>
+    <div style="margin-bottom:10px"><label>Vendor</label><input id="phEditVendor" /></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label>Unit cost ($)</label><input type="number" id="phEditCost" step="0.01" /></div>
+      <div><label>Qty</label><input type="number" id="phEditQty" /></div>
+    </div>
+    <div class="g2" style="margin-bottom:16px">
+      <div><label>Unit</label><input id="phEditUnit" placeholder="each/case/pack" /></div>
+      <div><label>Date</label><input type="date" id="phEditDate" /></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn" style="flex:1;padding:11px;background:var(--bg2)" onclick="document.getElementById('phEditModal').style.display='none'">Cancel</button>
+      <button class="btn bprimary" style="flex:1;padding:11px" onclick="savePriceEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
+const OP_PIN='1024', LEAD_PIN='1111';
+let pinBuf='', opPinBuf='';
+
+function switchLTab(t,el){
+  document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('opLogin').style.display=t==='op'?'block':'none';
+  document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
+}
+
+// Operator PIN
+function opPk(d){
+  if(opPinBuf.length>=4)return;
+  opPinBuf+=d; updOpDots();
+  if(opPinBuf.length===4)setTimeout(chkOpPin,200);
+}
+function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
+function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
+function chkOpPin(){
+  if(opPinBuf===OP_PIN){
+    loginOK({name:'Sukh',role:'operator'});
+  } else {
+    document.getElementById('opErr').textContent='Incorrect PIN';
+    opPinBuf='';updOpDots();
+    setTimeout(()=>document.getElementById('opErr').textContent='',2500);
+  }
+}
+function doOpLogin(){}
+
+// Employee PIN
+function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
+function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
+function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
+function chkPin(){
+  const n=document.getElementById('empName').value.trim();
+  if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
+  if(pinBuf===LEAD_PIN){
+    loginOK({name:n,role:'lead'});
+  } else {
+    document.getElementById('pinErr').textContent='Incorrect PIN';
+    pinBuf='';updDots();
+    setTimeout(()=>document.getElementById('pinErr').textContent='',2500);
+  }
+}
+
 let CU=null,games=[],invFD=null,invAT='',invFN='';
 
 function localDate(d){
@@ -2208,27 +2210,5 @@ async function deletePriceEntry(id){
 }
 window.addEventListener('fbReady',()=>{});
 </script>
-
-<!-- PRICE HISTORY EDIT MODAL -->
-<div id="phEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;display:none;align-items:center;justify-content:center;padding:16px">
-  <div style="background:var(--card);border-radius:var(--r);padding:20px;width:100%;max-width:400px">
-    <div class="ct" style="margin-bottom:16px">Edit price entry</div>
-    <input type="hidden" id="phEditId" />
-    <div style="margin-bottom:10px"><label>Product name</label><input id="phEditName" /></div>
-    <div style="margin-bottom:10px"><label>Vendor</label><input id="phEditVendor" /></div>
-    <div class="g2" style="margin-bottom:10px">
-      <div><label>Unit cost ($)</label><input type="number" id="phEditCost" step="0.01" /></div>
-      <div><label>Qty</label><input type="number" id="phEditQty" /></div>
-    </div>
-    <div class="g2" style="margin-bottom:16px">
-      <div><label>Unit</label><input id="phEditUnit" placeholder="each/case/pack" /></div>
-      <div><label>Date</label><input type="date" id="phEditDate" /></div>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button class="btn" style="flex:1;padding:11px;background:var(--bg2)" onclick="document.getElementById('phEditModal').style.display='none'">Cancel</button>
-      <button class="btn bprimary" style="flex:1;padding:11px" onclick="savePriceEdit()">Save changes</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
