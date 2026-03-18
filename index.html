@@ -169,6 +169,48 @@
   .mg-empty-cat{padding:20px 16px;text-align:center;color:var(--text3);font-size:13px;}
   .search-result-tag{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--blue-light);color:var(--blue);text-transform:uppercase;letter-spacing:.05em;}
 
+  /* CAMERA SCANNER */
+  #scannerModal{position:fixed;inset:0;background:#000;z-index:500;display:none;flex-direction:column;}
+  #scannerModal.open{display:flex;}
+  #scannerVideo{width:100%;flex:1;object-fit:cover;display:block;}
+  .scanner-overlay{position:absolute;inset:0;pointer-events:none;}
+  /* Dark vignette around edges */
+  .scanner-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 75% 65% at 50% 48%, transparent 55%, rgba(0,0,0,0.72) 100%);}
+  /* Corner bracket guides */
+  .scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);width:82%;max-width:340px;aspect-ratio:3/4;}
+  .scan-corner{position:absolute;width:26px;height:26px;border-color:#fff;border-style:solid;}
+  .scan-corner.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+  .scan-corner.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+  .scan-corner.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+  .scan-corner.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+  /* Scanning laser line animation */
+  .scan-laser{position:absolute;left:3px;right:3px;height:2px;background:linear-gradient(90deg,transparent,rgba(26,92,168,.9),rgba(99,179,255,1),rgba(26,92,168,.9),transparent);border-radius:1px;box-shadow:0 0 8px 2px rgba(99,179,255,.6);animation:laserSweep 2s ease-in-out infinite;}
+  @keyframes laserSweep{0%{top:8%}50%{top:88%}100%{top:8%}}
+  .scanner-bar{background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:16px 20px 32px;display:flex;flex-direction:column;gap:14px;flex-shrink:0;}
+  .scanner-hint{color:rgba(255,255,255,.65);font-size:12px;text-align:center;line-height:1.5;}
+  .scanner-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .scan-close-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;}
+  .scan-shutter{width:68px;height:68px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(255,255,255,.18);transition:transform .1s;}
+  .scan-shutter:active{transform:scale(.92);}
+  .scan-shutter-inner{width:52px;height:52px;border-radius:50%;background:#fff;border:2px solid #ddd;}
+  .scan-done-btn{min-width:44px;height:44px;border-radius:22px;padding:0 16px;background:var(--blue);border:none;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;}
+  .scan-done-btn:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.4);}
+  .scan-captures{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+  .scan-captures::-webkit-scrollbar{display:none;}
+  .scan-thumb-wrap{position:relative;flex-shrink:0;}
+  .scan-thumb{width:52px;height:68px;object-fit:cover;border-radius:6px;border:2px solid rgba(255,255,255,.4);display:block;}
+  .scan-thumb-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;border:none;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
+  .scan-page-num{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;}
+  /* Flash animation on capture */
+  .scan-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;border-radius:0;}
+  @keyframes flashFade{0%{opacity:.85}100%{opacity:0}}
+  .scan-flash.flash{animation:flashFade .25s ease-out forwards;}
+  /* Capture badge on uzone */
+  .inv-mode-tabs{display:flex;gap:8px;margin-bottom:14px;}
+  .inv-mode-tab{flex:1;padding:10px;border-radius:var(--r);font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--bg2);color:var(--text2);text-align:center;cursor:pointer;}
+  .inv-mode-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .scan-count-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;margin-left:6px;}
+
 </style>
 </head>
 <body>
@@ -276,16 +318,46 @@
     </div>
     <div class="card">
       <div class="ct">End-of-shift photos</div>
-      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue)">
-        Take photos of your register tape, cash drawer, or any receipts. Claude will read them and fill in the numbers automatically.
+      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue);line-height:1.5">
+        📐 Use the scanner for crisp, full-res captures — Claude reads register tapes and cash drawer amounts automatically.
       </div>
-      <div class="uzone" onclick="document.getElementById('shiftPhotos').click()" style="padding:20px">
-        <div style="font-size:28px;margin-bottom:6px">📸</div>
-        <div style="font-size:14px;color:var(--text2)" id="shiftPhotoLabel">Tap to add photos (optional)</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">Register tape, cash drawer, POS screen</div>
+
+      <!-- Mode tabs -->
+      <div class="inv-mode-tabs" style="margin-bottom:12px">
+        <div class="inv-mode-tab active" id="shift-tab-scan"   onclick="setShiftMode('scan')">📷 Scan</div>
+        <div class="inv-mode-tab"        id="shift-tab-upload" onclick="setShiftMode('upload')">🗂 Upload</div>
       </div>
-      <input type="file" id="shiftPhotos" accept="image/*" multiple style="display:none" onchange="handleShiftPhotos(this)" />
-      <div id="shiftPhotoScanMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>Claude is reading your photos and filling in numbers...</div>
+
+      <!-- SCAN MODE -->
+      <div id="shift-scan-mode">
+        <div id="shift-captures-wrap" style="display:none;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px" id="shift-captures-label">0 photos scanned</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="shift-captures-thumbs"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bsecondary" style="flex:1;padding:13px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openScanner('shift')">
+            <span style="font-size:20px">📷</span>
+            <span id="shift-open-scanner-label">Open scanner</span>
+          </button>
+          <button id="shift-send-btn" class="btn bprimary" style="flex:1;padding:13px;font-size:14px;display:none" onclick="sendShiftCaptures()">
+            Auto-fill numbers →
+          </button>
+        </div>
+      </div>
+
+      <!-- UPLOAD MODE (fallback) -->
+      <div id="shift-upload-mode" style="display:none">
+        <div class="uzone" onclick="document.getElementById('shiftPhotos').click()" style="padding:20px">
+          <div style="font-size:28px;margin-bottom:6px">📸</div>
+          <div style="font-size:14px;color:var(--text2)" id="shiftPhotoLabel">Tap to add photos (optional)</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Register tape, cash drawer, POS screen</div>
+        </div>
+        <input type="file" id="shiftPhotos" accept="image/*" multiple style="display:none" onchange="handleShiftPhotos(this)" />
+      </div>
+
+      <div id="shiftPhotoScanMsg" style="display:none;margin-top:10px" class="auto-scanning">
+        <span class="spinner" style="border-top-color:var(--amber)"></span>Claude is reading your photos and filling in numbers...
+      </div>
     </div>
     <button class="btn bprimary" id="dailyBtn" onclick="subDaily()">Submit shift report</button>
   </div>
@@ -386,18 +458,51 @@
 
   <!-- INVOICES -->
   <div class="page" id="page-invoices">
-    <div class="card"><div class="ct">Upload invoice</div>
-      <div class="uzone" onclick="document.getElementById('invFile').click()">
-        <div style="font-size:32px;margin-bottom:8px">🧾</div>
-        <div style="font-size:14px;color:var(--text2)" id="invFName">Tap to upload — multiple photos supported</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">Select all pages at once — AI reads them together</div>
+    <div class="card">
+      <div class="ct">Add invoice</div>
+
+      <!-- Mode tabs -->
+      <div class="inv-mode-tabs">
+        <div class="inv-mode-tab active" id="inv-tab-scan" onclick="setInvMode('scan')">📷 Scan with camera</div>
+        <div class="inv-mode-tab" id="inv-tab-upload" onclick="setInvMode('upload')">🗂 Upload photo</div>
       </div>
-      <input type="file" id="invFile" accept="image/*,application/pdf" multiple style="display:none" onchange="handleInv(this)" />
-      <div id="invPhotoPreview" style="display:none;margin-top:10px;display:none">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="invPhotoCount"></div>
-        <div id="invPhotoThumbs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+
+      <!-- SCAN MODE -->
+      <div id="inv-scan-mode">
+        <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue);line-height:1.5">
+          📐 Scanner captures at full resolution so Claude reads every line clearly. Scan each page separately — they'll be sent together.
+        </div>
+        <!-- Scanned captures preview -->
+        <div id="inv-captures-wrap" style="display:none;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px" id="inv-captures-label">0 pages scanned</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="inv-captures-thumbs"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn bsecondary" style="flex:1;padding:13px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openScanner()">
+            <span style="font-size:20px">📷</span>
+            <span id="inv-open-scanner-label">Open scanner</span>
+          </button>
+          <button id="inv-send-btn" class="btn bprimary" style="flex:1;padding:13px;font-size:14px;display:none" onclick="sendCapturedInvoice()">
+            Analyze pages →
+          </button>
+        </div>
       </div>
-      <div id="autoScanMsg" style="display:none" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>AI is reading all invoice pages...</div>
+
+      <!-- UPLOAD MODE -->
+      <div id="inv-upload-mode" style="display:none">
+        <div class="uzone" onclick="document.getElementById('invFile').click()">
+          <div style="font-size:32px;margin-bottom:8px">🧾</div>
+          <div style="font-size:14px;color:var(--text2)" id="invFName">Tap to upload — multiple photos supported</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Select all pages at once — AI reads them together</div>
+        </div>
+        <input type="file" id="invFile" accept="image/*,application/pdf" multiple style="display:none" onchange="handleInv(this)" />
+        <div id="invPhotoPreview" style="display:none;margin-top:10px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="invPhotoCount"></div>
+          <div id="invPhotoThumbs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+
+      <div id="autoScanMsg" style="display:none;margin-top:10px" class="auto-scanning"><span class="spinner" style="border-top-color:var(--amber)"></span>AI is reading all invoice pages...</div>
     </div>
     <div id="invResult" style="display:none">
       <div class="card">
@@ -594,6 +699,65 @@
       </div>
     </div>
     <div class="card"><div class="ct">Entries</div><div id="logsList"><div class="empty"><div class="ei">📊</div>Loading...</div></div></div>
+  </div>
+</div>
+
+<!-- CAMERA SCANNER MODAL -->
+<div id="scannerModal">
+  <!-- Video feed -->
+  <div style="position:relative;flex:1;overflow:hidden;background:#000;">
+    <video id="scannerVideo" autoplay playsinline muted></video>
+
+    <!-- Overlay -->
+    <div class="scanner-overlay">
+      <div class="scanner-vignette"></div>
+      <!-- Corner frame -->
+      <div class="scan-frame" id="scanFrame">
+        <div class="scan-corner tl"></div>
+        <div class="scan-corner tr"></div>
+        <div class="scan-corner bl"></div>
+        <div class="scan-corner br"></div>
+        <div class="scan-laser" id="scanLaser"></div>
+      </div>
+      <!-- White flash on capture -->
+      <div class="scan-flash" id="scanFlash"></div>
+    </div>
+
+    <!-- Page counter top-left -->
+    <div id="scanPageBadge" style="position:absolute;top:14px;left:14px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;display:none;">
+      Page <span id="scanPageNum">1</span>
+    </div>
+    <!-- Hint above frame -->
+    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:rgba(255,255,255,.85);font-size:12px;padding:5px 12px;border-radius:20px;" id="scanHintTop">
+      Align invoice inside the frame
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="scanner-bar">
+    <!-- Captured thumbnails row -->
+    <div id="scanThumbRow" style="display:none">
+      <div class="scan-captures" id="scanThumbs"></div>
+    </div>
+
+    <!-- Hint text -->
+    <div class="scanner-hint" id="scanHint">Hold phone steady · tap shutter to capture · scan each page separately</div>
+
+    <!-- Actions row -->
+    <div class="scanner-actions">
+      <!-- Close -->
+      <button class="scan-close-btn" onclick="closeScanner()" title="Close">✕</button>
+
+      <!-- Shutter -->
+      <button class="scan-shutter" onclick="captureFrame()" id="shutterBtn">
+        <div class="scan-shutter-inner"></div>
+      </button>
+
+      <!-- Done / send -->
+      <button class="scan-done-btn" id="scanDoneBtn" disabled onclick="closeScannerAndSend()">
+        Done<span id="scanDoneCount" style="display:none" class="scan-count-badge">0</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1038,6 +1202,12 @@ async function subDaily(){
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
     const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
     document.getElementById('shiftPhotos').value='';
+    // Reset scanner captures
+    shiftCaptures=[];
+    const scw=document.getElementById('shift-captures-wrap');if(scw)scw.style.display='none';
+    const ssb=document.getElementById('shift-send-btn');if(ssb)ssb.style.display='none';
+    const sol=document.getElementById('shift-open-scanner-label');if(sol)sol.textContent='Open scanner';
+    const scl=document.getElementById('shift-captures-label');if(scl){scl.textContent='0 photos scanned';scl.style.color='';}
     document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
@@ -1535,6 +1705,10 @@ async function saveInv(){
     }
 
     toast('✓ Invoice saved to price history!');invFD=null;invAT='';invFN='';
+    scanCaptures=[];
+    document.getElementById('inv-captures-wrap').style.display='none';
+    document.getElementById('inv-send-btn').style.display='none';
+    document.getElementById('inv-open-scanner-label').textContent='Open scanner';
     document.getElementById('invFName').textContent='Tap to upload invoice';
     document.getElementById('invResult').style.display='none';
     document.getElementById('invFile').value='';
@@ -2620,6 +2794,306 @@ function searchMargins(){
         <div><button onclick="openMgEdit('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--blue)">✏️</button></div>
       </div>`;
     }).join('');
+}
+
+// ---- INVOICE MODE TOGGLE ----
+function setInvMode(mode){
+  document.getElementById('inv-scan-mode').style.display   = mode==='scan'   ? 'block' : 'none';
+  document.getElementById('inv-upload-mode').style.display = mode==='upload' ? 'block' : 'none';
+  document.getElementById('inv-tab-scan').classList.toggle('active',   mode==='scan');
+  document.getElementById('inv-tab-upload').classList.toggle('active', mode==='upload');
+}
+
+function setShiftMode(mode){
+  document.getElementById('shift-scan-mode').style.display   = mode==='scan'   ? 'block' : 'none';
+  document.getElementById('shift-upload-mode').style.display = mode==='upload' ? 'block' : 'none';
+  document.getElementById('shift-tab-scan').classList.toggle('active',   mode==='scan');
+  document.getElementById('shift-tab-upload').classList.toggle('active', mode==='upload');
+}
+
+// ---- CAMERA SCANNER ----
+let scanStream    = null;   // active MediaStream
+let scanCaptures  = [];     // [{b64, dataUrl}]
+let shiftCaptures = [];     // [{b64, dataUrl}] — separate bucket for shift photos
+let scanContext   = 'inv';  // 'inv' | 'shift'
+
+function openScanner(ctx){
+  ctx = ctx || 'inv';
+  scanContext = ctx;
+  if(!navigator.mediaDevices?.getUserMedia){
+    toast('Camera not available — use upload instead');
+    if(ctx==='inv') setInvMode('upload');
+    else setShiftMode('upload');
+    return;
+  }
+  document.getElementById('scannerModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Update hint based on context
+  const hint = document.getElementById('scanHintTop');
+  if(hint) hint.textContent = ctx==='shift' ? 'Aim at register tape or cash drawer' : 'Align invoice inside the frame';
+  startCamera();
+}
+
+async function startCamera(){
+  // Stop any existing stream
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+
+  const constraints = {
+    video:{
+      facingMode:{ideal:'environment'},  // rear camera
+      width: {ideal:1920},
+      height:{ideal:1080},
+      focusMode:{ideal:'continuous'}
+    }
+  };
+
+  try{
+    scanStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const vid   = document.getElementById('scannerVideo');
+    vid.srcObject = scanStream;
+    await vid.play();
+    updateScannerUI();
+  }catch(err){
+    console.error('Camera error:',err);
+    closeScanner();
+    if(err.name==='NotAllowedError'||err.name==='PermissionDeniedError'){
+      toast('Camera permission denied — use upload instead');
+    } else {
+      toast('Could not open camera — use upload instead');
+    }
+    setInvMode('upload');
+  }
+}
+
+function closeScanner(){
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+  document.getElementById('scannerModal').classList.remove('open');
+  document.body.style.overflow = '';
+  const vid = document.getElementById('scannerVideo');
+  vid.srcObject = null;
+}
+
+function closeScannerAndSend(){
+  const ctx = scanContext;
+  closeScanner();
+  if(ctx==='shift'){
+    updateShiftCapturesPreview();
+    if(shiftCaptures.length) sendShiftCaptures();
+  } else {
+    updateInvCapturesPreview();
+    if(scanCaptures.length) sendCapturedInvoice();
+  }
+}
+
+function captureFrame(){
+  const vid    = document.getElementById('scannerVideo');
+  if(!vid.videoWidth){ toast('Camera not ready yet'); return; }
+
+  const canvas  = document.createElement('canvas');
+  canvas.width  = vid.videoWidth;
+  canvas.height = vid.videoHeight;
+  const ctx     = canvas.getContext('2d');
+  ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const b64     = dataUrl.split(',')[1];
+
+  // Push into whichever context is active
+  if(scanContext === 'shift') shiftCaptures.push({b64, dataUrl});
+  else                        scanCaptures.push({b64, dataUrl});
+
+  // Flash animation
+  const flash = document.getElementById('scanFlash');
+  flash.classList.remove('flash');
+  void flash.offsetWidth;
+  flash.classList.add('flash');
+
+  updateScannerUI();
+  try{ navigator.vibrate && navigator.vibrate(40); }catch(e){}
+}
+
+function deleteScanCapture(idx){
+  if(scanContext==='shift') shiftCaptures.splice(idx,1);
+  else                      scanCaptures.splice(idx,1);
+  updateScannerUI();
+  if(scanContext==='shift') updateShiftCapturesPreview();
+  else                      updateInvCapturesPreview();
+}
+
+function updateScannerUI(){
+  const caps      = scanContext==='shift' ? shiftCaptures : scanCaptures;
+  const count     = caps.length;
+  const doneBtn   = document.getElementById('scanDoneBtn');
+  const doneCount = document.getElementById('scanDoneCount');
+  const thumbRow  = document.getElementById('scanThumbRow');
+  const thumbs    = document.getElementById('scanThumbs');
+  const badge     = document.getElementById('scanPageBadge');
+  const hint      = document.getElementById('scanHint');
+
+  doneBtn.disabled = count === 0;
+  const noun = scanContext==='shift' ? 'photo' : 'page';
+  if(count){
+    doneCount.style.display = 'inline-flex';
+    doneCount.textContent   = count;
+    badge.style.display     = 'block';
+    document.getElementById('scanPageNum').textContent = count+1;
+    hint.textContent = `${count} ${noun}${count!==1?'s':''} captured · tap shutter to add more`;
+  } else {
+    doneCount.style.display = 'none';
+    badge.style.display     = 'none';
+    hint.textContent        = 'Hold phone steady · tap shutter to capture';
+  }
+
+  if(count){
+    thumbRow.style.display='block';
+    thumbs.innerHTML = caps.map((c,i)=>`
+      <div class="scan-thumb-wrap">
+        <img src="${c.dataUrl}" class="scan-thumb" />
+        <div class="scan-page-num">${scanContext==='shift'?i+1:'p.'+(i+1)}</div>
+        <button class="scan-thumb-del" onclick="deleteScanCapture(${i})">✕</button>
+      </div>`).join('');
+  } else {
+    thumbRow.style.display='none';
+  }
+}
+
+function updateInvCapturesPreview(){
+  const wrap   = document.getElementById('inv-captures-wrap');
+  const label  = document.getElementById('inv-captures-label');
+  const thumbs = document.getElementById('inv-captures-thumbs');
+  const sendBtn= document.getElementById('inv-send-btn');
+  const openLbl= document.getElementById('inv-open-scanner-label');
+
+  if(!scanCaptures.length){
+    wrap.style.display  = 'none';
+    sendBtn.style.display = 'none';
+    openLbl.textContent = 'Open scanner';
+    return;
+  }
+
+  wrap.style.display  = 'block';
+  sendBtn.style.display = 'block';
+  label.textContent   = `${scanCaptures.length} page${scanCaptures.length!==1?'s':''} scanned — ready to analyze`;
+  openLbl.textContent = '+ Scan more pages';
+
+  thumbs.innerHTML = scanCaptures.map((c,i)=>`
+    <div style="position:relative;display:inline-block">
+      <img src="${c.dataUrl}" style="width:56px;height:74px;object-fit:cover;border-radius:6px;border:2px solid var(--border);display:block" />
+      <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;">p.${i+1}</div>
+      <button onclick="removeScanPage(${i})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+
+function removeScanPage(idx){
+  scanCaptures.splice(idx,1);
+  updateInvCapturesPreview();
+  if(!scanCaptures.length){
+    document.getElementById('inv-send-btn').style.display='none';
+    document.getElementById('inv-captures-wrap').style.display='none';
+    document.getElementById('inv-open-scanner-label').textContent='Open scanner';
+  }
+}
+
+async function sendCapturedInvoice(){
+  if(!scanCaptures.length){ toast('No pages scanned yet'); return; }
+
+  invFiles = scanCaptures.map((c,i)=>({
+    b64:  c.b64,
+    type: 'image/jpeg',
+    name: `scanned-page-${i+1}.jpg`
+  }));
+  invFN = `${scanCaptures.length} scanned page${scanCaptures.length!==1?'s':''}`;
+
+  document.getElementById('invFName') && (document.getElementById('invFName').textContent = invFN);
+  document.getElementById('inv-captures-label').textContent = `${scanCaptures.length} page${scanCaptures.length!==1?'s':''} — analyzing with AI...`;
+
+  await autoScanInvoice();
+}
+
+// ---- SHIFT CAPTURES ----
+function updateShiftCapturesPreview(){
+  const wrap    = document.getElementById('shift-captures-wrap');
+  const label   = document.getElementById('shift-captures-label');
+  const thumbs  = document.getElementById('shift-captures-thumbs');
+  const sendBtn = document.getElementById('shift-send-btn');
+  const openLbl = document.getElementById('shift-open-scanner-label');
+
+  if(!shiftCaptures.length){
+    wrap.style.display    = 'none';
+    sendBtn.style.display = 'none';
+    openLbl.textContent   = 'Open scanner';
+    return;
+  }
+
+  wrap.style.display    = 'block';
+  sendBtn.style.display = 'block';
+  label.textContent     = `${shiftCaptures.length} photo${shiftCaptures.length!==1?'s':''} scanned — ready to auto-fill`;
+  openLbl.textContent   = '+ Scan more';
+
+  thumbs.innerHTML = shiftCaptures.map((c,i)=>`
+    <div style="position:relative;display:inline-block">
+      <img src="${c.dataUrl}" style="width:56px;height:74px;object-fit:cover;border-radius:6px;border:2px solid var(--border);display:block" />
+      <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;">${i+1}</div>
+      <button onclick="removeShiftPage(${i})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+
+function removeShiftPage(idx){
+  shiftCaptures.splice(idx,1);
+  updateShiftCapturesPreview();
+}
+
+async function sendShiftCaptures(){
+  if(!shiftCaptures.length){ toast('No photos scanned yet'); return; }
+
+  const label  = document.getElementById('shift-captures-label');
+  const msgEl  = document.getElementById('shiftPhotoScanMsg');
+  const sendBtn= document.getElementById('shift-send-btn');
+
+  label.textContent    = `${shiftCaptures.length} photo${shiftCaptures.length!==1?'s':''} — Claude is reading them...`;
+  msgEl.style.display  = 'flex';
+  sendBtn.disabled     = true;
+
+  try{
+    const imgs = shiftCaptures.map(c=>({
+      type:'image',
+      source:{type:'base64', media_type:'image/jpeg', data:c.b64}
+    }));
+    imgs.push({type:'text', text:'These are end-of-shift photos from a convenience store (Robious Mart, Virginia). Please read all visible numbers and extract: 1) Total sales if visible, 2) Cash sales amount, 3) Credit/card sales amount, 4) Any lottery totals or payouts, 5) Any fuel gallon amounts. Return ONLY a JSON object like: {"totalSales":0,"cashSales":0,"creditSales":0,"lotteryTotal":0,"lotteryPayout":0,"regularGal":0,"premiumGal":0,"dieselGal":0,"notes":"any other relevant info seen"}. If a value is not visible return 0.'});
+
+    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:500, messages:[{role:'user',content:imgs}]})
+    });
+    const data  = await resp.json();
+    const raw   = data.content?.map(c=>c.text||'').join('')||'{}';
+    const vals  = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    // Fill in the daily form fields
+    if(vals.totalSales)   document.getElementById('d-tot').value   = vals.totalSales;
+    if(vals.cashSales)    document.getElementById('d-cash').value  = vals.cashSales;
+    if(vals.creditSales)  document.getElementById('d-cred').value  = vals.creditSales;
+    if(vals.lotteryTotal) document.getElementById('d-ltot').value  = vals.lotteryTotal;
+    if(vals.lotteryPayout)document.getElementById('d-lpay').value  = vals.lotteryPayout;
+    if(vals.regularGal)   document.getElementById('d-reg').value   = vals.regularGal;
+    if(vals.premiumGal)   document.getElementById('d-prem').value  = vals.premiumGal;
+    if(vals.dieselGal)    document.getElementById('d-dies').value  = vals.dieselGal;
+    calcShortOver(); updLot();
+
+    label.textContent = `✓ ${shiftCaptures.length} photo${shiftCaptures.length!==1?'s':''} scanned — numbers filled in. Review and correct if needed.`;
+    label.style.color = 'var(--green)';
+    if(vals.notes){
+      const notesEl = document.getElementById('d-notes');
+      notesEl.value = (notesEl.value+' '+vals.notes).trim();
+    }
+  }catch(e){
+    label.textContent = 'Could not read photos — please enter numbers manually';
+    label.style.color = 'var(--red)';
+  }
+
+  msgEl.style.display = 'none';
+  sendBtn.disabled    = false;
 }
 
 window.addEventListener('fbReady',()=>{});
