@@ -588,6 +588,104 @@
     <div id="myHoursContent"><div class="empty"><div class="ei">⏱</div>Loading...</div></div>
   </div>
 
+  <!-- DELIVERY LOG (all roles) -->
+  <div class="page" id="page-deliveries">
+
+    <!-- Add delivery form -->
+    <div class="card">
+      <div class="ct">Log a delivery</div>
+
+      <div class="g2" style="margin-bottom:10px">
+        <div>
+          <label>Vendor</label>
+          <div style="display:flex;gap:6px">
+            <select id="del-vendor-sel" onchange="dlVendorSel()" style="flex:1">
+              <option value="">— select vendor —</option>
+            </select>
+            <button class="bsm" onclick="togDlNewVendor()" id="dl-new-vendor-btn" style="white-space:nowrap;padding:7px 10px">+ New</button>
+          </div>
+          <input id="del-vendor-new" placeholder="New vendor name" style="display:none;margin-top:6px" />
+        </div>
+        <div><label>Date</label><input type="date" id="del-date" /></div>
+      </div>
+
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Invoice # (optional)</label><input id="del-invnum" placeholder="e.g. 004521" /></div>
+        <div><label>Total amount ($)</label><input type="number" id="del-amount" placeholder="0.00" step="0.01" /></div>
+      </div>
+
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Payment method</label>
+          <select id="del-payment">
+            <option value="check">Check</option>
+            <option value="cash">Cash</option>
+            <option value="account">On account</option>
+            <option value="credit card">Credit Card</option>
+            <option value="bank transfer">Bank Transfer</option>
+          </select>
+        </div>
+        <div><label>Status</label>
+          <select id="del-status">
+            <option value="paid">Paid</option>
+            <option value="pending">Pending / On account</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label>Items delivered (free text)</label>
+        <textarea id="del-items" rows="3" placeholder="e.g. Bud Light 24pk ×4, Miller Lite 12pk ×6, Coors Light ×3..."></textarea>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label>Notes (optional)</label>
+        <input id="del-notes" placeholder="e.g. Short by 2 cases, driver left receipt..." />
+      </div>
+
+      <button class="btn bprimary" style="padding:13px" onclick="submitDelivery()">Save delivery</button>
+    </div>
+
+    <!-- Vendor management (operator only) -->
+    <div class="card" id="dlVendorMgmtCard" style="display:none">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Vendors</div>
+        <button class="bsm" onclick="togDlVendorForm()">+ Add vendor</button>
+      </div>
+      <div id="dlVendorFormWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <div class="g2" style="margin-bottom:8px">
+          <div><label>Vendor name</label><input id="dlVendorName" placeholder="e.g. Layman Distributing" /></div>
+          <div><label>Category</label>
+            <select id="dlVendorCat">
+              <option value="beer">🍺 Beer</option>
+              <option value="tobacco">🚬 Tobacco</option>
+              <option value="beverages">🥤 Beverages</option>
+              <option value="snacks">🍿 Snacks</option>
+              <option value="dairy">🥛 Dairy</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn bprimary" style="padding:9px;font-size:13px" onclick="saveDlVendor()">Save vendor</button>
+      </div>
+      <div id="dlVendorList"><div style="font-size:12px;color:var(--text3)">No vendors yet</div></div>
+    </div>
+
+    <!-- Delivery list -->
+    <div class="card">
+      <div class="sh2" style="margin-bottom:10px">
+        <div class="ct" style="margin:0">Delivery history</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="month" id="dlMonth" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto" />
+          <select id="dlVendorFilter" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto">
+            <option value="all">All vendors</option>
+          </select>
+        </div>
+      </div>
+      <div id="dlMTDSummary" style="margin-bottom:12px"></div>
+      <div id="dlList"><div class="empty"><div class="ei">🚚</div>No deliveries logged yet</div></div>
+    </div>
+  </div>
+
   <!-- EXPENSES (all roles) -->
   <div class="page" id="page-expenses">
     <div class="card">
@@ -921,9 +1019,9 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'expenses',l:'💸 Expenses'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
 
 // ---- LOGIN ----
@@ -938,6 +1036,7 @@ function loginOK(u){
   document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
+  const delDate=document.getElementById('del-date');if(delDate)delDate.value=localDate();
   try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
@@ -976,6 +1075,7 @@ function showTab(id){
   if(id==='compliance')checkComp();
   if(id==='employees')loadEmployees();
   if(id==='expenses')loadExpenses();
+  if(id==='deliveries')initDeliveries();
   if(id==='myhours')loadMyHours();
   if(id==='margins')loadMargins();
 }
@@ -1042,8 +1142,19 @@ async function loadDashboard(){
     const expSnap=await getDocs(query(collection(window.db,'expenses'),orderBy('timestamp','desc'),limit(200)));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
-    const expByCategory={};
-    mtdExp.forEach(x=>{ expByCategory[x.category]=(expByCategory[x.category]||0)+(x.amount||0); });
+
+    // Deliveries for selected month
+    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('timestamp','desc'),limit(200)));
+    const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
+    const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    const dlByVendor={};
+    mtdDl.forEach(x=>{
+      const v=x.vendor||'Unknown';
+      if(!dlByVendor[v]) dlByVendor[v]={name:v,total:0,count:0,pending:0};
+      dlByVendor[v].total+=parseFloat(x.amount)||0;
+      dlByVendor[v].count++;
+      if(x.status==='pending') dlByVendor[v].pending+=parseFloat(x.amount)||0;
+    });
 
     // Scratch-off MTD + activations
     const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(60)));
@@ -1144,6 +1255,35 @@ async function loadDashboard(){
             <div style="font-size:22px;font-weight:800;color:${mtdSales-mtdExpTotal>=0?'var(--green)':'var(--red)'}">$${(mtdSales-mtdExpTotal).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
           </div>
         </div>
+      </div>
+
+      <!-- Deliveries -->
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">🚚 Deliveries — ${monthName}</span>
+        <span class="dash-section-link" onclick="showTab('deliveries')" style="cursor:pointer">View all →</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
+          <div style="padding:14px 16px;border-right:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total deliveries</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)">$${mtdDlTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${mtdDl.length} delivery log${mtdDl.length!==1?'s':''}</div>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Pending / on account</div>
+            <div style="font-size:22px;font-weight:800;color:var(--amber)">$${Object.values(dlByVendor).reduce((s,v)=>s+v.pending,0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${mtdDl.filter(x=>x.status==='pending').length} unpaid</div>
+          </div>
+        </div>
+        ${Object.values(dlByVendor).length ? Object.values(dlByVendor).sort((a,b)=>b.total-a.total).map(v=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);gap:8px">
+            <div>
+              <div style="font-size:13px;font-weight:600">${v.name}</div>
+              <div style="font-size:11px;color:var(--text3)">${v.count} delivery${v.count!==1?'s':''}${v.pending>0?` · <span style="color:var(--amber)">$${v.pending.toFixed(2)} pending</span>`:''}</div>
+            </div>
+            <div style="font-size:15px;font-weight:700">$${v.total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          </div>`).join('')
+        : `<div class="empty" style="padding:14px">No deliveries logged in ${monthName}</div>`}
       </div>
 
       <!-- Fuel breakdown -->
@@ -3239,6 +3379,233 @@ async function deleteActivation(id){
   }catch(e){ toast('Error deleting'); }
 }
 
+
+// ---- DELIVERY LOG ----
+let dlVendors = [];
+
+async function initDeliveries(){
+  // Set default month
+  const dm = document.getElementById('dlMonth');
+  if(dm && !dm.value) dm.value = new Date().toISOString().slice(0,7);
+  // Show vendor management card for operators
+  const mgmt = document.getElementById('dlVendorMgmtCard');
+  if(mgmt && CU?.role==='operator') mgmt.style.display='block';
+  await loadDlVendors();
+  loadDeliveries();
+}
+
+async function loadDlVendors(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'dlVendors'),
+      window.F.orderBy('name','asc')
+    ));
+    dlVendors = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderDlVendorList();
+    populateDlVendorDropdowns();
+  }catch(e){ console.error('loadDlVendors',e); }
+}
+
+function renderDlVendorList(){
+  const el = document.getElementById('dlVendorList');
+  if(!el) return;
+  if(!dlVendors.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3)">No vendors yet — add one above</div>'; return; }
+  const catIcons={beer:'🍺',tobacco:'🚬',beverages:'🥤',snacks:'🍿',dairy:'🥛',other:'📦'};
+  el.innerHTML = dlVendors.map(v=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span>${catIcons[v.category]||'📦'} <strong>${v.name}</strong></span>
+      <button onclick="deleteDlVendor('${v.id}')" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer">Delete</button>
+    </div>`).join('');
+}
+
+function populateDlVendorDropdowns(){
+  const sel = document.getElementById('del-vendor-sel');
+  if(sel){
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— select vendor —</option>' +
+      dlVendors.map(v=>`<option value="${v.name}">${v.name}</option>`).join('');
+    if(cur) sel.value = cur;
+  }
+  const filt = document.getElementById('dlVendorFilter');
+  if(filt){
+    const existing = Array.from(filt.options).map(o=>o.value);
+    dlVendors.forEach(v=>{ if(!existing.includes(v.name)){ const o=document.createElement('option'); o.value=v.name; o.textContent=v.name; filt.appendChild(o); } });
+  }
+}
+
+function togDlVendorForm(){
+  const w = document.getElementById('dlVendorFormWrap');
+  w.style.display = w.style.display==='none' ? 'block' : 'none';
+}
+
+async function saveDlVendor(){
+  const name = document.getElementById('dlVendorName')?.value.trim();
+  const cat  = document.getElementById('dlVendorCat')?.value||'other';
+  if(!name){ toast('Enter vendor name'); return; }
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'dlVendors'),{ name, category:cat, createdAt:new Date().toISOString() });
+    document.getElementById('dlVendorName').value='';
+    document.getElementById('dlVendorFormWrap').style.display='none';
+    toast('✓ Vendor added');
+    loadDlVendors();
+  }catch(e){ toast('Error saving vendor'); }
+}
+
+async function deleteDlVendor(id){
+  if(!confirm('Delete this vendor?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'dlVendors',id));
+    toast('Vendor deleted');
+    loadDlVendors();
+  }catch(e){ toast('Error deleting vendor'); }
+}
+
+function dlVendorSel(){
+  // If a vendor is selected, hide the new vendor input
+  const val = document.getElementById('del-vendor-sel')?.value;
+  const newInp = document.getElementById('del-vendor-new');
+  if(newInp) newInp.style.display = val ? 'none' : 'none';
+}
+
+function togDlNewVendor(){
+  const newInp = document.getElementById('del-vendor-new');
+  const sel    = document.getElementById('del-vendor-sel');
+  if(!newInp) return;
+  const open = newInp.style.display !== 'none';
+  newInp.style.display = open ? 'none' : 'block';
+  if(!open){ sel.value=''; setTimeout(()=>newInp.focus(),60); }
+  else{ newInp.value=''; }
+}
+
+async function submitDelivery(){
+  // Vendor: prefer dropdown, fall back to new vendor input
+  const selVendor = document.getElementById('del-vendor-sel')?.value;
+  const newVendor = document.getElementById('del-vendor-new')?.value.trim();
+  const vendor    = selVendor || newVendor;
+  if(!vendor){ toast('Select or enter a vendor'); return; }
+
+  const amount = parseFloat(document.getElementById('del-amount')?.value)||0;
+  const date   = document.getElementById('del-date')?.value || localDate();
+  if(!amount){ toast('Enter a total amount'); return; }
+
+  const btn = document.querySelector('#page-deliveries .bprimary');
+  if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
+
+  try{
+    // Auto-save new vendor if typed
+    if(newVendor && !selVendor){
+      const exists = dlVendors.find(v=>v.name.toLowerCase()===newVendor.toLowerCase());
+      if(!exists){
+        await window.F.addDoc(window.F.collection(window.db,'dlVendors'),{ name:newVendor, category:'other', createdAt:new Date().toISOString() });
+        await loadDlVendors();
+      }
+    }
+
+    await window.F.addDoc(window.F.collection(window.db,'deliveries'),{
+      vendor,
+      date,
+      invoiceNumber: document.getElementById('del-invnum')?.value.trim()||'',
+      amount,
+      payment: document.getElementById('del-payment')?.value||'check',
+      status:  document.getElementById('del-status')?.value||'paid',
+      items:   document.getElementById('del-items')?.value.trim()||'',
+      notes:   document.getElementById('del-notes')?.value.trim()||'',
+      employee: CU.name,
+      timestamp: window.F.serverTimestamp()
+    });
+
+    toast('✓ Delivery logged!');
+    // Reset form
+    ['del-invnum','del-amount','del-items','del-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('del-vendor-sel').value='';
+    const ni=document.getElementById('del-vendor-new'); if(ni){ni.value='';ni.style.display='none';}
+    document.getElementById('del-date').value=localDate();
+    loadDeliveries();
+  }catch(e){ toast('Error saving delivery'); console.error(e); }
+
+  if(btn){ btn.innerHTML='Save delivery'; btn.disabled=false; }
+}
+
+async function loadDeliveries(){
+  const el     = document.getElementById('dlList');
+  const sumEl  = document.getElementById('dlMTDSummary');
+  if(!el) return;
+
+  const month  = document.getElementById('dlMonth')?.value || new Date().toISOString().slice(0,7);
+  const start  = month+'-01';
+  const end    = month+'-31';
+  const fVendor= document.getElementById('dlVendorFilter')?.value||'all';
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'deliveries'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(300)
+    ));
+    let all = snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=start&&x.date<=end);
+    if(fVendor!=='all') all = all.filter(x=>x.vendor===fVendor);
+
+    // MTD summary
+    const total   = all.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    const pending = all.filter(x=>x.status==='pending').reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    const byVendor={};
+    all.forEach(x=>{ byVendor[x.vendor]=(byVendor[x.vendor]||0)+(parseFloat(x.amount)||0); });
+
+    if(sumEl && all.length){
+      sumEl.innerHTML = `<div style="background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:13px;color:var(--text2)">Total deliveries</span>
+          <span style="font-size:20px;font-weight:700">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
+        ${pending>0?`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--amber)">Pending / on account</span>
+          <span style="font-size:14px;font-weight:700;color:var(--amber)">$${pending.toFixed(2)}</span>
+        </div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${Object.entries(byVendor).sort((a,b)=>b[1]-a[1]).map(([v,a])=>`<span class="badge bblu">${v}: $${a.toFixed(2)}</span>`).join('')}
+        </div>
+      </div>`;
+    } else if(sumEl){ sumEl.innerHTML=''; }
+
+    if(!all.length){ el.innerHTML='<div class="empty"><div class="ei">🚚</div>No deliveries this month</div>'; return; }
+
+    const isOp = CU?.role==='operator';
+    const catIcons={beer:'🍺',tobacco:'🚬',beverages:'🥤',snacks:'🍿',dairy:'🥛',other:'📦'};
+    el.innerHTML = all.map(x=>{
+      const fmtDate = new Date(x.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      const statusCol = x.status==='pending'?'var(--amber)':'var(--green)';
+      const statusLabel = x.status==='pending'?'⏳ Pending':'✓ Paid';
+      return `<div style="padding:13px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700">${x.vendor||'Unknown'}</span>
+              <span class="badge" style="background:var(--bg2);color:var(--text3)">${fmtDate}</span>
+              ${x.invoiceNumber?`<span class="badge bblu">#${x.invoiceNumber}</span>`:''}
+              <span style="font-size:11px;font-weight:600;color:${statusCol}">${statusLabel}</span>
+            </div>
+            ${x.items?`<div style="font-size:12px;color:var(--text2);margin-bottom:2px;line-height:1.4">${x.items.substring(0,120)}${x.items.length>120?'...':''}</div>`:''}
+            <div style="font-size:11px;color:var(--text3)">via ${x.payment||'check'} · logged by ${x.employee||'Unknown'}</div>
+            ${x.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">📝 ${x.notes}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:800">$${(parseFloat(x.amount)||0).toFixed(2)}</div>
+            ${isOp?`<button onclick="deleteDelivery('${x.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;margin-top:4px">Delete</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div class="empty">Error loading deliveries</div>'; console.error(e); }
+}
+
+async function deleteDelivery(id){
+  if(!confirm('Delete this delivery log?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'deliveries',id));
+    toast('Deleted');
+    loadDeliveries();
+  }catch(e){ toast('Error deleting'); }
+}
 
 window.addEventListener('fbReady',()=>{});
 </script>
