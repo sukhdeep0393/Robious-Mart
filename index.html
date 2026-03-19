@@ -343,10 +343,6 @@
           <div><label>Actual counted ($)</label><input type="number" id="d-actual" placeholder="0.00" oninput="calcShortOver()" /></div>
         </div>
         <div id="shortOverResult"></div>
-        <div id="drawerNoteWrap" style="display:none;margin-top:10px">
-          <label>Reason for discrepancy</label>
-          <textarea id="d-drawer-note" rows="2" placeholder="e.g. Gave change from $20 but customer only paid $10, refund issued without manager..."></textarea>
-        </div>
       </div>
     </div>
     <div class="card"><div class="ct">Fuel sold (gallons)</div>
@@ -366,14 +362,6 @@
     <div class="card"><div class="ct">Incidents & notes</div>
       <div style="margin-bottom:10px"><label>Incidents / issues</label><textarea id="d-inc" rows="3" placeholder="Problems, equipment issues, complaints..."></textarea></div>
       <div><label>Notes for next shift</label><textarea id="d-notes" rows="2" placeholder="Pass-along notes..."></textarea></div>
-    </div>
-    <!-- SCRATCH-OFF SALES SUMMARY (auto-populated from scratch tab) -->
-    <div class="card" id="scratchSummaryCard" style="display:none">
-      <div class="sh2" style="margin-bottom:0">
-        <div class="ct" style="margin:0">🎟 Scratch-off sales this shift</div>
-        <span class="badge bgrn" style="font-size:11px">Auto-filled</span>
-      </div>
-      <div id="scratchSummaryContent" style="margin-top:12px"></div>
     </div>
     <div class="card">
       <div class="ct">End-of-shift photos</div>
@@ -455,7 +443,7 @@
     <div class="card"><div class="ct">Shift info</div>
       <div class="g2">
         <div><label>Employee</label><input id="s-emp" readonly style="background:var(--bg2)" /></div>
-        <div><label>Reporting at</label><select id="s-type" onchange="onScrTypeChange(this.value)"><option value="start">Start of shift</option><option value="end">End of shift</option></select></div>
+        <div><label>Reporting at</label><select id="s-type" onchange="onShiftTypeChange(this.value)"><option value="start">Start of shift</option><option value="end">End of shift</option></select></div>
       </div>
     </div>
 
@@ -497,14 +485,14 @@
     <!-- Count entry card -->
     <div class="card">
       <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--amber)">
-        <strong>Start of shift:</strong> enter the ticket # shown on each dispenser. <strong>End of shift:</strong> enter the final ticket # — the system calculates tickets sold and revenue automatically.
+        <span id="scrHintText">Enter the <strong>opening ticket number</strong> for each slot at the start of your shift.</span>
       </div>
       <div id="scrRows"><div class="empty"><div class="ei">🎟</div>No slots set up yet</div></div>
       <div id="scrTot" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="g2">
           <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:2px" id="scrTotLbl">Total sold this shift</div>
-            <div style="font-size:26px;font-weight:800;color:var(--green)" id="scrTotVal">$0</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:2px">Value on hand</div>
+            <div style="font-size:22px;font-weight:700" id="scrTotVal">$0</div>
           </div>
           <div id="scrSoldBlock" style="display:none">
             <div style="font-size:11px;color:var(--green);margin-bottom:2px;font-weight:600">Est. sold this shift</div>
@@ -527,16 +515,28 @@
 
       <!-- Add activation form -->
       <div id="actForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:14px">
+        <!-- Slot picker FIRST — selecting a filled slot auto-fills the rest -->
+        <div style="margin-bottom:12px">
+          <label>Slot # to activate into</label>
+          <select id="act-slot" onchange="onActSlotChange(this.value)">
+            <option value="">— select slot —</option>
+          </select>
+          <div id="act-slot-hint" style="display:none;margin-top:6px;font-size:12px;padding:7px 10px;border-radius:7px;background:var(--blue-light);color:var(--blue)"></div>
+        </div>
         <div class="g2" style="margin-bottom:10px">
           <div><label>Game name</label><input id="act-name" placeholder="e.g. Gold Rush $5" /></div>
           <div><label>Ticket price ($)</label><input type="number" id="act-price" placeholder="e.g. 5" oninput="updActPackCalc()" /></div>
         </div>
         <div class="g2" style="margin-bottom:10px">
-          <div><label>Books / packs activated</label><input type="number" id="act-qty" placeholder="e.g. 1" min="1" oninput="updActPackCalc()" /></div>
+          <div><label>Game # (from lottery)</label><input type="number" id="act-gamenum" placeholder="e.g. 1234" /></div>
           <div><label>Tickets per book</label><input type="number" id="act-tix" placeholder="e.g. 200" oninput="updActPackCalc()" /></div>
         </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><label>Books / packs activated</label><input type="number" id="act-qty" placeholder="e.g. 1" min="1" oninput="updActPackCalc()" /></div>
+          <div><label>Pack / book number (optional)</label><input id="act-booknum" placeholder="e.g. 003214" /></div>
+        </div>
         <!-- Live pack value calculation -->
-        <div id="act-pack-val" style="display:none;background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+        <div id="act-pack-val" style="display:none;background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
               <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px">Total pack value</div>
@@ -545,11 +545,8 @@
             <div style="text-align:right;font-size:12px;color:var(--green)" id="act-pack-sub"></div>
           </div>
         </div>
-        <div style="margin-bottom:10px"><label>Pack / book number (optional)</label><input id="act-booknum" placeholder="e.g. 003214" /></div>
-        <div style="margin-bottom:12px"><label>Slot # assigned to</label>
-          <select id="act-slot">
-            <option value="">— select slot —</option>
-          </select>
+        <div id="act-slot-update-notice" style="display:none;margin-bottom:10px;font-size:12px;padding:8px 10px;border-radius:7px;background:var(--amber-light);color:var(--amber)">
+          ⚡ Slot will be automatically updated with this game info when you log the activation.
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="submitActivation()">Log activation</button>
@@ -1109,11 +1106,10 @@ function showTab(id){
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.id===id)t.classList.add('active');});
   if(id==='dashboard')loadDashboard();
-  if(id==='daily')loadDailyScratchSummary();
   if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();}
   if(id==='logs')loadLogs();
   if(id==='inventory')loadInvFlags();
-  if(id==='scratch'){renderScrRows();loadActLog();}
+  if(id==='scratch'){loadGames();loadActLog();}
   if(id==='compliance')checkComp();
   if(id==='employees')loadEmployees();
   if(id==='expenses')loadExpenses();
@@ -1210,15 +1206,7 @@ async function loadDashboard(){
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
     const latestScr=scrMTD.length>0?scrMTD[0]:null;
     const scrVal=latestScr?.totalValue||0;
-    // Only sum end-of-shift counts to avoid double counting
-    const scrEndMTD=scrMTD.filter(d=>d.shiftType==='end');
-    const scrRevenue=scrEndMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
-    const todayLocalDate=isCurrentMonth?localDate():null;
-    const todayScratch=todayLocalDate?scrEndMTD.filter(d=>d.date===todayLocalDate).reduce((s,d)=>s+(d.totalRevenue||0),0):0;
-    // Build per-day scratch totals for the month
-    const scrByDay={};
-    scrEndMTD.forEach(d=>{ scrByDay[d.date]=(scrByDay[d.date]||0)+(d.totalRevenue||0); });
-    const scrDays=Object.entries(scrByDay).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
+    const scrRevenue=scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
     const actSnap=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(20)));
     const recentActs=actSnap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1266,7 +1254,6 @@ async function loadDashboard(){
           <div class="dash-chip">💵 Cash $${mtdCash.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
           <div class="dash-chip">💳 Credit $${mtdCredit.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
           ${mtdLotNet>=0?`<div class="dash-chip good">🎟 Lottery +$${mtdLotNet.toFixed(0)}</div>`:`<div class="dash-chip bad">🎟 Lottery -$${Math.abs(mtdLotNet).toFixed(0)}</div>`}
-          ${scrRevenue>0?`<div class="dash-chip good">🎰 Scratch $${scrRevenue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>`:''}
           ${salesVsYest!==null?`<div class="dash-chip ${salesVsYest>=0?'good':'bad'}">${salesVsYest>=0?'▲':'▼'} ${Math.abs(salesVsYest).toFixed(1)}% vs yesterday</div>`:''}
         </div>
       </div>
@@ -1368,36 +1355,25 @@ async function loadDashboard(){
 
       <!-- Scratch-off dashboard -->
       <div class="dash-section-hdr">
-        <span class="dash-section-title">🎰 Scratch-off sales</span>
+        <span class="dash-section-title">🎟 Scratch-offs</span>
         <span class="dash-section-link" onclick="showTab('scratch')" style="cursor:pointer">Go to tab →</span>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <!-- MTD + Today top row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
-          <div style="padding:14px 16px;border-right:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">${monthName} revenue</div>
-            <div style="font-size:22px;font-weight:800;color:var(--green)">$${scrRevenue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${scrEndMTD.filter(d=>d.totalRevenue>0).length} shift${scrEndMTD.filter(d=>d.totalRevenue>0).length!==1?'s':''} with sales</div>
+      <div class="scr-dash-card">
+        <div class="scr-dash-top">
+          <div class="scr-dash-cell">
+            <div class="scr-dash-cell-label">Value on hand</div>
+            <div class="scr-dash-cell-val">$${scrVal.toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${latestScr?'Last count '+fmtDate(latestScr.date):'No counts yet'}</div>
           </div>
-          <div style="padding:14px 16px">
-            <div style="font-size:10px;font-weight:700;color:${todayScratch>0?'var(--green)':'var(--text3)'};text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Today</div>
-            <div style="font-size:22px;font-weight:800;color:${todayScratch>0?'var(--green)':'var(--text3)'}">$${todayScratch.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${todayScratch>0?'Logged today':'No sales yet today'}</div>
+          <div class="scr-dash-cell">
+            <div class="scr-dash-cell-label" style="color:var(--green)">Est. revenue — ${monthName}</div>
+            <div class="scr-dash-cell-val" style="color:var(--green)">$${scrRevenue.toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${scrMTD.filter(d=>d.totalRevenue>0).length} count${scrMTD.filter(d=>d.totalRevenue>0).length!==1?'s':''} with sales</div>
           </div>
         </div>
-        <!-- Per-day breakdown (last 5 days with sales) -->
-        ${scrDays.length?`
-          <div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Recent daily totals</div>
-          ${scrDays.map(([date,rev])=>`
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid var(--border);gap:8px">
-              <div style="font-size:13px;color:var(--text2)">${fmtDate(date)}</div>
-              <div style="font-size:14px;font-weight:700;color:var(--green)">$${rev.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            </div>`).join('')}
-        `:`<div class="empty" style="padding:14px">No scratch sales recorded in ${monthName}</div>`}
-        <!-- Recent activations -->
         ${recentActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd).length?`
-          <div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;border-top:1px solid var(--border)">Book activations</div>
-          ${recentActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd).slice(0,4).map(a=>`
+        <div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;">Recent activations</div>
+        ${recentActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd).slice(0,5).map(a=>`
           <div class="act-row">
             <div style="display:flex;align-items:center;gap:8px">
               <div class="act-dot"></div>
@@ -1410,7 +1386,7 @@ async function loadDashboard(){
               <div style="font-size:13px;font-weight:700">$${a.price||0}</div>
               <div style="font-size:10px;color:var(--text3)">${a.qty||1} book${(a.qty||1)!==1?'s':''}</div>
             </div>
-          </div>`).join('')}`:''}
+          </div>`).join('')}`:`<div class="empty" style="padding:14px">No activations in ${monthName}</div>`}
       </div>
 
       ${incidents.length?`
@@ -1479,19 +1455,11 @@ async function handleShiftPhotos(input){
 function calcShortOver(){
   const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0;
   const el=document.getElementById('shortOverResult');
-  const noteWrap=document.getElementById('drawerNoteWrap');
-  if(!exp&&!act){el.innerHTML='';if(noteWrap)noteWrap.style.display='none';return;}
+  if(!exp&&!act){el.innerHTML='';return;}
   const diff=act-exp;
-  if(Math.abs(diff)<0.01){
-    el.innerHTML='<div class="short-over-box even-box">✓ Cash drawer is exact</div>';
-    if(noteWrap)noteWrap.style.display='none';
-  } else if(diff<0){
-    el.innerHTML=`<div class="short-over-box short-box">⚑ SHORT by $${Math.abs(diff).toFixed(2)}</div>`;
-    if(noteWrap)noteWrap.style.display='block';
-  } else {
-    el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;
-    if(noteWrap)noteWrap.style.display='block';
-  }
+  if(Math.abs(diff)<0.01){el.innerHTML='<div class="short-over-box even-box">✓ Cash drawer is exact</div>';}
+  else if(diff<0){el.innerHTML=`<div class="short-over-box short-box">⚑ SHORT by $${Math.abs(diff).toFixed(2)}</div>`;}
+  else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
 }
 function updLot(){
   const net=(parseFloat(document.getElementById('d-ltot').value)||0)-(parseFloat(document.getElementById('d-lpay').value)||0);
@@ -1512,14 +1480,11 @@ async function subDaily(){
       expectedCash:exp,actualCash:act,
       cashStatus:Math.abs(cashDiff)<0.01?'exact':cashDiff<0?'short':'over',
       cashDifference:cashDiff,
-      cashDiscrepancyNote:document.getElementById('d-drawer-note').value,
       regularGal:parseFloat(document.getElementById('d-reg').value)||0,
       premiumGal:parseFloat(document.getElementById('d-prem').value)||0,
       dieselGal:parseFloat(document.getElementById('d-dies').value)||0,
       lotteryTotal:parseFloat(document.getElementById('d-ltot').value)||0,
       lotteryPayout:parseFloat(document.getElementById('d-lpay').value)||0,
-      scratchSalesTotal: window._scratchShiftRevenue?.total || 0,
-      scratchSalesBySlot: window._scratchShiftRevenue?.bySlot || {},
       incidents:document.getElementById('d-inc').value,
       notes:document.getElementById('d-notes').value,
       shiftComment:document.getElementById('d-comment').value,
@@ -1531,9 +1496,8 @@ async function subDaily(){
     });
     toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
     setTimeout(()=>{btn.innerHTML='Submit shift report';btn.disabled=false;btn.style.background='';},3000);
-    ['d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment','d-drawer-note'].forEach(id=>document.getElementById(id).value='');
+    ['d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
-    const dnw=document.getElementById('drawerNoteWrap');if(dnw)dnw.style.display='none';
     const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
     document.getElementById('shiftPhotos').value='';
     // Reset scanner captures
@@ -1613,8 +1577,38 @@ const TOTAL_SLOTS = 32;
 let slots = Array(TOTAL_SLOTS).fill(null); // null = empty slot
 let editingSlot = -1;
 
-let prevCounts = {}; // {slot_0: count, slot_1: count, ...} from last saved count
-let prevStartCounts = {}; // {slot_0: ticketNum, ...} from last "start of shift" ticket numbers
+let prevCounts = {}; // today's opening ticket numbers — used as baseline for closing calculation
+
+async function loadTodayStartCount(){
+  // Fetch recent scratchCounts and find today's start-of-shift entry client-side
+  // (avoids compound query index issues)
+  try{
+    const today = localDate();
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'scratchCounts'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(50)
+    ));
+    const todayStart = snap.docs.map(d=>d.data()).find(x => x.date === today && x.shiftType === 'start');
+    prevCounts = todayStart ? (todayStart.counts || {}) : {};
+  }catch(e){ prevCounts={}; }
+}
+
+function onShiftTypeChange(val){
+  const btn = document.getElementById('scrBtn');
+  const hintEl = document.getElementById('scrHintText');
+  if(val === 'start'){
+    if(btn) btn.textContent = 'Save opening count';
+    if(hintEl) hintEl.innerHTML = 'Enter the <strong>opening ticket number</strong> for each slot at the start of your shift.';
+    prevCounts = {};
+    renderScrRows();
+  } else {
+    if(btn) btn.textContent = 'Save closing count';
+    if(hintEl) hintEl.innerHTML = 'Enter the <strong>closing ticket number</strong> for each slot — sold amount is calculated automatically from today\'s opening count.';
+    // Re-fetch today's opening count so closing works even after a device switch/refresh
+    loadTodayStartCount().then(()=>renderScrRows());
+  }
+}
 
 async function loadGames(){
   try{
@@ -1626,25 +1620,13 @@ async function loadGames(){
         slots[x.slot] = {docId: d.id, slot: x.slot, price: x.price, name: x.name, gameNum: x.gameNum, totalTickets: x.totalTickets||0};
       }
     });
-    // Load the most recent count to compare against
-    try{
-      const cSnap = await window.F.getDocs(window.F.query(
-        window.F.collection(window.db,'scratchCounts'),
-        window.F.orderBy('timestamp','desc'),
-        window.F.limit(1)
-      ));
-      prevCounts = cSnap.empty ? {} : (cSnap.docs[0].data().counts||{});
-    }catch(e){ prevCounts={}; }
-    // Load the most recent start-of-shift ticket numbers
-    try{
-      const sSnap = await window.F.getDocs(window.F.query(
-        window.F.collection(window.db,'scratchCounts'),
-        window.F.orderBy('timestamp','desc'),
-        window.F.limit(10)
-      ));
-      const startDoc = sSnap.docs.find(d => d.data().shiftType === 'start');
-      prevStartCounts = startDoc ? (startDoc.data().ticketNumbers||{}) : {};
-    }catch(e){ prevStartCounts={}; }
+    // Load today's opening (start) count to use as baseline for closing calculation
+    const shiftType = document.getElementById('s-type')?.value || 'start';
+    if(shiftType === 'end'){
+      await loadTodayStartCount();
+    } else {
+      prevCounts = {};
+    }
     renderSlotSetupGrid();
     renderScrRows();
   }catch(e){ console.error('loadGames',e); }
@@ -1722,44 +1704,33 @@ function renderScrRows(){
   const el = document.getElementById('scrRows');
   if(!el) return;
   const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
-  const shiftType = document.getElementById('s-type')?.value || 'start';
-
   if(!activeSlots.length){
     el.innerHTML = '<div class="empty"><div class="ei">🎟</div>No slots set up yet — operator or lead can set up slots above</div>';
     document.getElementById('scrTot').style.display = 'none';
     return;
   }
-
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:28px 1fr 56px 56px 62px;gap:5px;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">#</div>
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">Game</div>
-      <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;text-align:center">Start #</div>
-      <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;text-align:center">End #</div>
-      <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;text-align:right">Sold $</div>
+    <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Slot</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Game</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:center">Ticket #</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:right">Pack value</div>
     </div>` +
     activeSlots.map(s => {
-      const prevStart = prevStartCounts['slot_'+s.slotIdx];
-      const isEnd = shiftType === 'end';
-      const savedStart = (isEnd && prevStart !== undefined && prevStart !== 0) ? prevStart : '';
+      const packVal = s.totalTickets ? (s.totalTickets * s.price) : null;
+      const prev = prevCounts['slot_'+s.slotIdx];
       return `
-      <div style="display:grid;grid-template-columns:28px 1fr 56px 56px 62px;gap:5px;align-items:center;margin-bottom:10px">
-        <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 0;font-size:11px;font-weight:700;text-align:center">${s.slotIdx+1}</div>
+      <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:12px">
+        <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap">${s.slotIdx+1}</div>
         <div>
-          <div style="font-size:12px;font-weight:600;line-height:1.3">$${s.price} — ${s.name}</div>
-          <div id="sc-sold-${s.slotIdx}" style="font-size:10px;color:var(--green);font-weight:600;margin-top:1px"></div>
+          <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' · ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${packVal?` · Full pack: $${packVal.toLocaleString()}`:''}${prev!==undefined?` · Opening #: ${prev}`:''}</div>
         </div>
-        ${!isEnd
-          ? `<input type="number" min="0" id="sc-start-${s.slotIdx}" placeholder="—" oninput="updScrTot()" style="text-align:center;padding:6px 2px;font-size:13px;font-weight:600;width:100%" />`
-          : `<div style="text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:6px 2px;font-size:13px;font-weight:700;color:var(--text2);min-height:38px;display:flex;align-items:center;justify-content:center">${savedStart !== '' ? savedStart : '—'}</div>
-             <input type="hidden" id="sc-start-${s.slotIdx}" value="${savedStart}" />`
-        }
-        ${isEnd
-          ? `<input type="number" min="0" id="sc-end-${s.slotIdx}" placeholder="—" oninput="updScrTot()" style="text-align:center;padding:6px 2px;font-size:13px;font-weight:600;width:100%" />`
-          : `<div style="text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:6px 2px;font-size:13px;color:var(--border);min-height:38px;display:flex;align-items:center;justify-content:center">—</div>
-             <input type="hidden" id="sc-end-${s.slotIdx}" value="" />`
-        }
-        <div style="text-align:right;min-width:58px" id="sc-val-${s.slotIdx}"><span style="font-size:11px;color:var(--text3)">—</span></div>
+        <input type="number" min="0" placeholder="0" id="sc-slot-${s.slotIdx}" oninput="updScrTot()" style="text-align:center;padding:8px;font-size:15px;font-weight:600;width:72px" />
+        <div style="text-align:right;min-width:60px">
+          ${packVal?`<div style="font-size:11px;font-weight:700;color:var(--text2)">$<span id="sc-val-${s.slotIdx}">—</span></div>`:''}
+          ${prev!==undefined?`<div style="font-size:11px;color:var(--green);font-weight:600" id="sc-sold-${s.slotIdx}"></div>`:''}
+        </div>
       </div>`;
     }).join('');
   updScrTot();
@@ -1767,112 +1738,80 @@ function renderScrRows(){
 
 function updScrTot(){
   const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
-  const shiftType = document.getElementById('s-type')?.value || 'start';
-  let totSold = 0, hasSold = false;
+  let totVal = 0, totSold = 0, hasSoldAny = false;
 
   activeSlots.forEach(s => {
-    const startNum = parseFloat(document.getElementById('sc-start-'+s.slotIdx)?.value)||0;
-    const endNum   = parseFloat(document.getElementById('sc-end-'+s.slotIdx)?.value)||0;
-    const valEl    = document.getElementById('sc-val-'+s.slotIdx);
-    const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
+    const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    const slotValue = remaining * s.price;
+    totVal += slotValue;
 
-    if(shiftType === 'end' && endNum > 0 && startNum > 0){
-      const ticketsSold = Math.max(0, endNum - startNum);
-      const revenue = ticketsSold * s.price;
-      totSold += revenue;
-      if(ticketsSold > 0) hasSold = true;
-      if(valEl) valEl.innerHTML = revenue > 0
-        ? `<span style="font-size:13px;font-weight:800;color:var(--green)">$${revenue.toLocaleString()}</span>`
-        : `<span style="font-size:11px;color:var(--text3)">$0</span>`;
-      if(soldEl) soldEl.textContent = ticketsSold > 0 ? `${ticketsSold} sold` : '';
-    } else {
-      if(valEl) valEl.innerHTML = '<span style="font-size:11px;color:var(--text3)">—</span>';
-      if(soldEl) soldEl.textContent = '';
-    }
+    // Update per-slot value display
+    const valEl = document.getElementById('sc-val-'+s.slotIdx);
+    if(valEl) valEl.textContent = slotValue > 0 ? slotValue.toLocaleString() : '0';
+
+    // Calculate sold vs previous count
+    const prev = prevCounts['slot_'+s.slotIdx];
+    const soldEl = document.getElementById('sc-sold-'+s.slotIdx);
+    if(prev !== undefined && document.getElementById('sc-slot-'+s.slotIdx)?.value !== ''){
+      const ticketsSold = Math.max(0, remaining - prev);  // closing# - opening# = sold
+      const revenueSold = ticketsSold * s.price;
+      totSold += revenueSold;
+      if(ticketsSold > 0) hasSoldAny = true;
+      if(soldEl) soldEl.textContent = ticketsSold > 0 ? `↓${ticketsSold} sold · $${revenueSold.toFixed(0)}` : '';
+    } else if(soldEl){ soldEl.textContent = ''; }
   });
 
-  const scrTotEl  = document.getElementById('scrTot');
-  const totValEl  = document.getElementById('scrTotVal');
-  const totLblEl  = scrTotEl?.querySelector('.mlab, [style*="text3"]');
+  const hasAny = activeSlots.some(s => document.getElementById('sc-slot-'+s.slotIdx)?.value);
+  document.getElementById('scrTot').style.display = hasAny ? 'block' : 'none';
+  document.getElementById('scrTotVal').textContent = '$' + totVal.toLocaleString();
+
+  // Show sold block if we have comparison data
   const soldBlock = document.getElementById('scrSoldBlock');
   const soldVal   = document.getElementById('scrSoldVal');
-
-  if(shiftType === 'end'){
-    const anyFilled = activeSlots.some(s => document.getElementById('sc-end-'+s.slotIdx)?.value);
-    scrTotEl.style.display = anyFilled ? 'block' : 'none';
-    if(totValEl) totValEl.textContent = '$' + totSold.toLocaleString();
-    if(soldBlock) soldBlock.style.display = 'none';
-    // Relabel the totals area
-    const labEl = scrTotEl?.querySelector('[style*="text3"][style*="margin-bottom"]');
-    if(labEl) labEl.textContent = 'Total sold this shift';
-  } else {
-    scrTotEl.style.display = 'none';
+  if(soldBlock && soldVal){
+    soldBlock.style.display = hasSoldAny ? 'block' : 'none';
+    soldVal.textContent = '$' + totSold.toLocaleString();
   }
 }
 
 async function subScratch(){
   const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
-  const shiftType = document.getElementById('s-type').value;
-  const ticketNumbers = {};
+  const counts = {};
   const soldBySlot = {};
   let totalRevenue = 0;
 
-  // Collect ticket numbers BEFORE clearing inputs
   activeSlots.forEach(s => {
-    const startNum = parseFloat(document.getElementById('sc-start-'+s.slotIdx)?.value)||0;
-    const endNum   = parseFloat(document.getElementById('sc-end-'+s.slotIdx)?.value)||0;
-    if(shiftType === 'start' && startNum > 0){
-      ticketNumbers['slot_'+s.slotIdx] = {start: startNum, end: 0};
-    } else if(shiftType === 'end'){
-      ticketNumbers['slot_'+s.slotIdx] = {start: startNum, end: endNum};
-      if(endNum > 0 && startNum > 0){
-        const ticketsSold = Math.max(0, endNum - startNum);
-        const revenue = ticketsSold * s.price;
-        if(ticketsSold > 0){
-          soldBySlot['slot_'+s.slotIdx] = {ticketsSold, revenue, price: s.price, name: s.name, startNum, endNum};
-          totalRevenue += revenue;
-        }
-      }
+    const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    counts['slot_'+s.slotIdx] = remaining;
+    // Calculate sold vs previous count
+    const prev = prevCounts['slot_'+s.slotIdx];
+    if(prev !== undefined){
+      const ticketsSold = Math.max(0, remaining - prev);  // closing# - opening# = sold
+      const revenue = ticketsSold * s.price;
+      soldBySlot['slot_'+s.slotIdx] = {ticketsSold, revenue, price: s.price, name: s.name};
+      totalRevenue += revenue;
     }
   });
 
-  const btn = document.getElementById('scrBtn');
-  btn.innerHTML = '<span class="spinner"></span>Saving...'; btn.disabled = true;
+  const totalValue = activeSlots.reduce((sum,s) => sum + (counts['slot_'+s.slotIdx]||0)*s.price, 0);
   try{
     await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{
       type:'scratchCounts', employee:CU.name,
-      shiftType,
-      ticketNumbers,
+      shiftType: document.getElementById('s-type').value,
+      counts,
       soldBySlot,
       totalRevenue,
-      slots: activeSlots.map(s=>({slot:s.slotIdx+1, price:s.price, name:s.name, gameNum:s.gameNum||'', totalTickets:s.totalTickets||0})),
-      totalValue: 0,
+      slots: activeSlots.map(s=>({slot:s.slotIdx+1, price:s.price, name:s.name, gameNum:s.gameNum, totalTickets:s.totalTickets||0})),
+      totalValue,
       date: localDate(),
       timestamp: window.F.serverTimestamp()
     });
-
-    // If end-of-shift with sales, push data to daily section
-    if(shiftType === 'end' && totalRevenue > 0){
-      window._scratchShiftRevenue = {total: totalRevenue, bySlot: soldBySlot, date: localDate(), employee: CU.name};
-      refreshDailyScratchSummary();
-    }
-
-    toast(`✓ ${shiftType==='start'?'Opening':'Closing'} count saved!${totalRevenue>0?' · $'+totalRevenue.toLocaleString()+' sold this shift':''}`);
-    btn.innerHTML = '✓ Saved!'; btn.style.background = 'var(--green)';
-    setTimeout(()=>{ btn.innerHTML = shiftType==='start'?'Save opening count':'Save closing count'; btn.disabled=false; btn.style.background=''; }, 3000);
-
-    // Clear inputs
-    activeSlots.forEach(s => {
-      const se = document.getElementById('sc-start-'+s.slotIdx);
-      const ee = document.getElementById('sc-end-'+s.slotIdx);
-      if(se && se.type !== 'hidden') se.value='';
-      if(ee && ee.type !== 'hidden') ee.value='';
-    });
+    toast(`✓ Count saved!${totalRevenue>0?' · Est. $'+totalRevenue.toLocaleString()+' sold this shift':''}`);
+    activeSlots.forEach(s => { const el=document.getElementById('sc-slot-'+s.slotIdx); if(el) el.value=''; });
     document.getElementById('scrTot').style.display = 'none';
-
-    // Reload so prevStartCounts picks up the new entry
-    loadGames();
-  }catch(e){ toast('Error saving count'); btn.innerHTML=shiftType==='start'?'Save opening count':'Save closing count'; btn.disabled=false; }
+    // Refresh previous counts for next entry
+    prevCounts = {...counts};
+  }catch(e){ toast('Error saving count'); }
 }
 
 function updSlotPackCalc(){
@@ -1908,63 +1847,6 @@ function updActPackCalc(){
     valWrap.style.display = 'none';
   }
 }
-
-// ---- SCRATCH TYPE CHANGE ----
-function onScrTypeChange(val){
-  document.getElementById('scrBtn').textContent = val==='start' ? 'Save opening count' : 'Save closing count';
-  renderScrRows();
-}
-
-// ---- DAILY SCRATCH SUMMARY (auto-fill from scratch tab end-of-shift count) ----
-function refreshDailyScratchSummary(){
-  const card    = document.getElementById('scratchSummaryCard');
-  const content = document.getElementById('scratchSummaryContent');
-  const data    = window._scratchShiftRevenue;
-  if(!card || !content || !data || !data.total) return;
-  card.style.display = 'block';
-  const rows = Object.values(data.bySlot||{}).filter(s => s.ticketsSold > 0);
-  content.innerHTML =
-    rows.map(s => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:13px;font-weight:500">$${s.price} — ${s.name}</div>
-          <div style="font-size:11px;color:var(--text3)">Ticket #${s.startNum} → #${s.endNum}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:14px;font-weight:700;color:var(--green)">$${(s.revenue||0).toFixed(0)}</div>
-          <div style="font-size:11px;color:var(--text3)">${s.ticketsSold} ticket${s.ticketsSold!==1?'s':''}</div>
-        </div>
-      </div>`).join('') +
-    `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px">
-      <div style="font-size:13px;font-weight:700">Total scratch revenue</div>
-      <div style="font-size:22px;font-weight:800;color:var(--green)">$${(data.total||0).toFixed(0)}</div>
-    </div>`;
-}
-
-async function loadDailyScratchSummary(){
-  if(!window.F || !window.db || !CU) return;
-  try{
-    const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'scratchCounts'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(30)
-    ));
-    const today = localDate();
-    // Find today's end-of-shift count for this employee
-    const todayEnd = snap.docs.map(d => d.data())
-      .find(d => d.date === today && d.shiftType === 'end' && d.employee === CU.name && (d.totalRevenue||0) > 0);
-    if(todayEnd){
-      window._scratchShiftRevenue = {
-        total:   todayEnd.totalRevenue || 0,
-        bySlot:  todayEnd.soldBySlot   || {},
-        date:    today,
-        employee: CU.name
-      };
-      refreshDailyScratchSummary();
-    }
-  }catch(e){ console.warn('loadDailyScratchSummary',e); }
-}
-
 let lics=[
   {id:'abc',name:'ABC License (Alcohol)',due:'2026-09-15',ack:false},
   {id:'deq',name:'DEQ Inspection',due:'2026-08-01',ack:false},
@@ -3724,14 +3606,66 @@ function togActForm(){
   const open = f.style.display !== 'none';
   f.style.display = open ? 'none' : 'block';
   if(!open){
-    // Populate slot dropdown from current slots
+    // Populate dropdown with ALL 32 slots — empty ones shown so employee can activate into them
     const sel = document.getElementById('act-slot');
     sel.innerHTML = '<option value="">— select slot —</option>' +
-      slots.map((s,i)=> s && s.name
-        ? `<option value="${i+1}">Slot ${i+1} — $${s.price} ${s.name}</option>`
-        : ''
-      ).join('');
-    setTimeout(()=>document.getElementById('act-name')?.focus(), 80);
+      Array.from({length: TOTAL_SLOTS}, (_,i) => {
+        const s = slots[i];
+        return s && s.name
+          ? `<option value="${i}">${i+1} — $${s.price} ${s.name} (replace)</option>`
+          : `<option value="${i}">Slot ${i+1} — (empty)</option>`;
+      }).join('');
+    // Reset form
+    ['act-name','act-price','act-gamenum','act-qty','act-tix','act-booknum'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    const hint = document.getElementById('act-slot-hint');
+    const notice = document.getElementById('act-slot-update-notice');
+    if(hint) hint.style.display='none';
+    if(notice) notice.style.display='none';
+    document.getElementById('act-pack-val').style.display='none';
+    setTimeout(()=>document.getElementById('act-slot')?.focus(), 80);
+  }
+}
+
+function onActSlotChange(val){
+  const hint   = document.getElementById('act-slot-hint');
+  const notice = document.getElementById('act-slot-update-notice');
+  if(val === ''){
+    if(hint) hint.style.display='none';
+    if(notice) notice.style.display='none';
+    return;
+  }
+  const idx = parseInt(val);
+  const s = slots[idx];
+  if(s && s.name){
+    // Slot is filled — auto-fill the form with existing game info
+    document.getElementById('act-name').value    = s.name || '';
+    document.getElementById('act-price').value   = s.price || '';
+    document.getElementById('act-gamenum').value = s.gameNum || '';
+    document.getElementById('act-tix').value     = s.totalTickets || '';
+    document.getElementById('act-qty').value     = '1';
+    updActPackCalc();
+    if(hint){
+      hint.textContent = `Slot ${idx+1} has "${s.name}" — fields pre-filled. Change game name/price if replacing with a different game.`;
+      hint.style.background = 'var(--blue-light)';
+      hint.style.color = 'var(--blue)';
+      hint.style.display = 'block';
+    }
+    if(notice) notice.style.display='block';
+  } else {
+    // Empty slot — clear form and show notice
+    ['act-name','act-price','act-gamenum','act-tix','act-booknum'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.getElementById('act-pack-val').style.display='none';
+    if(hint){
+      hint.textContent = `Slot ${idx+1} is empty — entering game info here will set it up automatically.`;
+      hint.style.background = 'var(--green-light)';
+      hint.style.color = 'var(--green)';
+      hint.style.display = 'block';
+    }
+    if(notice) notice.style.display='block';
   }
 }
 
@@ -3740,32 +3674,48 @@ async function submitActivation(){
   const price   = parseFloat(document.getElementById('act-price')?.value)||0;
   const qty     = parseInt(document.getElementById('act-qty')?.value)||1;
   const tix     = parseInt(document.getElementById('act-tix')?.value)||0;
+  const gameNum = document.getElementById('act-gamenum')?.value.trim();
   const booknum = document.getElementById('act-booknum')?.value.trim();
-  const slotNum = document.getElementById('act-slot')?.value;
+  const slotVal = document.getElementById('act-slot')?.value;
 
   if(!name){ toast('Enter game name'); return; }
   if(!price){ toast('Enter ticket price'); return; }
+  if(slotVal === ''){ toast('Select a slot'); return; }
+
+  const slotIdx = parseInt(slotVal);
 
   try{
+    // 1. Log the activation record
     await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
       gameName: name,
       price,
       qty,
       ticketsPerBook: tix,
+      gameNum: gameNum || '',
       bookNumber: booknum,
-      slotNum: slotNum || '',
+      slotNum: slotIdx + 1,
       employee: CU.name,
       date: localDate(),
       timestamp: window.F.serverTimestamp()
     });
-    toast('✓ Activation logged!');
-    // Reset form fields
-    ['act-name','act-price','act-qty','act-tix','act-booknum'].forEach(id=>{
-      const el=document.getElementById(id); if(el) el.value='';
-    });
+
+    // 2. Auto-update (or create) the slot in scratchSlots so no double entry needed
+    const slotData = { price, name, gameNum: gameNum||'', totalTickets: tix, updatedAt: new Date().toISOString() };
+    const existing = slots[slotIdx];
+    if(existing && existing.docId){
+      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots', existing.docId), slotData);
+    } else {
+      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{
+        slot: slotIdx, ...slotData, createdAt: new Date().toISOString()
+      });
+    }
+
+    toast('✓ Activation logged & slot updated!');
     document.getElementById('actForm').style.display = 'none';
+    // Reload games so the slot grid and count rows reflect the new game instantly
+    await loadGames();
     loadActLog();
-  }catch(e){ toast('Error saving activation'); }
+  }catch(e){ toast('Error saving activation'); console.error(e); }
 }
 
 async function loadActLog(){
@@ -3792,6 +3742,7 @@ async function loadActLog(){
           <div style="font-size:11px;color:var(--text3);margin-top:2px">
             ${x.employee} · ${x.date}
             ${x.slotNum?' · Slot '+x.slotNum:''}
+            ${x.gameNum?' · Game #'+x.gameNum:''}
             ${x.bookNumber?' · Book #'+x.bookNumber:''}
           </div>
         </div>
