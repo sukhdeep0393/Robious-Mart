@@ -2945,6 +2945,150 @@ async function sendShiftCaptures(){
   sendBtn.disabled    = false;
 }
 
+// ---- EXPENSES ----
+let exPhotoData = null;
+
+function handleExPhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  const label = document.getElementById('exPhotoLabel');
+  label.textContent = 'Processing...';
+  resizeImage(file, 800).then(b64 => {
+    exPhotoData = b64;
+    label.textContent = '✓ Photo added — tap to change';
+    label.style.color = 'var(--green)';
+  }).catch(() => { label.textContent = 'Error loading photo'; });
+}
+
+async function submitExpense(){
+  const amount = parseFloat(document.getElementById('ex-amount').value);
+  const vendor = document.getElementById('ex-vendor').value.trim();
+  if(!amount || amount <= 0){ toast('Enter an amount'); return; }
+  if(!vendor){ toast('Enter vendor or payee name'); return; }
+
+  const btn = document.querySelector('#page-expenses .bprimary');
+  if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
+
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'expenses'),{
+      date:     document.getElementById('ex-date')?.value || localDate(),
+      method:   document.getElementById('ex-method').value,
+      amount,
+      vendor,
+      category: document.getElementById('ex-category').value,
+      notes:    document.getElementById('ex-notes').value,
+      photoData: exPhotoData || '',
+      employee: CU.name,
+      role:     CU.role,
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Expense saved!');
+    document.getElementById('ex-amount').value='';
+    document.getElementById('ex-vendor').value='';
+    document.getElementById('ex-notes').value='';
+    document.getElementById('exPhoto').value='';
+    exPhotoData=null;
+    const lbl=document.getElementById('exPhotoLabel');
+    if(lbl){lbl.textContent='Tap to add photo';lbl.style.color='';}
+    document.getElementById('ex-date').value='';
+    loadExpenses();
+    if(btn){btn.innerHTML='✓ Saved!';btn.style.background='var(--green)';}
+    setTimeout(()=>{if(btn){btn.innerHTML='Save expense';btn.disabled=false;btn.style.background='';}},2500);
+  }catch(e){
+    toast('Error saving expense');
+    if(btn){btn.innerHTML='Save expense';btn.disabled=false;}
+  }
+}
+
+async function loadExpenses(){
+  const el    = document.getElementById('exList');
+  const sumEl = document.getElementById('exMTDSummary');
+  if(!el) return;
+
+  const month    = document.getElementById('exMonth')?.value || localDate().slice(0,7);
+  const mtdStart = month+'-01';
+  const mtdEnd   = month+'-31';
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'expenses'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(200)
+    ));
+    let all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const filtered = all.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
+    // Employees see only their own; operator sees all
+    const myFiltered = CU.role==='operator' ? filtered : filtered.filter(x=>x.employee===CU.name);
+
+    // Summary
+    const total = myFiltered.reduce((s,x)=>s+(x.amount||0),0);
+    const byCategory={};
+    myFiltered.forEach(x=>{ byCategory[x.category]=(byCategory[x.category]||0)+(x.amount||0); });
+    const byMethod={};
+    myFiltered.forEach(x=>{ byMethod[x.method]=(byMethod[x.method]||0)+(x.amount||0); });
+
+    if(sumEl && myFiltered.length){
+      const catIcons={delivery:'🚚',repair:'🔧',utilities:'💡',supplies:'📦',labor:'👷',other:'📝'};
+      sumEl.innerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:var(--text2)">Total expenses</span>
+          <span style="font-size:22px;font-weight:800;color:var(--red)">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">By category</div>
+        ${Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span>${catIcons[cat]||'📝'} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</span>
+            <strong>$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+          </div>`).join('')}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          ${Object.entries(byMethod).map(([m,v])=>`<span class="badge bamb">${m}: $${v.toFixed(2)}</span>`).join('')}
+        </div>
+      </div>`;
+    } else if(sumEl){ sumEl.innerHTML=''; }
+
+    if(!myFiltered.length){
+      el.innerHTML='<div class="empty"><div class="ei">💸</div>No expenses this month</div>';
+      return;
+    }
+
+    const catIcons={delivery:'🚚',repair:'🔧',utilities:'💡',supplies:'📦',labor:'👷',other:'📝'};
+    el.innerHTML = myFiltered.map(x=>{
+      const methodColor = x.method==='check'?'bblu':x.method==='cash'?'bgrn':'bamb';
+      const photoHtml = x.photoData
+        ? `<img src="${x.photoData}" style="width:100%;border-radius:6px;max-height:120px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','')" />`
+        : '';
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700">${x.vendor}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${catIcons[x.category]||'📝'} ${x.category} · ${x.date}</div>
+            ${x.notes?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${x.notes}</div>`:''}
+            ${CU.role==='operator'&&x.employee?`<div style="font-size:11px;color:var(--text3);margin-top:2px">By ${x.employee}</div>`:''}
+            ${photoHtml}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:800;color:var(--red)">$${(x.amount||0).toFixed(2)}</div>
+            <span class="badge ${methodColor}" style="margin-top:4px">${x.method}</span>
+            ${CU.role==='operator'?`<div style="margin-top:4px"><button onclick="deleteExpense('${x.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">Delete</button></div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    el.innerHTML='<div class="empty">Error loading expenses</div>';
+    console.error('loadExpenses',e);
+  }
+}
+
+async function deleteExpense(id){
+  if(!confirm('Delete this expense?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'expenses',id));
+    toast('Expense deleted');
+    loadExpenses();
+  }catch(e){ toast('Error deleting'); }
+}
+
 // ---- MARGINS SPREADSHEET IMPORT ----
 let mgRawRows    = [];   // raw parsed rows from XLSX [{col:val,...}]
 let mgRawHeaders = [];   // column header names
