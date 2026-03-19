@@ -1200,17 +1200,26 @@ async function loadDashboard(){
     const totalPending=Object.values(dlByVendor).reduce((s,v)=>s+v.pending,0);
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
-    // Scratch-off MTD + activations
-    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(60)));
-    const scrAll=scrSnap.docs.map(d=>d.data());
-    const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
-    const latestScr=scrMTD.length>0?scrMTD[0]:null;
-    const scrVal=latestScr?.totalValue||0;
-    const scrRevenue=scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
+    // Scratch-off: value on hand = all-time activated value − all-time sold (closing counts)
+    // Fetch all activations (no date filter — inventory carries forward across months)
+    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
+    const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data()}));
+    const allTimeActValue=allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
 
-    const actSnap=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(20)));
-    const recentActs=actSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const mtdActs=recentActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
+    // All closing counts (end of shift) to get cumulative sold value
+    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(500)));
+    const scrAll=scrSnap.docs.map(d=>d.data());
+    const allTimeSold=scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
+
+    // Value on hand = activated − sold (floor at 0)
+    const scrVal=Math.max(0, allTimeActValue - allTimeSold);
+
+    // MTD sold revenue (for the selected month display)
+    const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
+    const scrRevenue=scrMTD.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
+
+    const recentActs=allActs;
+    const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
 
     // Inventory flags
@@ -1363,12 +1372,16 @@ async function loadDashboard(){
           <div class="scr-dash-cell">
             <div class="scr-dash-cell-label">Value on hand</div>
             <div class="scr-dash-cell-val">$${scrVal.toLocaleString()}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">${latestScr?'Last count '+fmtDate(latestScr.date):'No counts yet'}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">
+              $${allTimeActValue.toLocaleString()} activated − $${allTimeSold.toLocaleString()} sold
+            </div>
           </div>
           <div class="scr-dash-cell">
             <div class="scr-dash-cell-label" style="color:var(--green)">Est. revenue — ${monthName}</div>
             <div class="scr-dash-cell-val" style="color:var(--green)">$${scrRevenue.toLocaleString()}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">${scrMTD.filter(d=>d.totalRevenue>0).length} count${scrMTD.filter(d=>d.totalRevenue>0).length!==1?'s':''} with sales</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">
+              $${mtdActValue.toLocaleString()} activated ${monthName}
+            </div>
           </div>
         </div>
         ${recentActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd).length?`
@@ -1726,7 +1739,7 @@ function renderScrRows(){
           <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
           <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' · ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${packVal?` · Full pack: $${packVal.toLocaleString()}`:''}${prev!==undefined?` · Opening #: ${prev}`:''}</div>
         </div>
-        <input type="number" min="0" placeholder="0" id="sc-slot-${s.slotIdx}" oninput="updScrTot()" style="text-align:center;padding:8px;font-size:15px;font-weight:600;width:72px" />
+        <input type="number" min="0" placeholder="000" id="sc-slot-${s.slotIdx}" oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})" style="text-align:center;padding:8px;font-size:15px;font-weight:600;width:72px" />
         <div style="text-align:right;min-width:60px">
           ${packVal?`<div style="font-size:11px;font-weight:700;color:var(--text2)">$<span id="sc-val-${s.slotIdx}">—</span></div>`:''}
           ${prev!==undefined?`<div style="font-size:11px;color:var(--green);font-weight:600" id="sc-sold-${s.slotIdx}"></div>`:''}
@@ -1771,6 +1784,18 @@ function updScrTot(){
   if(soldBlock && soldVal){
     soldBlock.style.display = hasSoldAny ? 'block' : 'none';
     soldVal.textContent = '$' + totSold.toLocaleString();
+  }
+}
+
+function scrAutoAdvance(inputEl, slotIdx){
+  // Auto-advance to next slot input after 3 digits are entered
+  if(inputEl.value.length < 3) return;
+  const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
+  const currentPos  = activeSlots.findIndex(s => s.slotIdx === slotIdx);
+  const nextSlot    = activeSlots[currentPos + 1];
+  if(nextSlot){
+    const nextEl = document.getElementById('sc-slot-'+nextSlot.slotIdx);
+    if(nextEl){ nextEl.focus(); nextEl.select(); }
   }
 }
 
