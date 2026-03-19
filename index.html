@@ -463,10 +463,19 @@
         <button class="bsm" onclick="closeSlotEdit()">Cancel</button>
       </div>
       <div class="g2" style="margin-bottom:10px">
-        <div><label>Ticket price ($)</label><input type="number" id="se-price" placeholder="e.g. 50" min="1" max="100" /></div>
+        <div><label>Ticket price ($)</label><input type="number" id="se-price" placeholder="e.g. 10" min="1" max="100" oninput="updSlotPackCalc()" /></div>
         <div><label>Game name</label><input id="se-name" placeholder="e.g. Gold Rush" /></div>
       </div>
-      <div style="margin-bottom:12px"><label>Game ticket # (from lottery)</label><input type="number" id="se-gamenum" placeholder="e.g. 1234" /></div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Tickets per book</label><input type="number" id="se-tickets" placeholder="e.g. 200" oninput="updSlotPackCalc()" /></div>
+        <div><label>Game ticket # (from lottery)</label><input type="number" id="se-gamenum" placeholder="e.g. 1234" /></div>
+      </div>
+      <!-- Live pack value -->
+      <div id="se-pack-val" style="display:none;background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Full pack value</div>
+        <div style="font-size:22px;font-weight:800;color:var(--green)" id="se-pack-num">$0</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px" id="se-pack-sub"></div>
+      </div>
       <div style="display:flex;gap:8px">
         <button class="btn bprimary" style="flex:1;padding:11px" onclick="saveSlot()">Save slot</button>
         <button class="btn" style="padding:11px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1" onclick="clearSlot()">Clear slot</button>
@@ -476,12 +485,20 @@
     <!-- Count entry card -->
     <div class="card">
       <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--amber)">
-        Enter ticket count <strong>remaining in dispenser</strong> for each slot
+        Enter ticket count <strong>remaining in dispenser</strong> for each slot — the app will calculate tickets sold and revenue automatically.
       </div>
       <div id="scrRows"><div class="empty"><div class="ei">🎟</div>No slots set up yet</div></div>
       <div id="scrTot" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Estimated total value on hand</div>
-        <div style="font-size:22px;font-weight:700" id="scrTotVal">$0</div>
+        <div class="g2">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:2px">Value on hand</div>
+            <div style="font-size:22px;font-weight:700" id="scrTotVal">$0</div>
+          </div>
+          <div id="scrSoldBlock" style="display:none">
+            <div style="font-size:11px;color:var(--green);margin-bottom:2px;font-weight:600">Est. sold this shift</div>
+            <div style="font-size:22px;font-weight:700;color:var(--green)" id="scrSoldVal">$0</div>
+          </div>
+        </div>
       </div>
     </div>
     <button class="btn bprimary" id="scrBtn" onclick="subScratch()">Save opening count</button>
@@ -500,11 +517,21 @@
       <div id="actForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:14px">
         <div class="g2" style="margin-bottom:10px">
           <div><label>Game name</label><input id="act-name" placeholder="e.g. Gold Rush $5" /></div>
-          <div><label>Ticket price ($)</label><input type="number" id="act-price" placeholder="e.g. 5" /></div>
+          <div><label>Ticket price ($)</label><input type="number" id="act-price" placeholder="e.g. 5" oninput="updActPackCalc()" /></div>
         </div>
         <div class="g2" style="margin-bottom:10px">
-          <div><label>Books / packs activated</label><input type="number" id="act-qty" placeholder="e.g. 1" min="1" /></div>
-          <div><label>Tickets per book</label><input type="number" id="act-tix" placeholder="e.g. 60" /></div>
+          <div><label>Books / packs activated</label><input type="number" id="act-qty" placeholder="e.g. 1" min="1" oninput="updActPackCalc()" /></div>
+          <div><label>Tickets per book</label><input type="number" id="act-tix" placeholder="e.g. 200" oninput="updActPackCalc()" /></div>
+        </div>
+        <!-- Live pack value calculation -->
+        <div id="act-pack-val" style="display:none;background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px">Total pack value</div>
+              <div style="font-size:24px;font-weight:800;color:var(--green)" id="act-pack-num">$0</div>
+            </div>
+            <div style="text-align:right;font-size:12px;color:var(--green)" id="act-pack-sub"></div>
+          </div>
         </div>
         <div style="margin-bottom:10px"><label>Pack / book number (optional)</label><input id="act-booknum" placeholder="e.g. 003214" /></div>
         <div style="margin-bottom:12px"><label>Slot # assigned to</label>
@@ -1166,9 +1193,11 @@ async function loadDashboard(){
 
     // Scratch-off MTD + activations
     const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(60)));
-    const scrMTD=scrSnap.docs.map(d=>d.data()).filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
+    const scrAll=scrSnap.docs.map(d=>d.data());
+    const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
     const latestScr=scrMTD.length>0?scrMTD[0]:null;
     const scrVal=latestScr?.totalValue||0;
+    const scrRevenue=scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
     const actSnap=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(20)));
     const recentActs=actSnap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1328,9 +1357,9 @@ async function loadDashboard(){
             <div style="font-size:11px;color:var(--text3);margin-top:3px">${latestScr?'Last count '+fmtDate(latestScr.date):'No counts yet'}</div>
           </div>
           <div class="scr-dash-cell">
-            <div class="scr-dash-cell-label">Activations — ${monthName}</div>
-            <div class="scr-dash-cell-val">${mtdActs.length}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">${mtdActValue>0?'$'+mtdActValue.toLocaleString()+' activated':'No activations yet'}</div>
+            <div class="scr-dash-cell-label" style="color:var(--green)">Est. revenue — ${monthName}</div>
+            <div class="scr-dash-cell-val" style="color:var(--green)">$${scrRevenue.toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${scrMTD.filter(d=>d.totalRevenue>0).length} count${scrMTD.filter(d=>d.totalRevenue>0).length!==1?'s':''} with sales</div>
           </div>
         </div>
         ${recentActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd).length?`
@@ -1539,17 +1568,27 @@ const TOTAL_SLOTS = 32;
 let slots = Array(TOTAL_SLOTS).fill(null); // null = empty slot
 let editingSlot = -1;
 
+let prevCounts = {}; // {slot_0: count, slot_1: count, ...} from last saved count
+
 async function loadGames(){
   try{
-    // Load slots from Firebase (stored as single doc for simplicity)
     const snap = await window.F.getDocs(window.F.collection(window.db,'scratchSlots'));
     slots = Array(TOTAL_SLOTS).fill(null);
     snap.docs.forEach(d => {
       const x = d.data();
       if(x.slot >= 0 && x.slot < TOTAL_SLOTS){
-        slots[x.slot] = {docId: d.id, slot: x.slot, price: x.price, name: x.name, gameNum: x.gameNum};
+        slots[x.slot] = {docId: d.id, slot: x.slot, price: x.price, name: x.name, gameNum: x.gameNum, totalTickets: x.totalTickets||0};
       }
     });
+    // Load the most recent count to compare against
+    try{
+      const cSnap = await window.F.getDocs(window.F.query(
+        window.F.collection(window.db,'scratchCounts'),
+        window.F.orderBy('timestamp','desc'),
+        window.F.limit(1)
+      ));
+      prevCounts = cSnap.empty ? {} : (cSnap.docs[0].data().counts||{});
+    }catch(e){ prevCounts={}; }
     renderSlotSetupGrid();
     renderScrRows();
   }catch(e){ console.error('loadGames',e); }
@@ -1576,11 +1615,13 @@ function openSlotEdit(slotIdx){
   editingSlot = slotIdx;
   const s = slots[slotIdx];
   document.getElementById('slotEditTitle').textContent = `Slot ${slotIdx+1}`;
-  document.getElementById('se-price').value = s ? s.price : '';
-  document.getElementById('se-name').value = s ? s.name : '';
+  document.getElementById('se-price').value   = s ? s.price : '';
+  document.getElementById('se-name').value    = s ? s.name : '';
   document.getElementById('se-gamenum').value = s ? s.gameNum : '';
+  document.getElementById('se-tickets').value = s ? (s.totalTickets||'') : '';
   document.getElementById('slotEditCard').style.display = 'block';
   document.getElementById('slotEditCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+  updSlotPackCalc();
 }
 
 function closeSlotEdit(){
@@ -1590,18 +1631,18 @@ function closeSlotEdit(){
 
 async function saveSlot(){
   if(editingSlot < 0) return;
-  const price = parseFloat(document.getElementById('se-price').value);
-  const name = document.getElementById('se-name').value.trim();
-  const gameNum = document.getElementById('se-gamenum').value.trim();
+  const price       = parseFloat(document.getElementById('se-price').value);
+  const name        = document.getElementById('se-name').value.trim();
+  const gameNum     = document.getElementById('se-gamenum').value.trim();
+  const totalTickets= parseInt(document.getElementById('se-tickets').value)||0;
   if(!price || !name){ toast('Enter price and game name'); return; }
   try{
     const existing = slots[editingSlot];
+    const data = {price, name, gameNum, totalTickets, updatedAt: new Date().toISOString()};
     if(existing && existing.docId){
-      // Update existing slot doc
-      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots',existing.docId),{price, name, gameNum, updatedAt: new Date().toISOString()});
+      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots',existing.docId), data);
     } else {
-      // Create new slot doc
-      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{slot: editingSlot, price, name, gameNum, createdAt: new Date().toISOString()});
+      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{slot: editingSlot, ...data, createdAt: new Date().toISOString()});
     }
     toast('✓ Slot saved');
     closeSlotEdit();
@@ -1631,57 +1672,143 @@ function renderScrRows(){
     return;
   }
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Slot</div>
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Game</div>
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:center">Count</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:center">Remaining</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:right">Pack value</div>
     </div>` +
-    activeSlots.map(s => `
-    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px">
-      <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap">${s.slotIdx+1}</div>
-      <div>
-        <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
-        ${s.gameNum ? `<div style="font-size:11px;color:var(--text3)">#${s.gameNum}</div>` : ''}
-      </div>
-      <input type="number" min="0" placeholder="0" id="sc-slot-${s.slotIdx}" oninput="updScrTot()" style="text-align:center;padding:8px;font-size:15px;font-weight:600" />
-    </div>`).join('');
+    activeSlots.map(s => {
+      const packVal = s.totalTickets ? (s.totalTickets * s.price) : null;
+      const prev = prevCounts['slot_'+s.slotIdx];
+      return `
+      <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:12px">
+        <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap">${s.slotIdx+1}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' · ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${packVal?` · Full pack: $${packVal.toLocaleString()}`:''}${prev!==undefined?` · Prev: ${prev}`:''}</div>
+        </div>
+        <input type="number" min="0" placeholder="0" id="sc-slot-${s.slotIdx}" oninput="updScrTot()" style="text-align:center;padding:8px;font-size:15px;font-weight:600;width:72px" />
+        <div style="text-align:right;min-width:60px">
+          ${packVal?`<div style="font-size:11px;font-weight:700;color:var(--text2)">$<span id="sc-val-${s.slotIdx}">—</span></div>`:''}
+          ${prev!==undefined?`<div style="font-size:11px;color:var(--green);font-weight:600" id="sc-sold-${s.slotIdx}"></div>`:''}
+        </div>
+      </div>`;
+    }).join('');
   updScrTot();
 }
 
 function updScrTot(){
   const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
-  const tot = activeSlots.reduce((sum,s) => {
-    const v = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
-    return sum + v * s.price;
-  }, 0);
-  const has = activeSlots.some(s => document.getElementById('sc-slot-'+s.slotIdx)?.value);
-  document.getElementById('scrTot').style.display = has ? 'block' : 'none';
-  document.getElementById('scrTotVal').textContent = '$' + tot.toLocaleString();
+  let totVal = 0, totSold = 0, hasSoldAny = false;
+
+  activeSlots.forEach(s => {
+    const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    const slotValue = remaining * s.price;
+    totVal += slotValue;
+
+    // Update per-slot value display
+    const valEl = document.getElementById('sc-val-'+s.slotIdx);
+    if(valEl) valEl.textContent = slotValue > 0 ? slotValue.toLocaleString() : '0';
+
+    // Calculate sold vs previous count
+    const prev = prevCounts['slot_'+s.slotIdx];
+    const soldEl = document.getElementById('sc-sold-'+s.slotIdx);
+    if(prev !== undefined && document.getElementById('sc-slot-'+s.slotIdx)?.value !== ''){
+      const ticketsSold = Math.max(0, prev - remaining);
+      const revenueSold = ticketsSold * s.price;
+      totSold += revenueSold;
+      if(ticketsSold > 0) hasSoldAny = true;
+      if(soldEl) soldEl.textContent = ticketsSold > 0 ? `↓${ticketsSold} sold · $${revenueSold.toFixed(0)}` : '';
+    } else if(soldEl){ soldEl.textContent = ''; }
+  });
+
+  const hasAny = activeSlots.some(s => document.getElementById('sc-slot-'+s.slotIdx)?.value);
+  document.getElementById('scrTot').style.display = hasAny ? 'block' : 'none';
+  document.getElementById('scrTotVal').textContent = '$' + totVal.toLocaleString();
+
+  // Show sold block if we have comparison data
+  const soldBlock = document.getElementById('scrSoldBlock');
+  const soldVal   = document.getElementById('scrSoldVal');
+  if(soldBlock && soldVal){
+    soldBlock.style.display = hasSoldAny ? 'block' : 'none';
+    soldVal.textContent = '$' + totSold.toLocaleString();
+  }
 }
 
 async function subScratch(){
   const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
   const counts = {};
+  const soldBySlot = {};
+  let totalRevenue = 0;
+
   activeSlots.forEach(s => {
-    counts['slot_'+s.slotIdx] = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    counts['slot_'+s.slotIdx] = remaining;
+    // Calculate sold vs previous count
+    const prev = prevCounts['slot_'+s.slotIdx];
+    if(prev !== undefined){
+      const ticketsSold = Math.max(0, prev - remaining);
+      const revenue = ticketsSold * s.price;
+      soldBySlot['slot_'+s.slotIdx] = {ticketsSold, revenue, price: s.price, name: s.name};
+      totalRevenue += revenue;
+    }
   });
+
   const totalValue = activeSlots.reduce((sum,s) => sum + (counts['slot_'+s.slotIdx]||0)*s.price, 0);
   try{
     await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{
       type:'scratchCounts', employee:CU.name,
       shiftType: document.getElementById('s-type').value,
-      counts, slots: activeSlots.map(s=>({slot:s.slotIdx+1,price:s.price,name:s.name,gameNum:s.gameNum})),
+      counts,
+      soldBySlot,
+      totalRevenue,
+      slots: activeSlots.map(s=>({slot:s.slotIdx+1, price:s.price, name:s.name, gameNum:s.gameNum, totalTickets:s.totalTickets||0})),
       totalValue,
       date: localDate(),
       timestamp: window.F.serverTimestamp()
     });
-    toast('✓ Scratch count saved!');
+    toast(`✓ Count saved!${totalRevenue>0?' · Est. $'+totalRevenue.toLocaleString()+' sold this shift':''}`);
     activeSlots.forEach(s => { const el=document.getElementById('sc-slot-'+s.slotIdx); if(el) el.value=''; });
     document.getElementById('scrTot').style.display = 'none';
+    // Refresh previous counts for next entry
+    prevCounts = {...counts};
   }catch(e){ toast('Error saving count'); }
 }
 
-// ---- COMPLIANCE ----
+function updSlotPackCalc(){
+  const price   = parseFloat(document.getElementById('se-price')?.value)||0;
+  const tickets = parseInt(document.getElementById('se-tickets')?.value)||0;
+  const valWrap = document.getElementById('se-pack-val');
+  if(!valWrap) return;
+  if(price && tickets){
+    const packVal = price * tickets;
+    valWrap.style.display = 'block';
+    document.getElementById('se-pack-num').textContent = '$'+packVal.toLocaleString();
+    document.getElementById('se-pack-sub').textContent = `${tickets} tickets × $${price} each`;
+  } else {
+    valWrap.style.display = 'none';
+  }
+}
+
+function updActPackCalc(){
+  const price   = parseFloat(document.getElementById('act-price')?.value)||0;
+  const tix     = parseInt(document.getElementById('act-tix')?.value)||0;
+  const qty     = parseInt(document.getElementById('act-qty')?.value)||1;
+  const valWrap = document.getElementById('act-pack-val');
+  if(!valWrap) return;
+  if(price && tix){
+    const packVal = price * tix * qty;
+    valWrap.style.display = 'block';
+    document.getElementById('act-pack-num').textContent = '$'+packVal.toLocaleString();
+    document.getElementById('act-pack-sub').textContent =
+      qty > 1
+        ? `${qty} books × ${tix} tickets × $${price} = $${packVal.toLocaleString()}`
+        : `${tix} tickets × $${price} each`;
+  } else {
+    valWrap.style.display = 'none';
+  }
+}
 let lics=[
   {id:'abc',name:'ABC License (Alcohol)',due:'2026-09-15',ack:false},
   {id:'deq',name:'DEQ Inspection',due:'2026-08-01',ack:false},
