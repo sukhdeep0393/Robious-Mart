@@ -1854,10 +1854,12 @@ async function subScratch(){
 
   const totalValue = activeSlots.reduce((sum,s) => sum + (counts['slot_'+s.slotIdx]||0)*s.price, 0);
   try{
+    const shiftTypeVal = document.getElementById('s-type').value;
     await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{
       type:'scratchCounts', employee:CU.name,
-      shiftType: document.getElementById('s-type').value,
+      shiftType: shiftTypeVal,
       counts,
+      openingCounts: shiftTypeVal==='end' ? prevCounts : {},
       soldBySlot,
       totalRevenue,
       slots: activeSlots.map(s=>({slot:s.slotIdx+1, price:s.price, name:s.name, gameNum:s.gameNum, totalTickets:s.totalTickets||0})),
@@ -2069,22 +2071,66 @@ async function loadLogs(){
     all.forEach(d=>{logDataStore[d.id]=d;});
 
     el.innerHTML=all.slice(0,40).map(d=>{
-      let t='',det='',b='';
+      let t='',det='',b='',extraDetail='';
       if(d.col==='dailyReports'){
         const cs=d.cashStatus==='short'?` · <span style="color:var(--red)">Short $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:d.cashStatus==='over'?` · <span style="color:var(--green)">Over $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:'';
         t=`${d.shift} shift — ${d.employee}`;det=`Sales: $${(d.totalSales||0).toFixed(2)} · Fuel: ${((d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0)).toFixed(0)} gal${cs}`;b='<span class="badge bblu">Daily</span>';
       }
       else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
-      else if(d.col==='scratchCounts'){t=`${d.shiftType==='start'?'Opening':'Closing'} count — ${d.employee}`;det=`Est. value: $${(d.totalValue||0).toLocaleString()}`;b='<span class="badge bamb">Scratch</span>';}
+      else if(d.col==='scratchCounts'){
+        b='<span class="badge bamb">Scratch</span>';
+        const isClose = d.shiftType==='end';
+        t=`${isClose?'Closing':'Opening'} count — ${d.employee}`;
+        const soldSlots = d.soldBySlot ? Object.values(d.soldBySlot) : [];
+        const totalTixSold = soldSlots.reduce((s,x)=>s+(x.ticketsSold||0),0);
+        if(isClose && totalTixSold>0){
+          det=`🎟 ${totalTixSold} tickets sold · <span style="color:var(--green);font-weight:600">$${(d.totalRevenue||0).toLocaleString()}</span> · Board: $${(d.totalValue||0).toLocaleString()}`;
+        } else {
+          det=`Board value: $${(d.totalValue||0).toLocaleString()}${isClose?' · No sales recorded':''}`;
+        }
+        if(d.slots && d.slots.length){
+          const colsTpl = isClose ? '28px 1fr 52px 52px 52px 64px' : '28px 1fr 52px';
+          const hdrCols = isClose
+            ? '<div></div><div>Game</div><div style="text-align:center">Open#</div><div style="text-align:center">Close#</div><div style="text-align:center">Sold</div><div style="text-align:right">Rev</div>'
+            : '<div></div><div>Game</div><div style="text-align:center">Ticket#</div>';
+          const rows = d.slots.map(s=>{
+            const key='slot_'+(s.slot-1);
+            const closeNum = d.counts&&d.counts[key]!==undefined ? d.counts[key] : '—';
+            const openNum  = d.openingCounts&&d.openingCounts[key]!==undefined ? d.openingCounts[key] : '—';
+            const sb = d.soldBySlot&&d.soldBySlot[key] ? d.soldBySlot[key] : null;
+            const tixSold = sb ? sb.ticketsSold : null;
+            const rev = sb ? sb.revenue : null;
+            const dataCols = isClose
+              ? `<div style="text-align:center;color:var(--text3)">${openNum}</div><div style="text-align:center;font-weight:700">${closeNum}</div><div style="text-align:center;color:${tixSold>0?'var(--amber)':'var(--text3)'};font-weight:600">${tixSold!==null?tixSold:'—'}</div><div style="text-align:right;color:${rev>0?'var(--green)':'var(--text3)'};font-weight:600">${rev!==null&&rev>0?'$'+rev.toFixed(0):'—'}</div>`
+              : `<div style="text-align:center;font-weight:700">${closeNum}</div>`;
+            return '<div style="display:grid;grid-template-columns:'+colsTpl+';gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">'
+              +'<div style="background:var(--blue-light);color:var(--blue);border-radius:5px;padding:2px 5px;font-size:11px;font-weight:700;text-align:center">'+s.slot+'</div>'
+              +'<div><div style="font-weight:600">$'+s.price+' — '+(s.name||'—')+'</div>'+(s.gameNum?'<div style="font-size:10px;color:var(--text3)">Game #'+s.gameNum+'</div>':'')+'</div>'
+              +dataCols+'</div>';
+          }).join('');
+          const hdr='<div style="display:grid;grid-template-columns:'+colsTpl+';gap:6px;padding:5px 0 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border)">'+hdrCols+'</div>';
+          extraDetail='<div id="scr-detail-'+d.id+'" style="display:none;background:var(--bg2);border-radius:8px;padding:10px 12px;margin-top:8px">'+hdr+rows+'</div>';
+        }
+      }
       const editBtn=`<button class="bsm" onclick="openEditModalById('${d.id}','${d.col}')" style="flex-shrink:0">✏️ Edit</button>`;
+      const ticketBtn=(d.col==='scratchCounts'&&d.slots&&d.slots.length)?'<button class="bsm" onclick="toggleScrDetail(\''+d.id+'\',this)" style="flex-shrink:0;margin-top:4px">🎟 Ticket #s</button>':'';
       return`<div class="litem">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="flex:1"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div></div>
-          ${editBtn}
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${editBtn}${ticketBtn}</div>
         </div>
+        ${extraDetail}
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';}
+}
+
+function toggleScrDetail(id, btn){
+  const el=document.getElementById('scr-detail-'+id);
+  if(!el) return;
+  const open = el.style.display==='block';
+  el.style.display = open ? 'none' : 'block';
+  if(btn) btn.textContent = open ? '🎟 Ticket #s' : '🎟 Hide';
 }
 
 // Edit modal state
