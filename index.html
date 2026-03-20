@@ -994,6 +994,7 @@
       <div style="text-align:right">Sales</div>
       <div style="text-align:right">Fuel (gal)</div>
       <div style="text-align:right">Lottery</div>
+      <!-- lottery sub-header handled in rows -->
     </div>
     <div id="dailyBreakdownList" style="overflow-y:auto;max-height:calc(88vh - 160px)"></div>
     <div id="dailyBreakdownTotals" style="border-top:2px solid var(--border);margin-top:4px;padding-top:10px"></div>
@@ -2148,16 +2149,17 @@ async function loadLogs(){
 function openDailyBreakdown(){
   const reports = window._dashMtdR || [];
   const label   = window._dashMonthLabel || 'This Month';
-  document.getElementById('dailyBreakdownTitle').textContent = label + ' — Daily Breakdown';
+  document.getElementById('dailyBreakdownTitle').textContent = label + ' \u2014 Daily Breakdown';
   const byDate = {};
   reports.forEach(r => {
     const d = r.date || '';
-    if(!byDate[d]) byDate[d] = {sales:0,cash:0,credit:0,lotNet:0,gal:0,shifts:[]};
-    byDate[d].sales  += r.totalSales  || 0;
-    byDate[d].cash   += r.cashSales   || 0;
-    byDate[d].credit += r.creditSales || 0;
-    byDate[d].lotNet += (r.lotteryTotal||0)-(r.lotteryPayout||0);
-    byDate[d].gal    += (r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0);
+    if(!byDate[d]) byDate[d] = {sales:0,cash:0,credit:0,lotSales:0,lotPayout:0,gal:0,shifts:[]};
+    byDate[d].sales     += r.totalSales    || 0;
+    byDate[d].cash      += r.cashSales     || 0;
+    byDate[d].credit    += r.creditSales   || 0;
+    byDate[d].lotSales  += r.lotteryTotal  || 0;
+    byDate[d].lotPayout += r.lotteryPayout || 0;
+    byDate[d].gal       += (r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0);
     byDate[d].shifts.push(r);
   });
   const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
@@ -2171,30 +2173,42 @@ function openDailyBreakdown(){
   } else {
     listEl.innerHTML = dates.map(d => {
       const row=byDate[d], isT=d===today;
-      const lc=row.lotNet>=0?'var(--green)':'var(--red)';
-      const bg=isT?';background:var(--blue-light);border-radius:8px;padding:10px 8px;margin:0 -8px':'';
-      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)'+bg+'">'
-        +'<div><div style="font-size:13px;font-weight:'+(isT?700:600)+';color:'+(isT?'var(--blue)':'var(--text)')+'">'+fmtD(d)+'</div>'
+      const lotNet = row.lotSales - row.lotPayout;
+      const lc = lotNet>=0?'var(--green)':'var(--red)';
+      const bg = isT?';background:var(--blue-light);border-radius:8px;padding:10px 8px;margin:0 -8px':'';
+      const lotCell = row.lotSales>0
+        ? '<div style="font-size:13px;font-weight:700">$'+row.lotSales.toFixed(0)+'</div>'
+          +'<div style="font-size:10px;color:var(--text3)">Pay $'+row.lotPayout.toFixed(0)+'</div>'
+          +'<div style="font-size:11px;font-weight:700;color:'+lc+'">'+(lotNet>=0?'Net +':'Net \u2212')+'$'+Math.abs(lotNet).toFixed(0)+'</div>'
+        : '<div style="font-size:13px;color:var(--text3)">&mdash;</div>';
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;align-items:start;padding:10px 0;border-bottom:1px solid var(--border)'+bg+'">'
+        +'<div style="padding-top:2px"><div style="font-size:13px;font-weight:'+(isT?700:600)+';color:'+(isT?'var(--blue)':'var(--text)')+'">'+fmtD(d)+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+row.shifts.length+' shift'+(row.shifts.length!==1?'s':'')+'</div></div>'
         +'<div style="text-align:right"><div style="font-size:13px;font-weight:700">$'+row.sales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
-        +'<div style="font-size:10px;color:var(--text3)">Cash $'+Math.round(row.cash).toLocaleString()+' / Cr $'+Math.round(row.credit).toLocaleString()+'</div></div>'
-        +'<div style="text-align:right;font-size:13px;font-weight:600;color:var(--text2)">'+(row.gal>0?row.gal.toFixed(0)+' gal':'&mdash;')+'</div>'
-        +'<div style="text-align:right;font-size:13px;font-weight:600;color:'+lc+'">'+(row.lotNet!==0?(row.lotNet>0?'+':'')+'$'+row.lotNet.toFixed(0):'&mdash;')+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">Cash $'+Math.round(row.cash).toLocaleString()+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">Cr $'+Math.round(row.credit).toLocaleString()+'</div></div>'
+        +'<div style="text-align:right;padding-top:2px;font-size:13px;font-weight:600;color:var(--text2)">'+(row.gal>0?row.gal.toFixed(0)+' gal':'&mdash;')+'</div>'
+        +'<div style="text-align:right">'+lotCell+'</div>'
         +'</div>';
     }).join('');
-    const tS=dates.reduce((s,d)=>s+byDate[d].sales,0);
-    const tG=dates.reduce((s,d)=>s+byDate[d].gal,0);
-    const tL=dates.reduce((s,d)=>s+byDate[d].lotNet,0);
-    const avg=dates.length?tS/dates.length:0;
-    totEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;font-size:12px;font-weight:700">'
-      +'<div style="color:var(--text3);font-size:11px">'+dates.length+' days &middot; avg $'+Math.round(avg).toLocaleString()+'/day</div>'
+    const tS  = dates.reduce((s,d)=>s+byDate[d].sales,0);
+    const tG  = dates.reduce((s,d)=>s+byDate[d].gal,0);
+    const tLS = dates.reduce((s,d)=>s+byDate[d].lotSales,0);
+    const tLP = dates.reduce((s,d)=>s+byDate[d].lotPayout,0);
+    const tLN = tLS - tLP;
+    const avg = dates.length?tS/dates.length:0;
+    totEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;font-size:12px;font-weight:700;align-items:start">'
+      +'<div style="color:var(--text3);font-size:11px">'+dates.length+' days<br>avg $'+Math.round(avg).toLocaleString()+'/day</div>'
       +'<div style="text-align:right;color:var(--blue)">$'+tS.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
       +'<div style="text-align:right;color:var(--text2)">'+tG.toFixed(0)+' gal</div>'
-      +'<div style="text-align:right;color:'+(tL>=0?'var(--green)':'var(--red)')+'">'+(tL>=0?'+':'')+'$'+tL.toFixed(0)+'</div></div>';
+      +'<div style="text-align:right">'
+        +(tLS>0
+          ?'<div>$'+tLS.toFixed(0)+'</div><div style="font-size:11px;color:var(--text3)">Pay $'+tLP.toFixed(0)+'</div><div style="font-size:11px;font-weight:700;color:'+(tLN>=0?'var(--green)':'var(--red)')+'\">'+(tLN>=0?'Net +':'Net \u2212')+'$'+Math.abs(tLN).toFixed(0)+'</div>'
+          :'<div style="color:var(--text3)">&mdash;</div>')
+      +'</div></div>';
   }
   document.getElementById('dailyBreakdownModal').style.display='flex';
 }
-
 function closeDailyBreakdown(){
   document.getElementById('dailyBreakdownModal').style.display='none';
 }
