@@ -1115,7 +1115,7 @@ function loginOK(u){
   buildTabs();
   if(u.role==='operator'||u.role==='lead') document.getElementById('mgmtCard').style.display='block';
   loadGames();loadInvFlags();
-  if(u.role==='operator'){checkComp();showTab('dashboard');}
+  if(u.role==='operator'){loadLics();showTab('dashboard');}
   else showTab('daily');
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
@@ -1141,7 +1141,7 @@ function showTab(id){
   if(id==='logs')loadLogs();
   if(id==='inventory')loadInvFlags();
   if(id==='scratch'){loadGames();loadActLog();}
-  if(id==='compliance')checkComp();
+  if(id==='compliance')loadLics();
   if(id==='employees')loadEmployees();
   if(id==='expenses')loadExpenses();
   if(id==='deliveries')initDeliveries();
@@ -1929,12 +1929,49 @@ function updActPackCalc(){
     valWrap.style.display = 'none';
   }
 }
-let lics=[
+const DEFAULT_LICS=[
   {id:'abc',name:'ABC License (Alcohol)',due:'2026-09-15',ack:false},
   {id:'deq',name:'DEQ Inspection',due:'2026-08-01',ack:false},
   {id:'biz',name:'Business License',due:'2027-06-01',ack:true},
   {id:'lot',name:'Lottery License',due:'2027-09-01',ack:false},
 ];
+let lics = JSON.parse(JSON.stringify(DEFAULT_LICS)); // mutable working copy
+
+async function saveLics(){
+  try{
+    const ref = window.F.doc(window.db,'settings','complianceLics');
+    await window.F.updateDoc(ref,{lics, updatedAt:new Date().toISOString()}).catch(async ()=>{
+      await window.F.addDoc(window.F.collection(window.db,'settings'),{lics, updatedAt:new Date().toISOString()});
+    });
+  }catch(e){console.error('saveLics error',e);}
+}
+
+async function loadLics(){
+  try{
+    const {getDocs,collection,query,limit} = window.F;
+    // Use a fixed doc id under 'settings'
+    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(10)));
+    const settingsDoc = snap.docs.find(d=>d.id==='complianceLics'||d.data().lics);
+    if(settingsDoc && settingsDoc.data().lics && settingsDoc.data().lics.length){
+      lics = settingsDoc.data().lics;
+      // Store the doc id so we can update it
+      window._licsDocId = settingsDoc.id;
+    }
+  }catch(e){console.error('loadLics error',e);}
+  checkComp();
+}
+
+async function saveLicsPersist(){
+  try{
+    if(window._licsDocId){
+      await window.F.updateDoc(window.F.doc(window.db,'settings',window._licsDocId),{lics, updatedAt:new Date().toISOString()});
+    } else {
+      const ref = await window.F.addDoc(window.F.collection(window.db,'settings'),{lics, updatedAt:new Date().toISOString()});
+      window._licsDocId = ref.id;
+    }
+  }catch(e){console.error('saveLicsPersist error',e);}
+}
+
 function du(d){return Math.ceil((new Date(d)-new Date())/(864e5));}
 function renderLics(){
   document.getElementById('licList').innerHTML=lics.map(l=>{
@@ -1971,14 +2008,14 @@ function checkComp(){
   renderLics();
 }
 function ackLic(id){
-  lics=lics.map(l=>l.id===id?{...l,ack:true}:l);checkComp();toast('Acknowledged');
+  lics=lics.map(l=>l.id===id?{...l,ack:true}:l);saveLicsPersist();checkComp();toast('Acknowledged');
   setTimeout(()=>{const ef=document.getElementById('edit-'+id);if(ef)ef.style.display='block';},400);
 }
 function toggleEditLic(id){const f=document.getElementById('edit-'+id);if(f)f.style.display=f.style.display==='none'?'block':'none';}
 function updateLicDate(id){
   const newDate=document.getElementById('newdate-'+id)?.value;
   if(!newDate){toast('Pick a date');return;}
-  lics=lics.map(l=>l.id===id?{...l,due:newDate,ack:false}:l);checkComp();toast('✓ Date updated');
+  lics=lics.map(l=>l.id===id?{...l,due:newDate,ack:false}:l);saveLicsPersist();checkComp();toast('✓ Date saved');
 }
 function togAddLic(){const f=document.getElementById('addLicForm');f.style.display=f.style.display==='none'?'block':'none';}
 function addLic(){
@@ -1986,7 +2023,7 @@ function addLic(){
   if(!n||!d){toast('Enter name and date');return;}
   lics.push({id:Date.now().toString(),name:n,due:d,ack:false});
   document.getElementById('ln').value='';document.getElementById('ld').value='';document.getElementById('addLicForm').style.display='none';
-  checkComp();toast('✓ License added');
+  saveLicsPersist();checkComp();toast('✓ License added');
 }
 
 // ---- INVENTORY ----
