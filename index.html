@@ -515,6 +515,18 @@
 
       <!-- Add activation form -->
       <div id="actForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:14px">
+
+        <!-- Batch queue — shown when items are pending -->
+        <div id="actBatchQueue" style="display:none;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Queued for activation</div>
+          <div id="actBatchList"></div>
+          <button class="btn bprimary" id="actSaveAllBtn" style="margin-top:10px;padding:12px;font-size:14px" onclick="saveAllActivations()">
+            Save all activations
+          </button>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px" id="actFormLabel">Add activation</div>
+
         <!-- Slot picker FIRST — selecting a filled slot auto-fills the rest -->
         <div style="margin-bottom:12px">
           <label>Slot # to activate into</label>
@@ -546,10 +558,10 @@
           </div>
         </div>
         <div id="act-slot-update-notice" style="display:none;margin-bottom:10px;font-size:12px;padding:8px 10px;border-radius:7px;background:var(--amber-light);color:var(--amber)">
-          ⚡ Slot will be automatically updated with this game info when you log the activation.
+          ⚡ Slot will be automatically updated with this game info when saved.
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="submitActivation()">Log activation</button>
+          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="addToBatch()">+ Add to batch</button>
           <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togActForm()">Cancel</button>
         </div>
       </div>
@@ -1200,19 +1212,37 @@ async function loadDashboard(){
     const totalPending=Object.values(dlByVendor).reduce((s,v)=>s+v.pending,0);
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
-    // Scratch-off: value on hand = all-time activated value − all-time sold (closing counts)
-    // Fetch all activations (no date filter — inventory carries forward across months)
-    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
-    const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data()}));
-    const allTimeActValue=allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
-
-    // All closing counts (end of shift) to get cumulative sold value
+    // Scratch-off value on hand:
+    // Source of truth = most recent physical count (totalValue from scratchCounts)
+    // Then layer on: + activations logged after that count − sales from closing counts after that count
     const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(500)));
-    const scrAll=scrSnap.docs.map(d=>d.data());
-    const allTimeSold=scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
+    const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
 
-    // Value on hand = activated − sold (floor at 0)
-    const scrVal=Math.max(0, allTimeActValue - allTimeSold);
+    // Most recent count of any type = the physical baseline
+    const latestCount = scrAll.length > 0 ? scrAll[0] : null;
+    const baselineValue   = latestCount?.totalValue || 0;
+    const baselineTs      = latestCount?._ts || 0;
+    const baselineDate    = latestCount?.date || '';
+
+    // Fetch all activations
+    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
+    const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
+
+    // Activations logged AFTER the latest count (not yet reflected in any count)
+    const actsAfterCount = allActs.filter(a => a._ts > baselineTs);
+    const activatedAfterCount = actsAfterCount.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+
+    // Sales from closing counts AFTER the latest count
+    const soldAfterCount = scrAll
+      .filter(d => d._ts > baselineTs && d.shiftType==='end')
+      .reduce((s,d)=>s+(d.totalRevenue||0),0);
+
+    // Final value on hand
+    const scrVal = Math.max(0, baselineValue + activatedAfterCount - soldAfterCount);
+
+    // All-time totals for the breakdown sub-line
+    const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+    const allTimeSold     = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
 
     // MTD sold revenue (for the selected month display)
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
@@ -1373,7 +1403,11 @@ async function loadDashboard(){
             <div class="scr-dash-cell-label">Value on hand</div>
             <div class="scr-dash-cell-val">$${scrVal.toLocaleString()}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:3px">
-              $${allTimeActValue.toLocaleString()} activated − $${allTimeSold.toLocaleString()} sold
+              ${latestCount
+                ? `Last count ${fmtDate(baselineDate)} · $${baselineValue.toLocaleString()}`
+                : 'No counts yet'}
+              ${activatedAfterCount>0 ? ` + $${activatedAfterCount.toLocaleString()} activated` : ''}
+              ${soldAfterCount>0 ? ` − $${soldAfterCount.toLocaleString()} sold` : ''}
             </div>
           </div>
           <div class="scr-dash-cell">
@@ -3626,30 +3660,157 @@ function clearMgImport(){
 }
 
 // ---- SCRATCH ACTIVATION LOG ----
+let pendingActivations = []; // batch queue before final save
+
 function togActForm(){
   const f = document.getElementById('actForm');
   const open = f.style.display !== 'none';
-  f.style.display = open ? 'none' : 'block';
-  if(!open){
-    // Populate dropdown with ALL 32 slots — empty ones shown so employee can activate into them
-    const sel = document.getElementById('act-slot');
-    sel.innerHTML = '<option value="">— select slot —</option>' +
-      Array.from({length: TOTAL_SLOTS}, (_,i) => {
-        const s = slots[i];
-        return s && s.name
-          ? `<option value="${i}">${i+1} — $${s.price} ${s.name} (replace)</option>`
-          : `<option value="${i}">Slot ${i+1} — (empty)</option>`;
-      }).join('');
-    // Reset form
-    ['act-name','act-price','act-gamenum','act-qty','act-tix','act-booknum'].forEach(id=>{
-      const el=document.getElementById(id); if(el) el.value='';
-    });
-    const hint = document.getElementById('act-slot-hint');
-    const notice = document.getElementById('act-slot-update-notice');
-    if(hint) hint.style.display='none';
-    if(notice) notice.style.display='none';
-    document.getElementById('act-pack-val').style.display='none';
-    setTimeout(()=>document.getElementById('act-slot')?.focus(), 80);
+  if(open){
+    // Closing — clear batch
+    pendingActivations = [];
+    f.style.display = 'none';
+    return;
+  }
+  // Opening — reset everything
+  pendingActivations = [];
+  renderBatchQueue();
+  populateActSlotDropdown();
+  clearActFormFields();
+  f.style.display = 'block';
+  setTimeout(()=>document.getElementById('act-slot')?.focus(), 80);
+}
+
+function populateActSlotDropdown(){
+  const sel = document.getElementById('act-slot');
+  if(!sel) return;
+  // Grey out slots already queued in this batch
+  const queuedSlots = new Set(pendingActivations.map(a => a.slotIdx));
+  sel.innerHTML = '<option value="">— select slot —</option>' +
+    Array.from({length: TOTAL_SLOTS}, (_,i) => {
+      if(queuedSlots.has(i)) return ''; // hide already-queued slots
+      const s = slots[i];
+      return s && s.name
+        ? `<option value="${i}">Slot ${i+1} — $${s.price} ${s.name} (replace)</option>`
+        : `<option value="${i}">Slot ${i+1} — (empty)</option>`;
+    }).join('');
+}
+
+function clearActFormFields(){
+  ['act-name','act-price','act-gamenum','act-qty','act-tix','act-booknum'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const hint   = document.getElementById('act-slot-hint');
+  const notice = document.getElementById('act-slot-update-notice');
+  if(hint)   hint.style.display='none';
+  if(notice) notice.style.display='none';
+  const packVal = document.getElementById('act-pack-val');
+  if(packVal) packVal.style.display='none';
+  const sel = document.getElementById('act-slot');
+  if(sel) sel.value = '';
+}
+
+function renderBatchQueue(){
+  const wrap = document.getElementById('actBatchQueue');
+  const list = document.getElementById('actBatchList');
+  const btn  = document.getElementById('actSaveAllBtn');
+  if(!wrap || !list) return;
+  if(!pendingActivations.length){ wrap.style.display='none'; return; }
+
+  const totalVal = pendingActivations.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+  wrap.style.display = 'block';
+  if(btn) btn.textContent = `💾 Save all ${pendingActivations.length} activation${pendingActivations.length!==1?'s':''}${totalVal?' · $'+totalVal.toLocaleString():''}`;
+
+  list.innerHTML = pendingActivations.map((a,i)=>{
+    const val = (a.qty||1)*(a.ticketsPerBook||0)*(a.price||0);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">Slot ${a.slotIdx+1} — ${a.name}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">
+          $${a.price} · ${a.qty||1} book${(a.qty||1)!==1?'s':''}${a.ticketsPerBook?' · '+a.ticketsPerBook+' tickets/book':''}${a.bookNumber?' · Book #'+a.bookNumber:''}${val?' · <span style="color:var(--green);font-weight:600">$'+val.toLocaleString()+'</span>':''}
+        </div>
+      </div>
+      <button onclick="removeBatchItem(${i})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:12px;color:var(--red);cursor:pointer;flex-shrink:0">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeBatchItem(idx){
+  pendingActivations.splice(idx, 1);
+  renderBatchQueue();
+  populateActSlotDropdown(); // restore removed slot back to dropdown
+}
+
+function addToBatch(){
+  const name    = document.getElementById('act-name')?.value.trim();
+  const price   = parseFloat(document.getElementById('act-price')?.value)||0;
+  const qty     = parseInt(document.getElementById('act-qty')?.value)||1;
+  const tix     = parseInt(document.getElementById('act-tix')?.value)||0;
+  const gameNum = document.getElementById('act-gamenum')?.value.trim();
+  const booknum = document.getElementById('act-booknum')?.value.trim();
+  const slotVal = document.getElementById('act-slot')?.value;
+
+  if(!name)   { toast('Enter game name'); return; }
+  if(!price)  { toast('Enter ticket price'); return; }
+  if(slotVal===''){ toast('Select a slot'); return; }
+
+  pendingActivations.push({
+    slotIdx:   parseInt(slotVal),
+    name, price, qty,
+    ticketsPerBook: tix,
+    gameNum:   gameNum || '',
+    bookNumber: booknum || ''
+  });
+
+  renderBatchQueue();
+  clearActFormFields();
+  populateActSlotDropdown(); // remove the just-queued slot from dropdown
+  // Scroll batch into view so user sees what was added
+  document.getElementById('actBatchQueue')?.scrollIntoView({behavior:'smooth', block:'nearest'});
+  setTimeout(()=>document.getElementById('act-slot')?.focus(), 150);
+}
+
+async function saveAllActivations(){
+  if(!pendingActivations.length){ toast('Nothing queued'); return; }
+  const btn = document.getElementById('actSaveAllBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+
+  try{
+    for(const a of pendingActivations){
+      // 1. Log activation record
+      await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
+        gameName: a.name,
+        price:    a.price,
+        qty:      a.qty,
+        ticketsPerBook: a.ticketsPerBook,
+        gameNum:  a.gameNum,
+        bookNumber: a.bookNumber,
+        slotNum:  a.slotIdx + 1,
+        employee: CU.name,
+        date:     localDate(),
+        timestamp: window.F.serverTimestamp()
+      });
+      // 2. Auto-update the slot in scratchSlots
+      const slotData = { price: a.price, name: a.name, gameNum: a.gameNum, totalTickets: a.ticketsPerBook, updatedAt: new Date().toISOString() };
+      const existing = slots[a.slotIdx];
+      if(existing && existing.docId){
+        await window.F.updateDoc(window.F.doc(window.db,'scratchSlots', existing.docId), slotData);
+      } else {
+        await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{
+          slot: a.slotIdx, ...slotData, createdAt: new Date().toISOString()
+        });
+      }
+    }
+    const count = pendingActivations.length;
+    const totalVal = pendingActivations.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+    toast(`✓ ${count} activation${count!==1?'s':''} saved${totalVal?' · $'+totalVal.toLocaleString()+' added':''}!`);
+    pendingActivations = [];
+    document.getElementById('actForm').style.display = 'none';
+    await loadGames();
+    loadActLog();
+  }catch(e){
+    toast('Error saving activations');
+    console.error(e);
+    if(btn){ btn.disabled=false; btn.textContent='Retry save'; }
   }
 }
 
@@ -3664,7 +3825,6 @@ function onActSlotChange(val){
   const idx = parseInt(val);
   const s = slots[idx];
   if(s && s.name){
-    // Slot is filled — auto-fill the form with existing game info
     document.getElementById('act-name').value    = s.name || '';
     document.getElementById('act-price').value   = s.price || '';
     document.getElementById('act-gamenum').value = s.gameNum || '';
@@ -3679,7 +3839,6 @@ function onActSlotChange(val){
     }
     if(notice) notice.style.display='block';
   } else {
-    // Empty slot — clear form and show notice
     ['act-name','act-price','act-gamenum','act-tix','act-booknum'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.value='';
     });
@@ -3692,55 +3851,6 @@ function onActSlotChange(val){
     }
     if(notice) notice.style.display='block';
   }
-}
-
-async function submitActivation(){
-  const name    = document.getElementById('act-name')?.value.trim();
-  const price   = parseFloat(document.getElementById('act-price')?.value)||0;
-  const qty     = parseInt(document.getElementById('act-qty')?.value)||1;
-  const tix     = parseInt(document.getElementById('act-tix')?.value)||0;
-  const gameNum = document.getElementById('act-gamenum')?.value.trim();
-  const booknum = document.getElementById('act-booknum')?.value.trim();
-  const slotVal = document.getElementById('act-slot')?.value;
-
-  if(!name){ toast('Enter game name'); return; }
-  if(!price){ toast('Enter ticket price'); return; }
-  if(slotVal === ''){ toast('Select a slot'); return; }
-
-  const slotIdx = parseInt(slotVal);
-
-  try{
-    // 1. Log the activation record
-    await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
-      gameName: name,
-      price,
-      qty,
-      ticketsPerBook: tix,
-      gameNum: gameNum || '',
-      bookNumber: booknum,
-      slotNum: slotIdx + 1,
-      employee: CU.name,
-      date: localDate(),
-      timestamp: window.F.serverTimestamp()
-    });
-
-    // 2. Auto-update (or create) the slot in scratchSlots so no double entry needed
-    const slotData = { price, name, gameNum: gameNum||'', totalTickets: tix, updatedAt: new Date().toISOString() };
-    const existing = slots[slotIdx];
-    if(existing && existing.docId){
-      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots', existing.docId), slotData);
-    } else {
-      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{
-        slot: slotIdx, ...slotData, createdAt: new Date().toISOString()
-      });
-    }
-
-    toast('✓ Activation logged & slot updated!');
-    document.getElementById('actForm').style.display = 'none';
-    // Reload games so the slot grid and count rows reflect the new game instantly
-    await loadGames();
-    loadActLog();
-  }catch(e){ toast('Error saving activation'); console.error(e); }
 }
 
 async function loadActLog(){
