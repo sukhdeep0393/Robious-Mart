@@ -436,6 +436,12 @@
       <div id="fuelBars"></div>
     </div>
     <button class="btn bprimary" onclick="subFuel()">Save fuel report</button>
+
+    <div class="ct" style="margin:20px 0 10px">Fuel inventory photos</div>
+    <div class="filter-bar">
+      <input type="date" id="fuelPhotoDate" onchange="loadFuelPhotos()" placeholder="Filter by date" />
+    </div>
+    <div id="fuelPhotoList"><div class="empty"><div class="ei">📷</div>No fuel photos yet</div></div>
   </div>
 
   <!-- SCRATCH-OFFS -->
@@ -618,12 +624,6 @@
       </div>
     </div>
     <div id="empContent"><div class="empty"><div class="ei">👥</div>Loading...</div></div>
-
-    <div class="ct" style="margin:16px 0 10px">Fuel inventory photos</div>
-    <div class="filter-bar">
-      <input type="date" id="fuelPhotoDate" onchange="loadFuelPhotos()" placeholder="Filter by date" />
-    </div>
-    <div id="fuelPhotoList"><div class="empty"><div class="ei">📷</div>No fuel photos yet</div></div>
   </div>
 
   <!-- MY HOURS (employee/lead) -->
@@ -1137,7 +1137,7 @@ function showTab(id){
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.id===id)t.classList.add('active');});
   if(id==='dashboard')loadDashboard();
-  if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();}
+  if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();loadFuelPhotos();}
   if(id==='logs')loadLogs();
   if(id==='inventory')loadInvFlags();
   if(id==='scratch'){loadGames();loadActLog();}
@@ -2495,8 +2495,6 @@ async function loadEmployees(){
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div class="empty">Error loading employee data</div>';}
-
-  loadFuelPhotos();
 }
 
 function toggleWeek(empNameRaw, weekNum){
