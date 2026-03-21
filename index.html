@@ -647,6 +647,9 @@
       <div id="tobrandList"><div style="font-size:12px;color:var(--text3)">No brands set up yet</div></div>
     </div>
 
+    <!-- Discrepancy alert (shown after submission if issues found) -->
+    <div id="tobDiscrepancyAlert" style="display:none;background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:14px 16px;margin-bottom:12px"></div>
+
     <!-- Submit shift count -->
     <div class="card">
       <div class="ct">Submit carton count</div>
@@ -1355,16 +1358,18 @@ async function loadDashboard(){
       openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
     }catch(e2){}
 
-    // Tobacco low stock
-    let lowTobacco=[];
+    // Tobacco low stock + discrepancies
+    let lowTobacco=[], tobDiscrepancies=[];
     try{
       const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
       const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
       if(tobBrandsAll.length){
         const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
         if(tobCountSnap.docs.length){
-          const latestCounts=tobCountSnap.docs[0].data().counts||{};
+          const latestTob=tobCountSnap.docs[0].data();
+          const latestCounts=latestTob.counts||{};
           lowTobacco=tobBrandsAll.filter(b=>latestCounts[b.id]!==undefined&&latestCounts[b.id]<=(b.threshold||3));
+          tobDiscrepancies=latestTob.discrepancies||[];
         }
       }
     }catch(e3){}
@@ -1384,7 +1389,7 @@ async function loadDashboard(){
         <div style="font-size:12px;color:var(--text3);margin-top:2px">${mtdR.length} shift reports in this period</div>
       </div>`}
 
-      ${(isCurrentMonth&&(urgLics.length||openFlags||lowTobacco.length))?`
+      ${(isCurrentMonth&&(urgLics.length||openFlags||lowTobacco.length||tobDiscrepancies.length))?`
       <div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:13px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:18px;margin-top:1px">⚑</div>
         <div>
@@ -1392,6 +1397,7 @@ async function loadDashboard(){
           ${urgLics.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+'d left'}</div>`).join('')}
           ${openFlags?`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${openFlags} open low-inventory flag${openFlags>1?'s':''}</div>`:''}
           ${lowTobacco.map(b=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• 🚬 ${b.name} — low stock (order now)</div>`).join('')}
+          ${tobDiscrepancies.map(d=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• 🚨 ${d.brand} — ${d.missing} carton${d.missing>1?'s':''} unaccounted for (last count by ${d.prevEmployee})</div>`).join('')}
         </div>
       </div>`:''}
 
@@ -2169,6 +2175,10 @@ function addLic(){
 let tobBrands = []; // cached brand list
 
 async function loadTobaccoTab(){
+  // Hide discrepancy alert from previous session
+  const da = document.getElementById('tobDiscrepancyAlert');
+  if(da) da.style.display='none';
+
   // Show operator-only cards
   const isMgr = CU && (CU.role==='operator'||CU.role==='lead');
   const mgmtCard = document.getElementById('tobrandMgmtCard');
@@ -2311,23 +2321,135 @@ async function submitTobCount(){
   });
   if(!hasAny){ toast('Enter at least one count'); return; }
 
-  // Check for low stock
+  // Low stock check
   const lowBrands = tobBrands.filter(b=>counts[b.id]!==undefined && counts[b.id] <= (b.threshold||3));
+
+  // --- DISCREPANCY DETECTION ---
+  // 1. Get the previous count
+  const discrepancies = [];
+  try{
+    const prevSnap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'tobaccoCounts'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(1)
+    ));
+    if(prevSnap.docs.length){
+      const prevDoc = prevSnap.docs[0].data();
+      const prevCounts = prevDoc.counts || {};
+      const prevTs = prevDoc.timestamp?.toMillis?.() || 0;
+      const prevDate = prevDoc.date || '';
+
+      // 2. Get any deliveries logged between previous count and now
+      // Fetch recent deliveries and filter client-side
+      const delivSnap = await window.F.getDocs(window.F.query(
+        window.F.collection(window.db,'tobaccoCounts'),
+        window.F.orderBy('timestamp','desc'),
+        window.F.limit(100)
+      ));
+      // We store tobacco deliveries separately in tobaccoDeliveries collection
+      const tobDelSnap = await window.F.getDocs(window.F.query(
+        window.F.collection(window.db,'tobaccoDeliveries'),
+        window.F.orderBy('timestamp','desc'),
+        window.F.limit(100)
+      )).catch(()=>({docs:[]}));
+      const tobDels = tobDelSnap.docs.map(d=>({...d.data(), _ts:d.data().timestamp?.toMillis?.() || 0}))
+        .filter(d=>d._ts > prevTs);
+
+      // 3. For each brand that has both a previous count and a current count, check math
+      tobBrands.forEach(b=>{
+        if(counts[b.id]===undefined) return; // not counted this time
+        if(prevCounts[b.id]===undefined) return; // no previous count to compare
+
+        const prevQty = prevCounts[b.id];
+        // Sum any deliveries for this brand since last count
+        const delivered = tobDels
+          .filter(d=>d.brandId===b.id)
+          .reduce((s,d)=>s+(d.cartons||0),0);
+
+        const expected = prevQty + delivered;
+        const actual   = counts[b.id];
+        const diff     = expected - actual; // positive = missing cartons
+
+        if(diff > 0){
+          discrepancies.push({
+            brand: b.name,
+            prevQty,
+            delivered,
+            expected,
+            actual,
+            missing: diff,
+            prevEmployee: prevDoc.employee,
+            prevDate
+          });
+        }
+      });
+    }
+  }catch(discErr){ console.error('Discrepancy check error:', discErr); }
 
   try{
     await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
       counts,
+      discrepancies: discrepancies.length ? discrepancies : [],
       employee: CU.name,
       date: localDate(),
       timestamp: window.F.serverTimestamp()
     });
+
     // Clear inputs
     tobBrands.forEach(b=>{ const el=document.getElementById('tob-count-'+b.id); if(el) el.value=''; });
-    const lowMsg = lowBrands.length ? ` · ⚠️ ${lowBrands.length} brand${lowBrands.length>1?'s':''} low` : '';
-    toast('✓ Count saved' + lowMsg);
+
+    // Build toast message
+    let msg = '✓ Count saved';
+    if(lowBrands.length) msg += ` · ⚠️ ${lowBrands.length} brand${lowBrands.length>1?'s':''} low`;
+    if(discrepancies.length) msg += ` · 🚨 ${discrepancies.length} discrepanc${discrepancies.length>1?'ies':'y'} found`;
+    toast(msg);
+
+    // Show discrepancy alert if found
+    if(discrepancies.length) showTobDiscrepancyAlert(discrepancies);
+
     await loadTobInventory();
     if(CU&&CU.role==='operator') loadTobHistory();
   }catch(e){ toast('Error saving count'); }
+}
+
+function showTobDiscrepancyAlert(discrepancies){
+  // Build inline alert on the tobacco page
+  const el = document.getElementById('tobDiscrepancyAlert');
+  if(!el) return;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="font-size:20px;flex-shrink:0">🚨</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px">
+          Discrepancy detected — ${discrepancies.length} brand${discrepancies.length>1?'s':''} unaccounted for
+        </div>
+        ${discrepancies.map(d=>`
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid #f7c1c1">
+            <div style="font-size:13px;font-weight:700;margin-bottom:4px">🚬 ${d.brand}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px">
+              <div style="background:var(--bg2);border-radius:6px;padding:6px 8px;text-align:center">
+                <div style="color:var(--text3);font-size:10px;margin-bottom:2px">Last count</div>
+                <div style="font-weight:700">${d.prevQty} cartons</div>
+                <div style="font-size:10px;color:var(--text3)">${d.prevEmployee}</div>
+              </div>
+              <div style="background:var(--green-light);border-radius:6px;padding:6px 8px;text-align:center">
+                <div style="color:var(--text3);font-size:10px;margin-bottom:2px">Expected</div>
+                <div style="font-weight:700;color:var(--green)">${d.expected} cartons</div>
+                ${d.delivered>0?`<div style="font-size:10px;color:var(--green)">+${d.delivered} delivered</div>`:'<div style="font-size:10px;color:var(--text3)">no delivery</div>'}
+              </div>
+              <div style="background:var(--red-light);border-radius:6px;padding:6px 8px;text-align:center">
+                <div style="color:var(--text3);font-size:10px;margin-bottom:2px">Actual count</div>
+                <div style="font-weight:700;color:var(--red)">${d.actual} cartons</div>
+                <div style="font-size:10px;font-weight:700;color:var(--red)">-${d.missing} missing</div>
+              </div>
+            </div>
+          </div>`).join('')}
+        <div style="font-size:11px;color:var(--red);margin-top:4px">
+          This discrepancy has been logged and is visible to the operator.
+        </div>
+      </div>
+    </div>`;
 }
 
 async function loadTobInventory(){
@@ -2411,20 +2533,36 @@ async function loadTobHistory(){
     const fmtD = d => new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
     el.innerHTML = docs.map(doc=>{
       const counts = doc.counts||{};
+      const discr  = doc.discrepancies||[];
       const lines = tobBrands
         .filter(b=>counts[b.id]!==undefined)
         .map(b=>{
           const qty = counts[b.id];
           const thr = b.threshold||3;
           const isLow = qty <= thr;
-          return `<span style="font-size:11px;background:${isLow?'var(--amber-light)':'var(--bg2)'};color:${isLow?'var(--amber)':'var(--text2)'};border-radius:4px;padding:2px 6px;margin-right:4px;white-space:nowrap">${catIcon[b.category]||''} ${b.name}: ${qty}</span>`;
+          const hasDiscr = discr.find(d=>d.brand===b.name);
+          const bg = hasDiscr?'var(--red-light)':isLow?'var(--amber-light)':'var(--bg2)';
+          const col = hasDiscr?'var(--red)':isLow?'var(--amber)':'var(--text2)';
+          return `<span style="font-size:11px;background:${bg};color:${col};border-radius:4px;padding:2px 6px;margin-right:4px;white-space:nowrap">${hasDiscr?'🚨':catIcon[b.category]||''} ${b.name}: ${qty}${hasDiscr?` (-${hasDiscr.missing})`:''}</span>`;
         }).join('');
+      const discrBadge = discr.length ? `<span class="badge bred" style="margin-left:6px">🚨 ${discr.length} discrepanc${discr.length>1?'ies':'y'}</span>` : '';
+      const discrDetail = discr.length ? `
+        <div style="margin-top:8px;background:var(--red-light);border-radius:8px;padding:10px 12px">
+          ${discr.map(d=>`<div style="font-size:12px;color:var(--red);margin-bottom:3px">
+            🚬 <strong>${d.brand}</strong> — expected ${d.expected}, got ${d.actual} · <strong>${d.missing} missing</strong>
+            <span style="color:var(--text3);font-size:11px">(prev count by ${d.prevEmployee})</span>
+          </div>`).join('')}
+        </div>` : '';
       return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
           <div style="font-size:13px;font-weight:600">${fmtD(doc.date)}</div>
-          <span class="badge bblu">${doc.employee}</span>
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            <span class="badge bblu">${doc.employee}</span>
+            ${discrBadge}
+          </div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${lines||'<span style="font-size:11px;color:var(--text3)">No brand data</span>'}</div>
+        ${discrDetail}
       </div>`;
     }).join('');
   }catch(e){ el.innerHTML='<div class="empty">Error loading history</div>'; }
