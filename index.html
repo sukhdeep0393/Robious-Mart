@@ -1234,32 +1234,40 @@ async function loadDashboard(){
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
     // Scratch-off value on hand:
-    // Source of truth = most recent physical count (totalValue from scratchCounts)
-    // Then layer on: + activations logged after that count − sales from closing counts after that count
+    // Baseline = most recent count with totalValue > 0 (skip $0 counts to survive deletions)
+    // Then layer on: + activations after that count − sales from closing counts after that count
+    // Fallback: if no non-zero baseline exists, compute from all-time activations − all-time sales
     const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(500)));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
 
-    // Most recent count of any type = the physical baseline
-    const latestCount = scrAll.length > 0 ? scrAll[0] : null;
-    const baselineValue   = latestCount?.totalValue || 0;
-    const baselineTs      = latestCount?._ts || 0;
-    const baselineDate    = latestCount?.date || '';
+    // Find the most recent count that has a meaningful non-zero board value
+    const latestCount = scrAll.find(d => (d.totalValue || 0) > 0) || null;
+    const baselineValue = latestCount?.totalValue || 0;
+    const baselineTs    = latestCount?._ts || 0;
+    const baselineDate  = latestCount?.date || '';
 
     // Fetch all activations
     const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
 
-    // Activations logged AFTER the latest count (not yet reflected in any count)
+    // Activations logged AFTER the baseline count
     const actsAfterCount = allActs.filter(a => a._ts > baselineTs);
     const activatedAfterCount = actsAfterCount.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
 
-    // Sales from closing counts AFTER the latest count
+    // Sales from closing counts AFTER the baseline count
     const soldAfterCount = scrAll
       .filter(d => d._ts > baselineTs && d.shiftType==='end')
       .reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // Final value on hand
-    const scrVal = Math.max(0, baselineValue + activatedAfterCount - soldAfterCount);
+    // If no non-zero baseline exists at all, fall back to all-time activations minus all-time sales
+    let scrVal;
+    if(!latestCount){
+      const allTimeActValue2 = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+      const allTimeSold2 = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
+      scrVal = Math.max(0, allTimeActValue2 - allTimeSold2);
+    } else {
+      scrVal = Math.max(0, baselineValue + activatedAfterCount - soldAfterCount);
+    }
 
     // All-time totals for the breakdown sub-line
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
