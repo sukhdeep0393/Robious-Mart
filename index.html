@@ -612,6 +612,72 @@
   </div>
 
 
+  <!-- TOBACCO / NICOTINE INVENTORY -->
+  <div class="page" id="page-tobacco">
+
+    <!-- Operator: Brand setup -->
+    <div class="card" id="tobrandMgmtCard" style="display:none">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Brands on file</div>
+        <button class="bsm" onclick="togTobrandForm()">+ Add brand</button>
+      </div>
+      <div id="tobrandFormWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <input type="hidden" id="tobrandEditId" />
+        <div class="g2" style="margin-bottom:8px">
+          <div><label>Brand name</label><input id="tobrandName" placeholder="e.g. Marlboro Red" /></div>
+          <div><label>Category</label>
+            <select id="tobrandCat">
+              <option value="cigarettes">Cigarettes</option>
+              <option value="nicotine">Nicotine (Zyn/Velo)</option>
+              <option value="vape">Vape</option>
+              <option value="smokeless">Smokeless</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="g2" style="margin-bottom:8px">
+          <div><label>Reorder alert threshold (cartons)</label><input type="number" id="tobrandThreshold" placeholder="e.g. 3" min="1" /></div>
+          <div><label>Distributor (optional)</label><input id="tobrandDist" placeholder="e.g. McLane" /></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="saveTobrand()">Save brand</button>
+          <button class="btn bsecondary" style="padding:9px;font-size:13px" onclick="cancelTobrandEdit()">Cancel</button>
+        </div>
+      </div>
+      <div id="tobrandList"><div style="font-size:12px;color:var(--text3)">No brands set up yet</div></div>
+    </div>
+
+    <!-- Submit shift count -->
+    <div class="card">
+      <div class="ct">Submit carton count</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;background:var(--blue-light);border-radius:8px;padding:10px 12px">
+        Count sealed cartons in the back room and enter the number for each brand. Takes about 60 seconds.
+      </div>
+      <div id="tobCountRows"><div class="empty"><div class="ei">🚬</div>No brands set up yet — ask operator to add brands</div></div>
+      <div id="tobCountSubmitWrap" style="display:none;margin-top:12px">
+        <button class="btn bprimary" style="padding:13px" onclick="submitTobCount()">Save carton count</button>
+      </div>
+    </div>
+
+    <!-- Current inventory status -->
+    <div class="card">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Current inventory</div>
+        <div style="font-size:11px;color:var(--text3)" id="tobLastUpdated"></div>
+      </div>
+      <div id="tobInventoryList"><div class="empty"><div class="ei">📦</div>No counts submitted yet</div></div>
+    </div>
+
+    <!-- Count history (operator only) -->
+    <div class="card" id="tobHistoryCard" style="display:none">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Count history</div>
+        <input type="month" id="tobHistoryMonth" onchange="loadTobHistory()" style="font-size:12px;padding:5px 8px;width:auto" />
+      </div>
+      <div id="tobHistoryList"><div class="empty">No history yet</div></div>
+    </div>
+  </div>
+
   <!-- EMPLOYEES (operator only) -->
   <div class="page" id="page-employees">
     <div class="card">
@@ -1088,9 +1154,9 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
 
 // ---- LOGIN ----
@@ -1140,6 +1206,7 @@ function showTab(id){
   if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();loadFuelPhotos();}
   if(id==='logs')loadLogs();
   if(id==='inventory')loadInvFlags();
+  if(id==='tobacco')loadTobaccoTab();
   if(id==='scratch'){loadGames();loadActLog();}
   if(id==='compliance')loadLics();
   if(id==='employees')loadEmployees();
@@ -1288,6 +1355,20 @@ async function loadDashboard(){
       openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
     }catch(e2){}
 
+    // Tobacco low stock
+    let lowTobacco=[];
+    try{
+      const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
+      const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
+      if(tobBrandsAll.length){
+        const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
+        if(tobCountSnap.docs.length){
+          const latestCounts=tobCountSnap.docs[0].data().counts||{};
+          lowTobacco=tobBrandsAll.filter(b=>latestCounts[b.id]!==undefined&&latestCounts[b.id]<=(b.threshold||3));
+        }
+      }
+    }catch(e3){}
+
     const urgLics=lics.filter(l=>!l.ack&&du(l.due)<=30);
     const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!=''&&r.date>=mtdStart&&r.date<=mtdEnd).slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -1303,17 +1384,17 @@ async function loadDashboard(){
         <div style="font-size:12px;color:var(--text3);margin-top:2px">${mtdR.length} shift reports in this period</div>
       </div>`}
 
-      ${(isCurrentMonth&&(urgLics.length||openFlags))?`
+      ${(isCurrentMonth&&(urgLics.length||openFlags||lowTobacco.length))?`
       <div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:13px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:18px;margin-top:1px">⚑</div>
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px">Needs your attention</div>
           ${urgLics.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+'d left'}</div>`).join('')}
-          ${openFlags?`<div style="font-size:12px;color:var(--red)">• ${openFlags} open low-inventory flag${openFlags>1?'s':''}</div>`:''}
+          ${openFlags?`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${openFlags} open low-inventory flag${openFlags>1?'s':''}</div>`:''}
+          ${lowTobacco.map(b=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• 🚬 ${b.name} — low stock (order now)</div>`).join('')}
         </div>
       </div>`:''}
 
-      <!-- HERO: Monthly Sales -->
       <div class="dash-hero" onclick="openDailyBreakdown()" style="cursor:pointer;user-select:none">
         <div class="dash-hero-label">${monthName} ${selYear} — total sales</div>
         <div class="dash-hero-val">$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
@@ -2082,6 +2163,271 @@ function addLic(){
   lics.push({id:Date.now().toString(),name:n,due:d,ack:false});
   document.getElementById('ln').value='';document.getElementById('ld').value='';document.getElementById('addLicForm').style.display='none';
   saveLicsPersist();checkComp();toast('✓ License added');
+}
+
+// ---- TOBACCO INVENTORY ----
+let tobBrands = []; // cached brand list
+
+async function loadTobaccoTab(){
+  // Show operator-only cards
+  const isMgr = CU && (CU.role==='operator'||CU.role==='lead');
+  const mgmtCard = document.getElementById('tobrandMgmtCard');
+  const histCard = document.getElementById('tobHistoryCard');
+  if(mgmtCard) mgmtCard.style.display = CU&&CU.role==='operator' ? 'block' : 'none';
+  if(histCard) histCard.style.display = CU&&CU.role==='operator' ? 'block' : 'none';
+
+  // Set default month for history
+  const hm = document.getElementById('tobHistoryMonth');
+  if(hm && !hm.value) hm.value = new Date().toISOString().slice(0,7);
+
+  await loadTobBrands();
+  renderTobCountForm();
+  await loadTobInventory();
+  if(CU&&CU.role==='operator') loadTobHistory();
+}
+
+async function loadTobBrands(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'tobaccoBrands'),window.F.orderBy('name','asc')));
+    tobBrands = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTobBrandList();
+  }catch(e){ tobBrands=[]; }
+}
+
+function renderTobBrandList(){
+  const el = document.getElementById('tobrandList');
+  if(!el) return;
+  if(!tobBrands.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3)">No brands set up yet — tap + Add brand</div>'; return; }
+  const catIcon = {cigarettes:'🚬', nicotine:'🟢', vape:'💨', smokeless:'🪙', other:'📦'};
+  el.innerHTML = tobBrands.map(b=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:8px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${catIcon[b.category]||'📦'} ${b.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${b.category||''}${b.distributor?' · '+b.distributor:''} · Alert below ${b.threshold||3} cartons</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="bsm" onclick="editTobrand('${b.id}')">✏️</button>
+        <button class="bdsm" onclick="deleteTobrand('${b.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function togTobrandForm(){
+  const w = document.getElementById('tobrandFormWrap');
+  if(!w) return;
+  const isOpen = w.style.display==='block';
+  if(isOpen){ cancelTobrandEdit(); }
+  else { w.style.display='block'; document.getElementById('tobrandName')?.focus(); }
+}
+
+function cancelTobrandEdit(){
+  document.getElementById('tobrandFormWrap').style.display='none';
+  document.getElementById('tobrandEditId').value='';
+  document.getElementById('tobrandName').value='';
+  document.getElementById('tobrandThreshold').value='';
+  document.getElementById('tobrandDist').value='';
+  document.getElementById('tobrandCat').value='cigarettes';
+}
+
+function editTobrand(id){
+  const b = tobBrands.find(x=>x.id===id);
+  if(!b) return;
+  document.getElementById('tobrandEditId').value = id;
+  document.getElementById('tobrandName').value = b.name||'';
+  document.getElementById('tobrandCat').value = b.category||'cigarettes';
+  document.getElementById('tobrandThreshold').value = b.threshold||3;
+  document.getElementById('tobrandDist').value = b.distributor||'';
+  document.getElementById('tobrandFormWrap').style.display='block';
+}
+
+async function saveTobrand(){
+  const name = document.getElementById('tobrandName').value.trim();
+  const cat  = document.getElementById('tobrandCat').value;
+  const thr  = parseInt(document.getElementById('tobrandThreshold').value)||3;
+  const dist = document.getElementById('tobrandDist').value.trim();
+  if(!name){ toast('Enter a brand name'); return; }
+  const editId = document.getElementById('tobrandEditId').value;
+  const data = { name, category:cat, threshold:thr, distributor:dist, updatedAt:new Date().toISOString() };
+  try{
+    if(editId){
+      await window.F.updateDoc(window.F.doc(window.db,'tobaccoBrands',editId), data);
+      toast('✓ Brand updated');
+    } else {
+      await window.F.addDoc(window.F.collection(window.db,'tobaccoBrands'), {...data, createdAt:new Date().toISOString()});
+      toast('✓ Brand added');
+    }
+    cancelTobrandEdit();
+    await loadTobBrands();
+    renderTobCountForm();
+  }catch(e){ toast('Error saving brand'); }
+}
+
+async function deleteTobrand(id){
+  if(!confirm('Remove this brand? This will not delete historical counts.')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'tobaccoBrands',id));
+    toast('Brand removed');
+    await loadTobBrands();
+    renderTobCountForm();
+    await loadTobInventory();
+  }catch(e){ toast('Error removing brand'); }
+}
+
+function renderTobCountForm(){
+  const el = document.getElementById('tobCountRows');
+  const wrap = document.getElementById('tobCountSubmitWrap');
+  if(!el) return;
+  if(!tobBrands.length){
+    el.innerHTML='<div class="empty"><div class="ei">🚬</div>No brands set up yet — ask operator to add brands</div>';
+    if(wrap) wrap.style.display='none';
+    return;
+  }
+  const catIcon = {cigarettes:'🚬', nicotine:'🟢', vape:'💨', smokeless:'🪙', other:'📦'};
+  el.innerHTML = tobBrands.map(b=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${catIcon[b.category]||'📦'} ${b.name}</div>
+        <div style="font-size:10px;color:var(--text3)">${b.category||''} · Alert &lt; ${b.threshold||3} cartons</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <label style="font-size:11px;color:var(--text3);margin:0;white-space:nowrap">Cartons on hand</label>
+        <input type="number" min="0" id="tob-count-${b.id}" placeholder="0"
+          style="width:64px;text-align:center;padding:8px;font-size:16px;font-weight:700" />
+      </div>
+    </div>`).join('');
+  if(wrap) wrap.style.display='block';
+}
+
+async function submitTobCount(){
+  if(!tobBrands.length){ toast('No brands set up'); return; }
+  const counts = {};
+  let hasAny = false;
+  tobBrands.forEach(b=>{
+    const val = document.getElementById('tob-count-'+b.id)?.value;
+    if(val!==''&&val!==null&&val!==undefined){
+      counts[b.id] = parseInt(val)||0;
+      hasAny = true;
+    }
+  });
+  if(!hasAny){ toast('Enter at least one count'); return; }
+
+  // Check for low stock
+  const lowBrands = tobBrands.filter(b=>counts[b.id]!==undefined && counts[b.id] <= (b.threshold||3));
+
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
+      counts,
+      employee: CU.name,
+      date: localDate(),
+      timestamp: window.F.serverTimestamp()
+    });
+    // Clear inputs
+    tobBrands.forEach(b=>{ const el=document.getElementById('tob-count-'+b.id); if(el) el.value=''; });
+    const lowMsg = lowBrands.length ? ` · ⚠️ ${lowBrands.length} brand${lowBrands.length>1?'s':''} low` : '';
+    toast('✓ Count saved' + lowMsg);
+    await loadTobInventory();
+    if(CU&&CU.role==='operator') loadTobHistory();
+  }catch(e){ toast('Error saving count'); }
+}
+
+async function loadTobInventory(){
+  const el = document.getElementById('tobInventoryList');
+  const updEl = document.getElementById('tobLastUpdated');
+  if(!el) return;
+  if(!tobBrands.length){ el.innerHTML='<div class="empty"><div class="ei">📦</div>No brands set up yet</div>'; return; }
+
+  try{
+    // Get most recent count
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'tobaccoCounts'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(1)
+    ));
+    if(!snap.docs.length){
+      el.innerHTML='<div class="empty"><div class="ei">📦</div>No counts submitted yet</div>';
+      return;
+    }
+    const latest = snap.docs[0].data();
+    const counts = latest.counts || {};
+    const fmtD = d => new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    if(updEl) updEl.textContent = `Last updated ${fmtD(latest.date)} by ${latest.employee}`;
+
+    const catIcon = {cigarettes:'🚬', nicotine:'🟢', vape:'💨', smokeless:'🪙', other:'📦'};
+    // Group by category
+    const grouped = {};
+    tobBrands.forEach(b=>{
+      const cat = b.category||'other';
+      if(!grouped[cat]) grouped[cat]=[];
+      grouped[cat].push(b);
+    });
+
+    const catLabel = {cigarettes:'Cigarettes', nicotine:'Nicotine', vape:'Vape', smokeless:'Smokeless', other:'Other'};
+    let html = '';
+    Object.keys(grouped).forEach(cat=>{
+      html += `<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:10px 0 6px">${catLabel[cat]||cat}</div>`;
+      grouped[cat].forEach(b=>{
+        const qty = counts[b.id] !== undefined ? counts[b.id] : null;
+        const thr = b.threshold || 3;
+        const isLow = qty !== null && qty <= thr;
+        const isCritical = qty !== null && qty <= 1;
+        const statusColor = isCritical ? 'var(--red)' : isLow ? 'var(--amber)' : 'var(--green)';
+        const statusBg = isCritical ? 'var(--red-light)' : isLow ? 'var(--amber-light)' : 'var(--green-light)';
+        const statusText = isCritical ? '🔴 Order now' : isLow ? '⚠️ Low' : '✓ OK';
+        const barPct = qty !== null ? Math.min(100, Math.round((qty / Math.max(thr*3, qty, 1))*100)) : 0;
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:18px;flex-shrink:0">${catIcon[cat]||'📦'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;margin-bottom:3px">${b.name}</div>
+            <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+              <div style="height:100%;width:${barPct}%;background:${statusColor};border-radius:4px;transition:width .4s"></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:20px;font-weight:800;line-height:1">${qty !== null ? qty : '—'}</div>
+            <div style="font-size:10px;color:var(--text3)">cartons</div>
+          </div>
+          <div style="background:${statusBg};color:${statusColor};border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;flex-shrink:0;white-space:nowrap">${qty !== null ? statusText : '—'}</div>
+        </div>`;
+      });
+    });
+    el.innerHTML = html;
+  }catch(e){ el.innerHTML='<div class="empty">Error loading inventory</div>'; console.error(e); }
+}
+
+async function loadTobHistory(){
+  const el = document.getElementById('tobHistoryList');
+  if(!el) return;
+  const month = document.getElementById('tobHistoryMonth')?.value || new Date().toISOString().slice(0,7);
+  const mtdStart = month+'-01', mtdEnd = month+'-31';
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'tobaccoCounts'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(60)
+    ));
+    let docs = snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
+    if(!docs.length){ el.innerHTML='<div class="empty">No counts in this period</div>'; return; }
+    const catIcon = {cigarettes:'🚬', nicotine:'🟢', vape:'💨', smokeless:'🪙', other:'📦'};
+    const fmtD = d => new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    el.innerHTML = docs.map(doc=>{
+      const counts = doc.counts||{};
+      const lines = tobBrands
+        .filter(b=>counts[b.id]!==undefined)
+        .map(b=>{
+          const qty = counts[b.id];
+          const thr = b.threshold||3;
+          const isLow = qty <= thr;
+          return `<span style="font-size:11px;background:${isLow?'var(--amber-light)':'var(--bg2)'};color:${isLow?'var(--amber)':'var(--text2)'};border-radius:4px;padding:2px 6px;margin-right:4px;white-space:nowrap">${catIcon[b.category]||''} ${b.name}: ${qty}</span>`;
+        }).join('');
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:600">${fmtD(doc.date)}</div>
+          <span class="badge bblu">${doc.employee}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${lines||'<span style="font-size:11px;color:var(--text3)">No brand data</span>'}</div>
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div class="empty">Error loading history</div>'; }
 }
 
 // ---- INVENTORY ----
