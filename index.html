@@ -1777,27 +1777,37 @@ function renderScrRows(){
     document.getElementById('scrTot').style.display = 'none';
     return;
   }
+  window._soldOutSlots = window._soldOutSlots || {};
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Slot</div>
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Game</div>
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:center">Ticket #</div>
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:right">Pack value</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;text-align:right">Status</div>
     </div>` +
     activeSlots.map(s => {
       const packVal = s.totalTickets ? (s.totalTickets * s.price) : null;
       const prev = prevCounts['slot_'+s.slotIdx];
+      const isSO = !!window._soldOutSlots['slot_'+s.slotIdx];
       return `
-      <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:12px">
+      <div id="sc-row-${s.slotIdx}" style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:12px;${isSO?'background:var(--amber-light);border-radius:8px;padding:8px;margin-left:-8px;margin-right:-8px':''}">
         <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap">${s.slotIdx+1}</div>
         <div>
           <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
           <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' · ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${packVal?` · Full pack: $${packVal.toLocaleString()}`:''}${prev!==undefined?` · Opening #: ${prev}`:''}</div>
+          ${isSO?`<div style="font-size:11px;font-weight:700;color:var(--amber);margin-top:3px">📦 Book sold out — all remaining tickets counted as sold</div>`:''}
         </div>
-        <input type="number" min="0" placeholder="000" id="sc-slot-${s.slotIdx}" oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})" style="text-align:center;padding:8px;font-size:15px;font-weight:600;width:72px" />
-        <div style="text-align:right;min-width:60px">
-          ${packVal?`<div style="font-size:11px;font-weight:700;color:var(--text2)">$<span id="sc-val-${s.slotIdx}">—</span></div>`:''}
-          ${prev!==undefined?`<div style="font-size:11px;color:var(--green);font-weight:600" id="sc-sold-${s.slotIdx}"></div>`:''}
+        <input type="number" min="0" placeholder="000" id="sc-slot-${s.slotIdx}"
+          oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
+          style="text-align:center;padding:8px;font-size:15px;font-weight:600;width:72px;${isSO?'display:none':''}" />
+        <div style="text-align:right;min-width:64px">
+          <button id="sc-so-btn-${s.slotIdx}" onclick="toggleSoldOut(${s.slotIdx})"
+            style="font-size:11px;font-weight:700;padding:5px 8px;border-radius:6px;border:1px solid;cursor:pointer;white-space:nowrap;
+            ${isSO?'background:var(--amber-light);color:var(--amber);border-color:var(--amber)':'background:var(--bg2);color:var(--text2);border-color:var(--border)'}">
+            ${isSO?'↩ Undo':'📦 Sold out'}
+          </button>
+          ${prev!==undefined&&!isSO?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px" id="sc-sold-${s.slotIdx}"></div>`:''}
+          ${isSO&&prev!==undefined&&s.totalTickets?`<div style="font-size:11px;color:var(--amber);font-weight:700;margin-top:4px">↓${s.totalTickets - prev} sold · $${((s.totalTickets - prev)*s.price).toFixed(0)}</div>`:''}
         </div>
       </div>`;
     }).join('');
@@ -1854,26 +1864,64 @@ function scrAutoAdvance(inputEl, slotIdx){
   }
 }
 
+function toggleSoldOut(slotIdx){
+  window._soldOutSlots = window._soldOutSlots || {};
+  const key = 'slot_'+slotIdx;
+  const isSO = !!window._soldOutSlots[key];
+  if(isSO){
+    delete window._soldOutSlots[key];
+  } else {
+    window._soldOutSlots[key] = true;
+    // Clear the text input since it's now hidden
+    const inp = document.getElementById('sc-slot-'+slotIdx);
+    if(inp) inp.value = '';
+  }
+  // Re-render to reflect state change
+  renderScrRows();
+  updScrTot();
+}
+
 async function subScratch(){
   const activeSlots = slots.map((s,i) => ({...s, slotIdx:i})).filter(s => s && s.name);
   const counts = {};
   const soldBySlot = {};
   let totalRevenue = 0;
 
+  window._soldOutSlots = window._soldOutSlots || {};
   activeSlots.forEach(s => {
-    const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
-    counts['slot_'+s.slotIdx] = remaining;
-    // Calculate sold vs previous count
-    const prev = prevCounts['slot_'+s.slotIdx];
-    if(prev !== undefined){
-      const ticketsSold = Math.max(0, remaining - prev);  // closing# - opening# = sold
-      const revenue = ticketsSold * s.price;
-      soldBySlot['slot_'+s.slotIdx] = {ticketsSold, revenue, price: s.price, name: s.name};
-      totalRevenue += revenue;
+    const key = 'slot_'+s.slotIdx;
+    const isSoldOut = !!window._soldOutSlots[key];
+    if(isSoldOut){
+      // Book sold out: closing# = totalTickets, remaining value = 0
+      const totalTix = s.totalTickets || 0;
+      counts[key] = totalTix; // record the final ticket# for the log
+      const prev = prevCounts[key];
+      if(prev !== undefined && totalTix > 0){
+        const ticketsSold = Math.max(0, totalTix - prev);
+        const revenue = ticketsSold * s.price;
+        soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: true};
+        totalRevenue += revenue;
+      }
+    } else {
+      const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+      counts[key] = remaining;
+      const prev = prevCounts[key];
+      if(prev !== undefined){
+        const ticketsSold = Math.max(0, remaining - prev);
+        const revenue = ticketsSold * s.price;
+        soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: false};
+        totalRevenue += revenue;
+      }
     }
   });
 
-  const totalValue = activeSlots.reduce((sum,s) => sum + (counts['slot_'+s.slotIdx]||0)*s.price, 0);
+  const soldOutKeys = Object.keys(window._soldOutSlots);
+  // Sold-out slots contribute $0 to remaining board value (book is empty)
+  const totalValue = activeSlots.reduce((sum,s) => {
+    const key = 'slot_'+s.slotIdx;
+    if(window._soldOutSlots[key]) return sum; // sold out = $0 remaining
+    return sum + (counts[key]||0)*s.price;
+  }, 0);
   try{
     const shiftTypeVal = document.getElementById('s-type').value;
     await window.F.addDoc(window.F.collection(window.db,'scratchCounts'),{
@@ -1888,7 +1936,9 @@ async function subScratch(){
       date: localDate(),
       timestamp: window.F.serverTimestamp()
     });
-    toast(`✓ Count saved!${totalRevenue>0?' · Est. $'+totalRevenue.toLocaleString()+' sold this shift':''}`);
+    const soldOutCount = Object.keys(window._soldOutSlots||{}).length;
+    toast(`✓ Count saved!${totalRevenue>0?' · Est. $'+totalRevenue.toLocaleString()+' sold this shift':''}${soldOutCount>0?' · '+soldOutCount+' book'+(soldOutCount>1?'s':'')+' sold out':''}`);
+    window._soldOutSlots = {};
     activeSlots.forEach(s => { const el=document.getElementById('sc-slot-'+s.slotIdx); if(el) el.value=''; });
     document.getElementById('scrTot').style.display = 'none';
     // Refresh previous counts for next entry
@@ -2158,12 +2208,17 @@ async function loadLogs(){
             const sb = d.soldBySlot&&d.soldBySlot[key] ? d.soldBySlot[key] : null;
             const tixSold = sb ? sb.ticketsSold : null;
             const rev = sb ? sb.revenue : null;
+            const isSoldOut = sb && sb.soldOut === true;
+            const nameCell = '<div><div style="font-weight:600">$'+s.price+' — '+(s.name||'—')+'</div>'
+              +(s.gameNum?'<div style="font-size:10px;color:var(--text3)">Game #'+s.gameNum+'</div>':'')
+              +(isSoldOut?'<div style="font-size:10px;font-weight:700;color:var(--amber)">📦 Sold out</div>':'')
+              +'</div>';
             const dataCols = isClose
-              ? `<div style="text-align:center;color:var(--text3)">${openNum}</div><div style="text-align:center;font-weight:700">${closeNum}</div><div style="text-align:center;color:${tixSold>0?'var(--amber)':'var(--text3)'};font-weight:600">${tixSold!==null?tixSold:'—'}</div><div style="text-align:right;color:${rev>0?'var(--green)':'var(--text3)'};font-weight:600">${rev!==null&&rev>0?'$'+rev.toFixed(0):'—'}</div>`
+              ? `<div style="text-align:center;color:var(--text3)">${openNum}</div><div style="text-align:center;font-weight:700">${isSoldOut?'<span style="color:var(--amber)">SOLD OUT</span>':closeNum}</div><div style="text-align:center;color:${tixSold>0?'var(--amber)':'var(--text3)'};font-weight:600">${tixSold!==null?tixSold:'—'}</div><div style="text-align:right;color:${rev>0?'var(--green)':'var(--text3)'};font-weight:600">${rev!==null&&rev>0?'$'+rev.toFixed(0):'—'}</div>`
               : `<div style="text-align:center;font-weight:700">${closeNum}</div>`;
-            return '<div style="display:grid;grid-template-columns:'+colsTpl+';gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">'
+            return '<div style="display:grid;grid-template-columns:'+colsTpl+';gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;'+(isSoldOut?'background:var(--amber-light);border-radius:6px;padding:7px 6px;':'')+'">'
               +'<div style="background:var(--blue-light);color:var(--blue);border-radius:5px;padding:2px 5px;font-size:11px;font-weight:700;text-align:center">'+s.slot+'</div>'
-              +'<div><div style="font-weight:600">$'+s.price+' — '+(s.name||'—')+'</div>'+(s.gameNum?'<div style="font-size:10px;color:var(--text3)">Game #'+s.gameNum+'</div>':'')+'</div>'
+              +nameCell
               +dataCols+'</div>';
           }).join('');
           const hdr='<div style="display:grid;grid-template-columns:'+colsTpl+';gap:6px;padding:5px 0 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border)">'+hdrCols+'</div>';
