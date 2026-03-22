@@ -437,6 +437,28 @@
     </div>
     <button class="btn bprimary" onclick="subFuel()">Save fuel report</button>
 
+    <!-- Fuel Deliveries -->
+    <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
+    <div class="card" id="fuelDeliveryForm">
+      <div class="ct">Log a fuel delivery</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Date</label><input type="date" id="fd-date" /></div>
+        <div><label>Supplier</label><input id="fd-supplier" placeholder="e.g. Valero, BP" /></div>
+      </div>
+      <div class="g3" style="margin-bottom:10px">
+        <div><label>Regular (gal)</label><input type="number" id="fd-reg" placeholder="0" /></div>
+        <div><label>Premium (gal)</label><input type="number" id="fd-prem" placeholder="0" /></div>
+        <div><label>Diesel (gal)</label><input type="number" id="fd-dies" placeholder="0" /></div>
+      </div>
+      <div class="g2" style="margin-bottom:10px" id="fd-price-row">
+        <div><label>Price per gal ($) <span style="color:var(--text3);font-weight:400">(operator)</span></label><input type="number" step="0.001" id="fd-price" placeholder="e.g. 2.850" /></div>
+        <div><label>Invoice # <span style="color:var(--text3);font-weight:400">(optional)</span></label><input id="fd-invoice" placeholder="optional" /></div>
+      </div>
+      <div style="margin-bottom:10px"><label>Notes</label><input id="fd-notes" placeholder="Any delivery notes..." /></div>
+      <button class="btn bprimary" onclick="subFuelDelivery()">Save fuel delivery</button>
+    </div>
+    <div id="fuelDeliveryList"><div class="empty"><div class="ei">⏳</div>Loading deliveries...</div></div>
+
     <div class="ct" style="margin:20px 0 10px">Fuel inventory photos</div>
     <div class="filter-bar">
       <input type="date" id="fuelPhotoDate" onchange="loadFuelPhotos()" placeholder="Filter by date" />
@@ -1081,8 +1103,8 @@
     </div>
     <div id="editModalContent"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn bprimary" style="flex:1;padding:11px" onclick="saveLogEdit()">Save changes</button>
-      <button class="btn" style="padding:11px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1;flex:1" onclick="deleteLog()">Delete entry</button>
+      <button class="btn bprimary" style="flex:1;padding:11px" onclick="handleModalSave()">Save changes</button>
+      <button class="btn" style="padding:11px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1;flex:1" onclick="handleModalDelete()">Delete entry</button>
     </div>
   </div>
 </div>
@@ -1189,6 +1211,12 @@ function loginOK(u){
   loadGames();loadInvFlags();
   if(u.role==='operator'){loadLics();showTab('dashboard');}
   else showTab('daily');
+  // Show price field only to operator
+  const fdPriceRow=document.getElementById('fd-price-row');
+  if(fdPriceRow) fdPriceRow.style.display = u.role==='operator' ? '' : 'none';
+  // Set fuel delivery date
+  const fdDate=document.getElementById('fd-date');
+  if(fdDate) fdDate.value=localDate();
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
@@ -1209,7 +1237,7 @@ function showTab(id){
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.id===id)t.classList.add('active');});
   if(id==='dashboard')loadDashboard();
-  if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();loadFuelPhotos();}
+  if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();loadFuelPhotos();loadFuelDeliveries();const fdDate=document.getElementById('fd-date');if(fdDate&&!fdDate.value)fdDate.value=localDate();}
   if(id==='logs')loadLogs();
   if(id==='inventory')loadInvFlags();
   if(id==='tobacco')loadTobaccoTab();
@@ -1292,6 +1320,14 @@ async function loadDashboard(){
     const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('timestamp','desc'),limit(200)));
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+
+    // Fuel deliveries
+    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('timestamp','desc'),limit(200)));
+    const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
+    const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
+    const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
+    const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
     const dlByVendor={};
     const today=localDate();
     mtdDl.forEach(x=>{
@@ -1512,6 +1548,43 @@ async function loadDashboard(){
             <div style="font-size:12px;font-weight:700;text-align:right">${f.val.toFixed(0)}<span style="font-size:10px;font-weight:400;color:var(--text3)"> gal</span></div>
           </div>`;
         }).join('')}
+      </div>
+
+      <!-- Fuel Deliveries on Dashboard -->
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">🚛 Fuel deliveries — ${monthName}</span>
+        <span class="dash-section-link" onclick="showTab('fuel')" style="cursor:pointer">Go to tab →</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${(()=>{
+          if(!mtdFuelDl.length) return '<div class="empty" style="padding:14px">No fuel deliveries in ' + monthName + '</div>';
+          // Summary row
+          const summaryHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border)">'
+            + '<div style="padding:12px 14px;border-right:1px solid var(--border)"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total gallons</div><div style="font-size:18px;font-weight:800">' + mtdFuelGal.toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + mtdFuelDl.length + ' deliver' + (mtdFuelDl.length!==1?'ies':'y') + '</div></div>'
+            + '<div style="padding:12px 14px;border-right:1px solid var(--border)"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total cost</div><div style="font-size:18px;font-weight:800">' + (mtdFuelCost>0?'$'+mtdFuelCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—') + '</div><div style="font-size:10px;color:var(--text3)">incl. tax</div></div>'
+            + '<div style="padding:12px 14px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Avg $/gal</div><div style="font-size:18px;font-weight:800">' + (mtdFuelGal>0&&mtdFuelCost>0?'$'+(mtdFuelCost/mtdFuelGal).toFixed(3):'—') + '</div><div style="font-size:10px;color:var(--text3)">' + monthName + '</div></div>'
+            + '</div>';
+          const rowsHtml = mtdFuelDl.sort((a,b)=>b.date.localeCompare(a.date)).map(d=>{
+            const fmtD = dt => new Date(dt+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            const galBreak = [
+              d.regularGal>0?'Reg '+d.regularGal.toLocaleString()+'g':'',
+              d.premiumGal>0?'Prem '+d.premiumGal.toLocaleString()+'g':'',
+              d.dieselGal>0?'Diesel '+d.dieselGal.toLocaleString()+'g':''
+            ].filter(Boolean).join(' · ');
+            const priceLine = d.pricePerGal
+              ? '<span style="color:var(--green);font-weight:600">$'+d.pricePerGal.toFixed(3)+'/gal</span> · $'+(d.totalCost||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+              : '<span style="color:var(--amber);font-size:11px;font-weight:600">⏳ Price pending</span>';
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);gap:8px">'
+              + '<div style="flex:1;min-width:0">'
+              + '<div style="font-size:13px;font-weight:600">' + (d.supplier||'Unknown') + ' <span style="font-size:11px;font-weight:400;color:var(--text3)">' + fmtD(d.date) + '</span></div>'
+              + '<div style="font-size:11px;color:var(--text2)">' + galBreak + '</div>'
+              + '<div style="font-size:12px;margin-top:1px">' + priceLine + '</div>'
+              + '</div>'
+              + '<div style="text-align:right;flex-shrink:0"><div style="font-size:15px;font-weight:800">' + (d.totalGal||0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">gal</div></div>'
+              + '</div>';
+          }).join('');
+          return summaryHtml + rowsHtml;
+        })()}
       </div>
 
       <!-- Scratch-off dashboard — tappable to expand -->
@@ -3018,8 +3091,23 @@ function openFuelEdit(id, dataStr){
 
 function closeEditModal(){
   document.getElementById('editModal').style.display='none';
+  document.getElementById('editModal').dataset.mode='';
   editState={id:'',col:'',data:{}};
+  _fdEditId=null;
 }
+
+function handleModalSave(){
+  const mode = document.getElementById('editModal').dataset.mode;
+  if(mode==='fuelDelivery') saveFuelDeliveryEdit();
+  else saveLogEdit();
+}
+
+function handleModalDelete(){
+  const mode = document.getElementById('editModal').dataset.mode;
+  if(mode==='fuelDelivery') deleteFuelDelivery();
+  else deleteLog();
+}
+
 
 async function saveLogEdit(){
   if(!editState.id||!editState.col){closeEditModal();return;}
@@ -3252,6 +3340,162 @@ function toggleWeek(empNameRaw, weekNum){
   const open = rows.style.display !== 'none';
   rows.style.display = open ? 'none' : 'block';
   if(chev) chev.textContent = open ? '▼' : '▲';
+}
+
+
+// ---- FUEL DELIVERIES ----
+async function subFuelDelivery(){
+  const regGal  = parseFloat(document.getElementById('fd-reg').value)||0;
+  const premGal = parseFloat(document.getElementById('fd-prem').value)||0;
+  const diesGal = parseFloat(document.getElementById('fd-dies').value)||0;
+  const totalGal = regGal + premGal + diesGal;
+  if(totalGal <= 0){ toast('Enter at least one gallon amount'); return; }
+  const supplier = document.getElementById('fd-supplier').value.trim();
+  if(!supplier){ toast('Enter supplier name'); return; }
+
+  const pricePerGal = parseFloat(document.getElementById('fd-price').value)||0;
+  const totalCost   = pricePerGal > 0 ? parseFloat((pricePerGal * totalGal).toFixed(2)) : 0;
+  const btn = document.querySelector('#fuelDeliveryForm .btn');
+  btn.innerHTML = '<span class="spinner"></span>Saving...'; btn.disabled = true;
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'fuelDeliveries'),{
+      date:      document.getElementById('fd-date').value || localDate(),
+      supplier,
+      regularGal:  regGal,
+      premiumGal:  premGal,
+      dieselGal:   diesGal,
+      totalGal,
+      pricePerGal: pricePerGal || null,
+      totalCost:   totalCost || null,
+      invoiceNum:  document.getElementById('fd-invoice').value.trim() || '',
+      notes:       document.getElementById('fd-notes').value.trim() || '',
+      loggedBy:    CU.name,
+      priceAddedBy: pricePerGal > 0 ? CU.name : null,
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Fuel delivery saved!');
+    btn.innerHTML = 'Save fuel delivery'; btn.disabled = false;
+    ['fd-reg','fd-prem','fd-dies','fd-price','fd-invoice','fd-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('fd-date').value = localDate();
+    document.getElementById('fd-supplier').value = '';
+    loadFuelDeliveries();
+  } catch(e){ toast('Error saving delivery'); btn.innerHTML='Save fuel delivery'; btn.disabled=false; }
+}
+
+async function loadFuelDeliveries(){
+  const el = document.getElementById('fuelDeliveryList');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'fuelDeliveries'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(50)
+    ));
+    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!docs.length){ el.innerHTML='<div class="empty"><div class="ei">⛽</div>No fuel deliveries logged yet</div>'; return; }
+    const isOp = CU?.role==='operator';
+    el.innerHTML = docs.map(d=>{
+      const fmtD = dt => new Date(dt+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      const totalGal = (d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0);
+      const galBreak = [
+        d.regularGal>0 ? `Reg: ${d.regularGal.toLocaleString()} gal` : '',
+        d.premiumGal>0 ? `Prem: ${d.premiumGal.toLocaleString()} gal` : '',
+        d.dieselGal>0  ? `Diesel: ${d.dieselGal.toLocaleString()} gal` : ''
+      ].filter(Boolean).join(' · ');
+      const priceStr = d.pricePerGal
+        ? `$${d.pricePerGal.toFixed(3)}/gal · Total: $${(d.totalCost||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`
+        : '<span style="color:var(--amber);font-weight:600">⏳ Price pending</span>';
+      const priceEditBtn = isOp
+        ? `<button onclick="openFuelDeliveryEdit('${d.id}')" style="margin-top:7px;background:var(--blue-light);color:var(--blue);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">${d.pricePerGal?'✏️ Edit':'+ Add price & edit'}</button>`
+        : '';
+      return `<div style="padding:13px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700">⛽ ${d.supplier||'Unknown'}</span>
+              <span class="badge bblu">${fmtD(d.date)}</span>
+              ${d.invoiceNum?`<span class="badge" style="background:var(--bg2);color:var(--text3)">#${d.invoiceNum}</span>`:''}
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:2px">${galBreak}</div>
+            <div style="font-size:12px;margin-bottom:2px">${priceStr}</div>
+            <div style="font-size:11px;color:var(--text3)">Logged by ${d.loggedBy||'Unknown'}${d.priceAddedBy&&d.priceAddedBy!==d.loggedBy?' · Price by '+d.priceAddedBy:''}</div>
+            ${d.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">📝 ${d.notes}</div>`:''}
+            ${priceEditBtn}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:800">${totalGal.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text3)">total gal</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML = '<div class="card" style="padding:0 16px">' + el.innerHTML + '</div>';
+  } catch(e){ el.innerHTML='<div class="empty">Error loading deliveries</div>'; console.error(e); }
+}
+
+// Edit modal for fuel delivery (operator only)
+let _fdEditId = null;
+function openFuelDeliveryEdit(id){
+  _fdEditId = id;
+  // Find doc from the list render — re-fetch from firestore
+  window.F.getDoc(window.F.doc(window.db,'fuelDeliveries',id)).then(snap=>{
+    if(!snap.exists()){ toast('Could not load entry'); return; }
+    const d = snap.data();
+    const el = document.getElementById('editModalContent');
+    el.innerHTML = `
+      <div class="edit-field"><label>Date</label><input type="date" id="ef-date" value="${d.date||''}" /></div>
+      <div class="edit-field"><label>Supplier</label><input id="ef-fd-supplier" value="${d.supplier||''}" /></div>
+      <div class="edit-field"><label>Regular (gal)</label><input type="number" id="ef-fd-reg" value="${d.regularGal||0}" /></div>
+      <div class="edit-field"><label>Premium (gal)</label><input type="number" id="ef-fd-prem" value="${d.premiumGal||0}" /></div>
+      <div class="edit-field"><label>Diesel (gal)</label><input type="number" id="ef-fd-dies" value="${d.dieselGal||0}" /></div>
+      <div class="edit-field"><label>Price per gallon ($)</label><input type="number" step="0.001" id="ef-fd-price" value="${d.pricePerGal||''}" placeholder="e.g. 2.850" /></div>
+      <div class="edit-field"><label>Invoice #</label><input id="ef-fd-invoice" value="${d.invoiceNum||''}" /></div>
+      <div class="edit-field"><label>Notes</label><input id="ef-fd-notes" value="${d.notes||''}" /></div>
+      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--amber);margin-top:4px">⚠️ Changes are permanent.</div>`;
+    // Override save/delete to use fuel delivery handlers
+    document.getElementById('editModal').dataset.mode = 'fuelDelivery';
+    document.getElementById('editModal').style.display = 'flex';
+  }).catch(()=>toast('Error loading entry'));
+}
+
+async function saveFuelDeliveryEdit(){
+  if(!_fdEditId) return;
+  const regGal   = parseFloat(document.getElementById('ef-fd-reg')?.value)||0;
+  const premGal  = parseFloat(document.getElementById('ef-fd-prem')?.value)||0;
+  const diesGal  = parseFloat(document.getElementById('ef-fd-dies')?.value)||0;
+  const totalGal = regGal + premGal + diesGal;
+  const pricePerGal = parseFloat(document.getElementById('ef-fd-price')?.value)||0;
+  const updates = {
+    date:       document.getElementById('ef-date')?.value || localDate(),
+    supplier:   document.getElementById('ef-fd-supplier')?.value.trim() || '',
+    regularGal: regGal, premiumGal: premGal, dieselGal: diesGal, totalGal,
+    pricePerGal: pricePerGal || null,
+    totalCost:   pricePerGal > 0 ? parseFloat((pricePerGal * totalGal).toFixed(2)) : null,
+    invoiceNum:  document.getElementById('ef-fd-invoice')?.value.trim() || '',
+    notes:       document.getElementById('ef-fd-notes')?.value.trim() || '',
+    priceAddedBy: pricePerGal > 0 ? CU.name : null,
+    editedBy:    CU.name,
+    editedAt:    new Date().toISOString()
+  };
+  try{
+    await window.F.updateDoc(window.F.doc(window.db,'fuelDeliveries',_fdEditId), updates);
+    toast('✓ Delivery updated');
+    closeEditModal();
+    loadFuelDeliveries();
+  } catch(e){ toast('Error saving'); }
+}
+
+async function deleteFuelDelivery(){
+  if(!_fdEditId) return;
+  if(!confirm('Delete this fuel delivery? This cannot be undone.')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'fuelDeliveries',_fdEditId));
+    toast('Delivery deleted');
+    closeEditModal();
+    loadFuelDeliveries();
+    _fdEditId = null;
+  } catch(e){ toast('Error deleting'); }
 }
 
 async function loadFuelPhotos(){
