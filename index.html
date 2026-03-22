@@ -1562,10 +1562,9 @@ async function loadDashboard(){
             // MTD daily sales — group end counts by date
             const byDay={};
             scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end').forEach(d=>{
-              if(!byDay[d.date]) byDay[d.date]={date:d.date,revenue:0,empRevenue:{}};
+              if(!byDay[d.date]) byDay[d.date]={date:d.date,revenue:0,employees:[]};
               byDay[d.date].revenue += d.totalRevenue||0;
-              const n = d.employee || 'Unknown';
-              byDay[d.date].empRevenue[n] = (byDay[d.date].empRevenue[n]||0) + (d.totalRevenue||0);
+              if(!byDay[d.date].employees.includes(d.employee)) byDay[d.date].employees.push(d.employee);
             });
             const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
             const maxDayRev = dayRows.reduce((m,d)=>Math.max(m,d.revenue),0);
@@ -1592,20 +1591,15 @@ async function loadDashboard(){
                 <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${monthName} — daily breakdown</div>
                 ${dayRows.slice(0,14).map(d=>{
                   const pct = maxDayRev > 0 ? Math.max(4, d.revenue/maxDayRev*100) : 4;
-                  const empEntries = Object.entries(d.empRevenue).sort((a,b)=>b[1]-a[1]);
-                  return `<div style="margin-bottom:12px">
+                  return `<div style="margin-bottom:9px">
                     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
                       <span style="color:var(--text2);font-weight:500">${fmtDate(d.date)}</span>
                       <span style="font-weight:700;color:var(--green)">$${d.revenue.toLocaleString()}</span>
                     </div>
-                    <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-bottom:5px">
+                    <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
                       <div style="height:100%;width:${pct}%;background:var(--green);border-radius:4px;transition:width .3s"></div>
                     </div>
-                    ${empEntries.map(([name,rev])=>`
-                      <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:2px 0">
-                        <span style="color:var(--text2)">${name}</span>
-                        <span style="color:var(--text2);font-weight:600">$${rev.toLocaleString()}</span>
-                      </div>`).join('')}
+                    <div style="font-size:10px;color:var(--text3);margin-top:2px">${d.employees.join(', ')}</div>
                   </div>`;
                 }).join('')}
               </div>` : ''}
@@ -2066,9 +2060,8 @@ function updScrTot(){
   let totVal = 0, totSold = 0, hasSoldAny = false;
 
   activeSlots.forEach(s => {
-    const currentTicketNum = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
-    const remainingTickets = Math.max(0, (s.totalTickets||0) - currentTicketNum);
-    const slotValue = remainingTickets * s.price;
+    const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
+    const slotValue = remaining * s.price;
     totVal += slotValue;
 
     // Update per-slot value display
@@ -2079,7 +2072,6 @@ function updScrTot(){
     const prev = prevCounts['slot_'+s.slotIdx];
     const soldEl = document.getElementById('sc-sold-'+s.slotIdx);
     if(prev !== undefined && document.getElementById('sc-slot-'+s.slotIdx)?.value !== ''){
-      const remaining = currentTicketNum;
       const ticketsSold = Math.max(0, remaining - prev);  // closing# - opening# = sold
       const revenueSold = ticketsSold * s.price;
       totSold += revenueSold;
@@ -2166,12 +2158,10 @@ async function subScratch(){
 
   const soldOutKeys = Object.keys(window._soldOutSlots);
   // Sold-out slots contribute $0 to remaining board value (book is empty)
-  // Remaining value = (totalTickets - currentTicketNum) * price
   const totalValue = activeSlots.reduce((sum,s) => {
     const key = 'slot_'+s.slotIdx;
     if(window._soldOutSlots[key]) return sum; // sold out = $0 remaining
-    const remainingTickets = Math.max(0, (s.totalTickets||0) - (counts[key]||0));
-    return sum + remainingTickets * s.price;
+    return sum + (counts[key]||0)*s.price;
   }, 0);
   try{
     const shiftTypeVal = document.getElementById('s-type').value;
@@ -2990,6 +2980,9 @@ function openEditModal(id,col,d){
       <div class="edit-field"><label>Regular gal</label><input type="number" id="ef-regularGal" value="${d.regularGal||0}" /></div>
       <div class="edit-field"><label>Premium gal</label><input type="number" id="ef-premiumGal" value="${d.premiumGal||0}" /></div>
       <div class="edit-field"><label>Diesel gal</label><input type="number" id="ef-dieselGal" value="${d.dieselGal||0}" /></div>
+      <div class="edit-field"><label>Start time</label><input type="time" id="ef-startTime" value="${d.startTime||''}" /></div>
+      <div class="edit-field"><label>End time</label><input type="time" id="ef-endTime" value="${d.endTime||''}" /></div>
+      <div class="edit-field"><label>Hours worked (decimal, e.g. 8.5)</label><input type="number" step="0.01" id="ef-hoursWorked" value="${parseFloat(d.hoursWorked)||''}" placeholder="Leave blank to auto-calculate from times" /></div>
       <div class="edit-field"><label>Incidents</label><textarea id="ef-incidents" rows="2">${d.incidents||''}</textarea></div>
       <div class="edit-field"><label>Notes</label><textarea id="ef-notes" rows="2">${d.notes||''}</textarea></div>`;
   } else if(col==='fuelReports'){
@@ -3047,6 +3040,19 @@ async function saveLogEdit(){
     if(f('dieselGal')!==null)updates.dieselGal=parseFloat(f('dieselGal'))||0;
     if(f('incidents')!==null)updates.incidents=f('incidents');
     if(f('notes')!==null)updates.notes=f('notes');
+    if(f('startTime')!==null)updates.startTime=f('startTime');
+    if(f('endTime')!==null)updates.endTime=f('endTime');
+    // Hours: if manually entered use that, otherwise auto-calculate from times
+    const manualHrs = parseFloat(f('hoursWorked'));
+    if(!isNaN(manualHrs) && manualHrs > 0){
+      updates.hoursWorked = manualHrs;
+    } else if(f('startTime') && f('endTime')){
+      const [sh,sm] = f('startTime').split(':').map(Number);
+      const [eh,em] = f('endTime').split(':').map(Number);
+      let totalMins = (eh*60+em)-(sh*60+sm);
+      if(totalMins < 0) totalMins += 24*60;
+      updates.hoursWorked = parseFloat((totalMins/60).toFixed(2));
+    }
   } else if(col==='fuelReports'){
     if(f('regularGal')!==null)updates.regularGal=parseFloat(f('regularGal'))||0;
     if(f('premiumGal')!==null)updates.premiumGal=parseFloat(f('premiumGal'))||0;
@@ -3081,27 +3087,63 @@ async function deleteLog(){
 
 // ---- EMPLOYEES TAB (operator) ----
 // Helper: given a date string "YYYY-MM-DD" and month "YYYY-MM", return week number within that month (1-based)
+// Weeks run Monday–Sunday
 function weekOfMonth(dateStr, monthStr){
   const d = new Date(dateStr+'T00:00:00');
   const [y,m] = monthStr.split('-').map(Number);
-  const firstDay = new Date(y, m-1, 1);
-  // Week 1 = days 1-7, Week 2 = days 8-14, etc.
-  return Math.ceil(d.getDate()/7);
+  // Find the first Monday of or before the 1st of the month
+  const firstOfMonth = new Date(y, m-1, 1);
+  const firstDow = firstOfMonth.getDay(); // 0=Sun,1=Mon,...6=Sat
+  // Days back to reach Monday (if firstDow=0/Sun go back 6, if Mon go back 0, etc.)
+  const daysBack = firstDow === 0 ? 6 : firstDow - 1;
+  const weekStart = new Date(y, m-1, 1 - daysBack);
+  // How many full weeks from weekStart to d
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  return Math.floor((d - weekStart) / msPerWeek) + 1;
 }
 
-// Get array of week ranges for a given month string
+// Get array of week ranges for a given month string (Mon–Sun weeks)
 function getWeekRanges(monthStr){
   const [y,m] = monthStr.split('-').map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
   const weeks = [];
-  let start = 1;
-  while(start <= daysInMonth){
-    const end = Math.min(start+6, daysInMonth);
-    const label = `Week ${weeks.length+1} (${m}/${start}–${m}/${end})`;
-    weeks.push({week: weeks.length+1, start, end, label});
-    start = end+1;
+  // Find first Monday on or before the 1st
+  const firstOfMonth = new Date(y, m-1, 1);
+  const firstDow = firstOfMonth.getDay();
+  const daysBack = firstDow === 0 ? 6 : firstDow - 1;
+  let cur = new Date(y, m-1, 1 - daysBack); // first Monday of the week containing the 1st
+  let weekNum = 1;
+  while(true){
+    const monDate = new Date(cur);
+    const sunDate = new Date(cur);
+    sunDate.setDate(sunDate.getDate() + 6);
+    // Clamp to month boundaries for label
+    const labelStart = Math.max(monDate.getDate(), 1);
+    const labelEnd   = Math.min(sunDate.getDate(), daysInMonth);
+    // Only include week if it overlaps the month
+    if(monDate.getMonth() > m-1 || (sunDate.getMonth() < m-1 && sunDate.getFullYear() <= y)) break;
+    if(monDate <= new Date(y, m-1, daysInMonth)){
+      const fmtLabel = d => `${d.getMonth()+1}/${d.getDate()}`;
+      // Use actual Mon and Sun dates for label, clamped to month
+      const labelMonDate = monDate.getMonth() === m-1 ? monDate : new Date(y, m-1, 1);
+      const labelSunDate = sunDate.getMonth() === m-1 ? sunDate : new Date(y, m-1, daysInMonth);
+      const label = `Week ${weekNum} (${fmtLabel(labelMonDate)}–${fmtLabel(labelSunDate)})`;
+      weeks.push({week: weekNum, monDate, sunDate, label});
+      weekNum++;
+    }
+    cur.setDate(cur.getDate() + 7);
+    if(cur > new Date(y, m-1, daysInMonth)) break;
   }
   return weeks;
+}
+
+// Updated helper: given a date string, which week number (from getWeekRanges) does it fall in?
+function weekOfMonthFromRanges(dateStr, weekRanges){
+  const d = new Date(dateStr+'T00:00:00');
+  for(const wk of weekRanges){
+    if(d >= wk.monDate && d <= wk.sunDate) return wk.week;
+  }
+  return null;
 }
 
 async function loadEmployees(){
@@ -3125,8 +3167,8 @@ async function loadEmployees(){
       if(!empMap[r.employee])empMap[r.employee]={name:r.employee,shifts:[],totalHours:0,weekHours:{}};
       empMap[r.employee].shifts.push(r);
       empMap[r.employee].totalHours+=parseFloat(r.hoursWorked)||0;
-      const wk=weekOfMonth(r.date, month);
-      empMap[r.employee].weekHours[wk]=(empMap[r.employee].weekHours[wk]||0)+(parseFloat(r.hoursWorked)||0);
+      const wk=weekOfMonthFromRanges(r.date, weekRanges);
+      if(wk) empMap[r.employee].weekHours[wk]=(empMap[r.employee].weekHours[wk]||0)+(parseFloat(r.hoursWorked)||0);
     });
 
     // Populate filter dropdown
@@ -3144,7 +3186,7 @@ async function loadEmployees(){
       // Build week summaries
       const weekSummary = weekRanges.map(wk=>{
         const hrs = e.weekHours[wk.week]||0;
-        const wkShifts = shifts.filter(r=>weekOfMonth(r.date,month)===wk.week);
+        const wkShifts = shifts.filter(r=>weekOfMonthFromRanges(r.date,weekRanges)===wk.week);
         return {wk, hrs, wkShifts};
       }).filter(w=>w.hrs>0||w.wkShifts.length>0);
 
