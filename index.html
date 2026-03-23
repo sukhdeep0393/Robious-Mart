@@ -1620,11 +1620,21 @@ async function loadDashboard(){
         <!-- Expandable detail section -->
         <div id="scrDashExpanded" style="display:none" onclick="event.stopPropagation()">
           ${(()=>{
-            // Today's scratch-off sales by employee
-            const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end');
-            const todayTotal  = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+            // Today's scratch-off sales — computed as net board change to avoid double-counting
+            // when multiple shifts close without an opening count.
+            // Each closing count records openingCounts (the baseline it used) and counts (the closing #s).
+            // Net sold per slot = closing# - opening# (already stored as totalRevenue per count).
+            // BUT if shift B used shift A's close as its opening, summing A.totalRevenue + B.totalRevenue
+            // double-counts A's sales. Instead we find the earliest baseline for today and compare
+            // it to the latest closing counts to get the true net.
+            const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
+              .sort((a,b) => (a._ts||0) - (b._ts||0)); // oldest first
 
-            // Per-employee today
+            // Per-employee today — use each count's own totalRevenue only if it chains correctly.
+            // A count "chains correctly" if its openingCounts matches another today-count's closing counts,
+            // OR if it is the first count of the day (its opening came from before today).
+            // Safest approach: attribute each count's revenue to its employee, but for the daily TOTAL
+            // use the last closing count's board value vs the pre-today baseline.
             const empMap = {};
             todayCounts.forEach(d=>{
               const n = d.employee || 'Unknown';
@@ -1632,6 +1642,37 @@ async function loadDashboard(){
               empMap[n].revenue += d.totalRevenue||0;
               empMap[n].shifts++;
             });
+
+            // For the TRUE daily total: find the board value just before today started
+            // (most recent count before today, any type) and compare to the last closing count today.
+            const preTodayCounts = scrAll.filter(d => d.date < localDate()).sort((a,b)=>(b._ts||0)-(a._ts||0));
+            const preTodayBaseline = preTodayCounts[0]; // most recent count before today
+            const lastTodayClose = todayCounts.length ? todayCounts[todayCounts.length-1] : null;
+
+            let todayTotal = 0;
+            if(lastTodayClose && preTodayBaseline && lastTodayClose.counts && preTodayBaseline.counts){
+              // Sum net tickets sold per slot: last close# - pre-today close#
+              const slots = Object.keys(lastTodayClose.counts);
+              slots.forEach(key=>{
+                const closing = lastTodayClose.counts[key] || 0;
+                const opening = preTodayBaseline.counts[key] || 0;
+                // Find price for this slot from the last close's slots array
+                const slotInfo = (lastTodayClose.slots||[]).find(s=>'slot_'+(s.slot-1)===key);
+                const price = slotInfo ? (slotInfo.price||0) : 0;
+                const sold = Math.max(0, closing - opening);
+                todayTotal += sold * price;
+              });
+              // Also add any sold-out slots from today's counts
+              todayCounts.forEach(d=>{
+                if(d.soldBySlot) Object.values(d.soldBySlot).forEach(sb=>{
+                  if(sb.soldOut) todayTotal += sb.revenue||0;
+                });
+              });
+            } else {
+              // Fallback: no pre-today baseline available, sum all today's counts
+              todayTotal = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+            }
+
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
             // MTD daily sales — group end counts by date
@@ -1932,9 +1973,10 @@ async function loadTodayStartCount(){
       return;
     }
 
-    // 2) Fallback: use the most recent end count (could be yesterday's last shift)
-    //    This is the "incoming employee forgot to log opening" scenario
-    const lastEnd = allCounts.find(x => x.shiftType === 'end');
+    // 2) Fallback: prefer today's most recent closing count so shifts chain correctly,
+    //    then fall back to any previous closing count (yesterday etc.)
+    const todayEnd = allCounts.find(x => x.date === today && x.shiftType === 'end');
+    const lastEnd  = todayEnd || allCounts.find(x => x.shiftType === 'end');
     if(lastEnd){
       prevCounts = lastEnd.counts || {};
       prevCountsSource = { type:'end', employee: lastEnd.employee, date: lastEnd.date, time: lastEnd.timestamp?.toDate?.()?.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) || '' };
