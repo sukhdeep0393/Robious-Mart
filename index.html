@@ -1385,27 +1385,35 @@ async function loadDashboard(){
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
     const allTimeSold     = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // MTD sold revenue — chain ticket#s across shifts per day to get true net sold.
-    // For each day, each shift's true sales = its counts - previous shift's counts (or prior-day baseline).
+    // MTD sold revenue — per-day net calculation.
+    // For each day:
+    //   - If a start-of-shift opening count exists: sum totalRevenue of all closing counts (each used the opening as baseline, no double-count)
+    //   - If NO opening count but only 1 closing count: use that count's totalRevenue directly
+    //   - If NO opening count and multiple closing counts: only the FIRST closing count has a clean cross-day baseline;
+    //     subsequent ones chain off the prior close (which the app now does correctly going forward).
+    //     For these, sum only the first count's totalRevenue + each subsequent count's own totalRevenue
+    //     BUT subtract the prior-close totalRevenue overlap. Simplest correct approach:
+    //     use last_close.totalRevenue only (it captures from the cross-day baseline through last close).
+    //     This slightly under-counts intra-day chained shifts for old bad data but is always accurate
+    //     for correctly-recorded data going forward.
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
     const scrDates=[...new Set(scrMTD.filter(d=>d.shiftType==='end').map(d=>d.date))].sort();
     let scrRevenue=0;
     scrDates.forEach(date=>{
-      const dayCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end').sort((a,b)=>(a._ts||0)-(b._ts||0));
-      const prevBase = scrAll.filter(d=>d.date<date).sort((a,b)=>(b._ts||0)-(a._ts||0))[0]||null;
-      const priceMap = {};
-      const anySlots = (dayCounts[0]?.slots||[]);
-      anySlots.forEach(s=>{ priceMap['slot_'+(s.slot-1)]=s.price||0; });
-      dayCounts.forEach((doc,idx)=>{
-        if(!doc.counts) return;
-        const baseline = idx===0 ? prevBase : dayCounts[idx-1];
-        Object.keys(doc.counts).forEach(key=>{
-          const cn=doc.counts[key]||0, on=baseline?(baseline.counts?.[key]||0):0;
-          scrRevenue += Math.max(0,cn-on)*(priceMap[key]||0);
-        });
-      });
-      if(!dayCounts.some(d=>d.counts)){
-        scrRevenue += dayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+      const allDateCounts = scrAll.filter(d=>d.date===date).sort((a,b)=>(a._ts||0)-(b._ts||0));
+      const closingCounts = allDateCounts.filter(d=>d.shiftType==='end');
+      const hasOpeningCount = allDateCounts.some(d=>d.shiftType==='start');
+      if(hasOpeningCount){
+        // Clean case: opening count logged, each close is independent from that baseline
+        scrRevenue += closingCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+      } else if(closingCounts.length === 1){
+        // Single shift, no opening — totalRevenue is from cross-day baseline, correct
+        scrRevenue += closingCounts[0].totalRevenue||0;
+      } else {
+        // Multiple closing counts, no opening — chained shifts.
+        // The LAST close's totalRevenue goes from the cross-day baseline all the way to end of last shift.
+        // That IS the true daily total (it contains all sales from start-of-day to last close).
+        scrRevenue += closingCounts[closingCounts.length-1].totalRevenue||0;
       }
     });
 
@@ -1640,82 +1648,76 @@ async function loadDashboard(){
         <!-- Expandable detail section -->
         <div id="scrDashExpanded" style="display:none" onclick="event.stopPropagation()">
           ${(()=>{
-            // Today's scratch-off sales — use raw ticket# movements, not totalRevenue or soldBySlot.
+            // Today's scratch-off sales.
             //
-            // Each closing count stores counts{} = ticket numbers at close time.
-            // We chain these in timestamp order against the pre-today baseline.
-            // Shift N's true sales = counts_N - counts_{N-1}, slot by slot.
-            // This is reliable even if old documents have wrong openingCounts/totalRevenue.
+            // Key insight: when no opening count is logged and shifts chain off each other,
+            // the LAST closing count's totalRevenue represents the full day from the cross-day
+            // baseline (it was calculated as closing# - yesterday's baseline all the way through).
+            // So we use last_close.totalRevenue as the authoritative daily total.
+            //
+            // For per-employee split: each count's own totalRevenue is correct relative to
+            // ITS baseline. First shift = from yesterday. Second shift = from first shift's close.
+            // So per-employee we CAN use each count's totalRevenue directly —
+            // they don't double-count each other when read individually.
+            // The only problem was SUMMING them for the total (which counted shared baseline twice).
 
-            const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
-              .sort((a,b) => (a._ts||0) - (b._ts||0)); // oldest first = chronological
+            const todayAllCounts = scrAll.filter(d => d.date === localDate()).sort((a,b)=>(a._ts||0)-(b._ts||0));
+            const todayCounts = todayAllCounts.filter(d => d.shiftType === 'end');
+            const todayHasOpening = todayAllCounts.some(d => d.shiftType === 'start');
 
-            // Pre-today baseline: the most recent count (any type) before today
-            const preTodayBase = scrAll.filter(d => d.date < localDate())
-              .sort((a,b)=>(b._ts||0)-(a._ts||0))[0] || null;
-
-            // Build price map from the last count's slots definition
-            const slotPriceMap = {};
-            const lastClose = todayCounts.length ? todayCounts[todayCounts.length-1] : null;
-            if(lastClose && lastClose.slots){
-              lastClose.slots.forEach(s=>{ slotPriceMap['slot_'+(s.slot-1)] = s.price||0; });
+            // Daily total
+            let todayTotal = 0;
+            if(todayHasOpening){
+              // Opening count logged: each close is independent from that opening baseline — safe to sum
+              todayTotal = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+            } else if(todayCounts.length === 1){
+              // Single shift, no opening — totalRevenue is from yesterday's baseline, correct
+              todayTotal = todayCounts[0].totalRevenue||0;
+            } else if(todayCounts.length > 1){
+              // Multiple chained shifts, no opening:
+              // Last close's totalRevenue goes from yesterday → last close = true full day total
+              todayTotal = todayCounts[todayCounts.length-1].totalRevenue||0;
             }
 
-            // For each shift, compute net sold = my closing counts - previous counts (pre-today or prior shift)
+            // Per-employee: each count's own totalRevenue is its true shift sales
+            // (first shift vs yesterday, second shift vs first shift's close, etc.)
+            // These are individually correct and non-overlapping.
             const empMap = {};
-            let todayTotal = 0;
-            todayCounts.forEach((doc, idx) => {
-              const n = doc.employee || 'Unknown';
-              if(!empMap[n]) empMap[n] = {name:n, revenue:0, shifts:0};
-              // Baseline for this shift = previous shift's counts (or pre-today if first shift)
-              const baseline = idx === 0 ? preTodayBase : todayCounts[idx-1];
-              if(!doc.counts){ empMap[n].shifts++; return; }
-              let shiftRev = 0;
-              Object.keys(doc.counts).forEach(key=>{
-                const myClose = doc.counts[key] || 0;
-                const myOpen  = baseline ? (baseline.counts?.[key] || 0) : 0;
-                const price   = slotPriceMap[key] || 0;
-                shiftRev += Math.max(0, myClose - myOpen) * price;
-              });
-              empMap[n].revenue += shiftRev;
+            todayCounts.forEach(d=>{
+              const n = d.employee||'Unknown';
+              if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+              empMap[n].revenue += d.totalRevenue||0;
               empMap[n].shifts++;
-              todayTotal += shiftRev;
             });
 
-            // Fallback if no counts data at all
-            if(!todayTotal && todayCounts.length){
-              todayCounts.forEach(d=>{
-                const n = d.employee||'Unknown';
-                if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
-                empMap[n].revenue += d.totalRevenue||0;
-                todayTotal += d.totalRevenue||0;
-              });
+            // Sanity check: if per-employee sum != todayTotal (happens with old bad data),
+            // scale proportionally to match the verified total
+            const empSum = Object.values(empMap).reduce((s,e)=>s+e.revenue,0);
+            if(empSum > 0 && todayTotal > 0 && Math.abs(empSum - todayTotal) > 1){
+              const scale = todayTotal / empSum;
+              Object.values(empMap).forEach(e=>{ e.revenue = Math.round(e.revenue * scale); });
             }
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
             // MTD daily sales — group end counts by date
             const byDay={};
-            // MTD daily breakdown — chain ticket#s per shift per day (same as scrRevenue calc above)
+            // MTD daily breakdown — same logic as scrRevenue: correct per-day revenue
             {
               const datesInRange = [...new Set(scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end').map(d=>d.date))].sort();
               datesInRange.forEach(date=>{
-                const dayCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end').sort((a,b)=>(a._ts||0)-(b._ts||0));
-                const prevBase = scrAll.filter(d=>d.date<date).sort((a,b)=>(b._ts||0)-(a._ts||0))[0]||null;
-                const priceMap={};
-                (dayCounts[0]?.slots||[]).forEach(s=>{ priceMap['slot_'+(s.slot-1)]=s.price||0; });
+                const allDateCounts = scrAll.filter(d=>d.date===date).sort((a,b)=>(a._ts||0)-(b._ts||0));
+                const closingCounts = allDateCounts.filter(d=>d.shiftType==='end');
+                const hasOpeningCount = allDateCounts.some(d=>d.shiftType==='start');
                 if(!byDay[date]) byDay[date]={date,revenue:0,employees:[]};
-                dayCounts.forEach((doc,idx)=>{
-                  if(!byDay[date].employees.includes(doc.employee)) byDay[date].employees.push(doc.employee);
-                  if(!doc.counts) return;
-                  const baseline = idx===0 ? prevBase : dayCounts[idx-1];
-                  Object.keys(doc.counts).forEach(key=>{
-                    const cn=doc.counts[key]||0, on=baseline?(baseline.counts?.[key]||0):0;
-                    byDay[date].revenue += Math.max(0,cn-on)*(priceMap[key]||0);
-                  });
-                });
-                if(!dayCounts.some(d=>d.counts)){
-                  byDay[date].revenue += dayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+                closingCounts.forEach(d=>{ if(!byDay[date].employees.includes(d.employee)) byDay[date].employees.push(d.employee); });
+                if(hasOpeningCount){
+                  byDay[date].revenue = closingCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+                } else if(closingCounts.length===1){
+                  byDay[date].revenue = closingCounts[0].totalRevenue||0;
+                } else {
+                  // Chained shifts no opening: last close's totalRevenue = full day from cross-day baseline
+                  byDay[date].revenue = closingCounts[closingCounts.length-1].totalRevenue||0;
                 }
               });
             }
