@@ -1385,9 +1385,27 @@ async function loadDashboard(){
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
     const allTimeSold     = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // MTD sold revenue (for the selected month display)
+    // MTD sold revenue — use per-count true net (openingCounts vs counts) to avoid
+    // double-counting when shifts chain without a logged opening count
+    function trueNetRevenueGlobal(countDoc){
+      if(!countDoc.counts || !countDoc.openingCounts) return countDoc.totalRevenue||0;
+      const slotDefs = countDoc.slots || [];
+      let net = 0;
+      Object.keys(countDoc.counts).forEach(key=>{
+        const closing = countDoc.counts[key] || 0;
+        const opening = countDoc.openingCounts[key];
+        if(opening === undefined) return;
+        const slotInfo = slotDefs.find(s=>'slot_'+(s.slot-1)===key);
+        const price = slotInfo ? (slotInfo.price||0) : 0;
+        net += Math.max(0, closing - opening) * price;
+      });
+      if(countDoc.soldBySlot){
+        Object.values(countDoc.soldBySlot).forEach(sb=>{ if(sb.soldOut) net += sb.revenue||0; });
+      }
+      return net;
+    }
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
-    const scrRevenue=scrMTD.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
+    const scrRevenue=scrMTD.filter(d=>d.shiftType==='end').reduce((s,d)=>s+trueNetRevenueGlobal(d),0);
 
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
@@ -1620,58 +1638,54 @@ async function loadDashboard(){
         <!-- Expandable detail section -->
         <div id="scrDashExpanded" style="display:none" onclick="event.stopPropagation()">
           ${(()=>{
-            // Today's scratch-off sales — computed as net board change to avoid double-counting
-            // when multiple shifts close without an opening count.
-            // Each closing count records openingCounts (the baseline it used) and counts (the closing #s).
-            // Net sold per slot = closing# - opening# (already stored as totalRevenue per count).
-            // BUT if shift B used shift A's close as its opening, summing A.totalRevenue + B.totalRevenue
-            // double-counts A's sales. Instead we find the earliest baseline for today and compare
-            // it to the latest closing counts to get the true net.
+            // Today's scratch-off sales — correctly handles chained shifts with no opening count.
+            //
+            // How chaining works:
+            //   - Each closing count stores counts{} (closing ticket#s) and openingCounts{} (the baseline used).
+            //   - Net sold per slot for a shift = closing# - opening# for that slot.
+            //   - When no opening count is logged, each shift chains off the PREVIOUS shift's close.
+            //   - So Tilak's count: opening=yesterday, closing=after his sales → $195 true sales.
+            //   - Sukh's count:     opening=Tilak's close, closing=after his sales → $3 true sales.
+            //   - Simply summing totalRevenue gives $393 (double-counts). Must use per-count openingCounts.
+            //
+            // Fix: for each count, recalculate true net from its own openingCounts vs counts.
+
             const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
               .sort((a,b) => (a._ts||0) - (b._ts||0)); // oldest first
 
-            // Per-employee today — use each count's own totalRevenue only if it chains correctly.
-            // A count "chains correctly" if its openingCounts matches another today-count's closing counts,
-            // OR if it is the first count of the day (its opening came from before today).
-            // Safest approach: attribute each count's revenue to its employee, but for the daily TOTAL
-            // use the last closing count's board value vs the pre-today baseline.
+            // Helper: compute true net revenue for a single count using its stored openingCounts
+            function trueNetRevenue(countDoc){
+              if(!countDoc.counts || !countDoc.openingCounts) return countDoc.totalRevenue||0;
+              const slotDefs = countDoc.slots || [];
+              let net = 0;
+              Object.keys(countDoc.counts).forEach(key=>{
+                const closing = countDoc.counts[key] || 0;
+                const opening = countDoc.openingCounts[key];
+                if(opening === undefined) return; // no opening baseline for this slot — skip
+                const slotInfo = slotDefs.find(s=>'slot_'+(s.slot-1)===key);
+                const price = slotInfo ? (slotInfo.price||0) : 0;
+                net += Math.max(0, closing - opening) * price;
+              });
+              // Add sold-out slots (their revenue is already net by definition)
+              if(countDoc.soldBySlot){
+                Object.values(countDoc.soldBySlot).forEach(sb=>{
+                  if(sb.soldOut) net += sb.revenue||0;
+                });
+              }
+              return net;
+            }
+
+            // Per-employee: use true net revenue per count
             const empMap = {};
             todayCounts.forEach(d=>{
               const n = d.employee || 'Unknown';
               if(!empMap[n]) empMap[n] = {name:n, revenue:0, shifts:0};
-              empMap[n].revenue += d.totalRevenue||0;
+              empMap[n].revenue += trueNetRevenue(d);
               empMap[n].shifts++;
             });
 
-            // For the TRUE daily total: find the board value just before today started
-            // (most recent count before today, any type) and compare to the last closing count today.
-            const preTodayCounts = scrAll.filter(d => d.date < localDate()).sort((a,b)=>(b._ts||0)-(a._ts||0));
-            const preTodayBaseline = preTodayCounts[0]; // most recent count before today
-            const lastTodayClose = todayCounts.length ? todayCounts[todayCounts.length-1] : null;
-
-            let todayTotal = 0;
-            if(lastTodayClose && preTodayBaseline && lastTodayClose.counts && preTodayBaseline.counts){
-              // Sum net tickets sold per slot: last close# - pre-today close#
-              const slots = Object.keys(lastTodayClose.counts);
-              slots.forEach(key=>{
-                const closing = lastTodayClose.counts[key] || 0;
-                const opening = preTodayBaseline.counts[key] || 0;
-                // Find price for this slot from the last close's slots array
-                const slotInfo = (lastTodayClose.slots||[]).find(s=>'slot_'+(s.slot-1)===key);
-                const price = slotInfo ? (slotInfo.price||0) : 0;
-                const sold = Math.max(0, closing - opening);
-                todayTotal += sold * price;
-              });
-              // Also add any sold-out slots from today's counts
-              todayCounts.forEach(d=>{
-                if(d.soldBySlot) Object.values(d.soldBySlot).forEach(sb=>{
-                  if(sb.soldOut) todayTotal += sb.revenue||0;
-                });
-              });
-            } else {
-              // Fallback: no pre-today baseline available, sum all today's counts
-              todayTotal = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
-            }
+            // Daily total = sum of all per-count true nets
+            const todayTotal = todayCounts.reduce((s,d)=>s+trueNetRevenue(d),0);
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
@@ -1679,7 +1693,7 @@ async function loadDashboard(){
             const byDay={};
             scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end').forEach(d=>{
               if(!byDay[d.date]) byDay[d.date]={date:d.date,revenue:0,employees:[]};
-              byDay[d.date].revenue += d.totalRevenue||0;
+              byDay[d.date].revenue += trueNetRevenue(d); // use true net to avoid double-counting chained shifts
               if(!byDay[d.date].employees.includes(d.employee)) byDay[d.date].employees.push(d.employee);
             });
             const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
