@@ -441,17 +441,20 @@
     <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
     <div class="card" id="fuelDeliveryForm">
       <div class="ct">Log a fuel delivery</div>
-      <div class="g2" style="margin-bottom:10px">
-        <div><label>Date</label><input type="date" id="fd-date" /></div>
-        <div><label>Supplier</label><input id="fd-supplier" placeholder="e.g. Valero, BP" /></div>
+      <div style="margin-bottom:10px">
+        <label>Date</label><input type="date" id="fd-date" />
       </div>
       <div class="g3" style="margin-bottom:10px">
         <div><label>Regular (gal)</label><input type="number" id="fd-reg" placeholder="0" /></div>
         <div><label>Premium (gal)</label><input type="number" id="fd-prem" placeholder="0" /></div>
         <div><label>Diesel (gal)</label><input type="number" id="fd-dies" placeholder="0" /></div>
       </div>
-      <div class="g2" style="margin-bottom:10px" id="fd-price-row">
-        <div><label>Price per gal ($) <span style="color:var(--text3);font-weight:400">(operator)</span></label><input type="number" step="0.001" id="fd-price" placeholder="e.g. 2.850" /></div>
+      <div class="g3" style="margin-bottom:10px" id="fd-price-row">
+        <div><label>Regular $/gal</label><input type="number" step="0.001" id="fd-price-reg" placeholder="e.g. 2.850" /></div>
+        <div><label>Premium $/gal</label><input type="number" step="0.001" id="fd-price-prem" placeholder="e.g. 3.150" /></div>
+        <div><label>Diesel $/gal</label><input type="number" step="0.001" id="fd-price-dies" placeholder="e.g. 3.200" /></div>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
         <div><label>Invoice # <span style="color:var(--text3);font-weight:400">(optional)</span></label><input id="fd-invoice" placeholder="optional" /></div>
       </div>
       <div style="margin-bottom:10px"><label>Notes</label><input id="fd-notes" placeholder="Any delivery notes..." /></div>
@@ -3455,34 +3458,41 @@ async function subFuelDelivery(){
   const diesGal = parseFloat(document.getElementById('fd-dies').value)||0;
   const totalGal = regGal + premGal + diesGal;
   if(totalGal <= 0){ toast('Enter at least one gallon amount'); return; }
-  const supplier = document.getElementById('fd-supplier').value.trim();
-  if(!supplier){ toast('Enter supplier name'); return; }
 
-  const pricePerGal = parseFloat(document.getElementById('fd-price').value)||0;
-  const totalCost   = pricePerGal > 0 ? parseFloat((pricePerGal * totalGal).toFixed(2)) : 0;
+  const priceReg  = parseFloat(document.getElementById('fd-price-reg').value)||0;
+  const pricePrem = parseFloat(document.getElementById('fd-price-prem').value)||0;
+  const priceDies = parseFloat(document.getElementById('fd-price-dies').value)||0;
+  const costReg   = priceReg  > 0 ? parseFloat((priceReg  * regGal).toFixed(2))  : 0;
+  const costPrem  = pricePrem > 0 ? parseFloat((pricePrem * premGal).toFixed(2)) : 0;
+  const costDies  = priceDies > 0 ? parseFloat((priceDies * diesGal).toFixed(2)) : 0;
+  const totalCost = parseFloat((costReg + costPrem + costDies).toFixed(2));
+  const anyPrice  = priceReg > 0 || pricePrem > 0 || priceDies > 0;
   const btn = document.querySelector('#fuelDeliveryForm .btn');
   btn.innerHTML = '<span class="spinner"></span>Saving...'; btn.disabled = true;
   try{
     await window.F.addDoc(window.F.collection(window.db,'fuelDeliveries'),{
-      date:      document.getElementById('fd-date').value || localDate(),
-      supplier,
-      regularGal:  regGal,
-      premiumGal:  premGal,
-      dieselGal:   diesGal,
+      date:         document.getElementById('fd-date').value || localDate(),
+      regularGal:   regGal,
+      premiumGal:   premGal,
+      dieselGal:    diesGal,
       totalGal,
-      pricePerGal: pricePerGal || null,
-      totalCost:   totalCost || null,
-      invoiceNum:  document.getElementById('fd-invoice').value.trim() || '',
-      notes:       document.getElementById('fd-notes').value.trim() || '',
-      loggedBy:    CU.name,
-      priceAddedBy: pricePerGal > 0 ? CU.name : null,
+      priceRegular: priceReg  || null,
+      pricePremium: pricePrem || null,
+      priceDiesel:  priceDies || null,
+      costRegular:  costReg   || null,
+      costPremium:  costPrem  || null,
+      costDiesel:   costDies  || null,
+      totalCost:    totalCost || null,
+      invoiceNum:   document.getElementById('fd-invoice').value.trim() || '',
+      notes:        document.getElementById('fd-notes').value.trim() || '',
+      loggedBy:     CU.name,
+      priceAddedBy: anyPrice ? CU.name : null,
       timestamp: window.F.serverTimestamp()
     });
     toast('✓ Fuel delivery saved!');
     btn.innerHTML = 'Save fuel delivery'; btn.disabled = false;
-    ['fd-reg','fd-prem','fd-dies','fd-price','fd-invoice','fd-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    ['fd-reg','fd-prem','fd-dies','fd-price-reg','fd-price-prem','fd-price-dies','fd-invoice','fd-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
     document.getElementById('fd-date').value = localDate();
-    document.getElementById('fd-supplier').value = '';
     loadFuelDeliveries();
   } catch(e){ toast('Error saving delivery'); btn.innerHTML='Save fuel delivery'; btn.disabled=false; }
 }
@@ -3508,17 +3518,26 @@ async function loadFuelDeliveries(){
         d.premiumGal>0 ? `Prem: ${d.premiumGal.toLocaleString()} gal` : '',
         d.dieselGal>0  ? `Diesel: ${d.dieselGal.toLocaleString()} gal` : ''
       ].filter(Boolean).join(' · ');
-      const priceStr = d.pricePerGal
-        ? `$${d.pricePerGal.toFixed(3)}/gal · Total: $${(d.totalCost||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`
+      // Build per-grade price breakdown
+      const anyPrice = d.priceRegular || d.pricePremium || d.priceDiesel || d.pricePerGal;
+      let priceLines = [];
+      if(d.priceRegular && d.regularGal > 0)  priceLines.push(`Reg: $${d.priceRegular.toFixed(3)}/gal ($${(d.costRegular||0).toFixed(2)})`);
+      if(d.pricePremium && d.premiumGal > 0)  priceLines.push(`Prem: $${d.pricePremium.toFixed(3)}/gal ($${(d.costPremium||0).toFixed(2)})`);
+      if(d.priceDiesel  && d.dieselGal  > 0)  priceLines.push(`Diesel: $${d.priceDiesel.toFixed(3)}/gal ($${(d.costDiesel||0).toFixed(2)})`);
+      // Backward-compat: old single-price records
+      if(!priceLines.length && d.pricePerGal)  priceLines.push(`$${d.pricePerGal.toFixed(3)}/gal`);
+      const priceStr = anyPrice
+        ? `<span style="color:var(--text2)">${priceLines.join(' · ')}</span>${d.totalCost ? ` <strong>· Total: $${(d.totalCost||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>` : ''}`
         : '<span style="color:var(--amber);font-weight:600">⏳ Price pending</span>';
+      const hasAnyPrice = d.priceRegular || d.pricePremium || d.priceDiesel || d.pricePerGal;
       const priceEditBtn = isOp
-        ? `<button onclick="openFuelDeliveryEdit('${d.id}')" style="margin-top:7px;background:var(--blue-light);color:var(--blue);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">${d.pricePerGal?'✏️ Edit':'+ Add price & edit'}</button>`
+        ? `<button onclick="openFuelDeliveryEdit('${d.id}')" style="margin-top:7px;background:var(--blue-light);color:var(--blue);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">${hasAnyPrice?'✏️ Edit':'+ Add price & edit'}</button>`
         : '';
       return `<div style="padding:13px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-              <span style="font-size:14px;font-weight:700">⛽ ${d.supplier||'Unknown'}</span>
+              <span style="font-size:14px;font-weight:700">⛽ Fuel Delivery</span>
               <span class="badge bblu">${fmtD(d.date)}</span>
               ${d.invoiceNum?`<span class="badge" style="background:var(--bg2);color:var(--text3)">#${d.invoiceNum}</span>`:''}
             </div>
@@ -3550,11 +3569,12 @@ function openFuelDeliveryEdit(id){
     const el = document.getElementById('editModalContent');
     el.innerHTML = `
       <div class="edit-field"><label>Date</label><input type="date" id="ef-date" value="${d.date||''}" /></div>
-      <div class="edit-field"><label>Supplier</label><input id="ef-fd-supplier" value="${d.supplier||''}" /></div>
       <div class="edit-field"><label>Regular (gal)</label><input type="number" id="ef-fd-reg" value="${d.regularGal||0}" /></div>
       <div class="edit-field"><label>Premium (gal)</label><input type="number" id="ef-fd-prem" value="${d.premiumGal||0}" /></div>
       <div class="edit-field"><label>Diesel (gal)</label><input type="number" id="ef-fd-dies" value="${d.dieselGal||0}" /></div>
-      <div class="edit-field"><label>Price per gallon ($)</label><input type="number" step="0.001" id="ef-fd-price" value="${d.pricePerGal||''}" placeholder="e.g. 2.850" /></div>
+      <div class="edit-field"><label>Regular $/gal</label><input type="number" step="0.001" id="ef-fd-price-reg" value="${d.priceRegular||d.pricePerGal||''}" placeholder="e.g. 2.850" /></div>
+      <div class="edit-field"><label>Premium $/gal</label><input type="number" step="0.001" id="ef-fd-price-prem" value="${d.pricePremium||''}" placeholder="e.g. 3.150" /></div>
+      <div class="edit-field"><label>Diesel $/gal</label><input type="number" step="0.001" id="ef-fd-price-dies" value="${d.priceDiesel||''}" placeholder="e.g. 3.200" /></div>
       <div class="edit-field"><label>Invoice #</label><input id="ef-fd-invoice" value="${d.invoiceNum||''}" /></div>
       <div class="edit-field"><label>Notes</label><input id="ef-fd-notes" value="${d.notes||''}" /></div>
       <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--amber);margin-top:4px">⚠️ Changes are permanent.</div>`;
@@ -3570,18 +3590,29 @@ async function saveFuelDeliveryEdit(){
   const premGal  = parseFloat(document.getElementById('ef-fd-prem')?.value)||0;
   const diesGal  = parseFloat(document.getElementById('ef-fd-dies')?.value)||0;
   const totalGal = regGal + premGal + diesGal;
-  const pricePerGal = parseFloat(document.getElementById('ef-fd-price')?.value)||0;
+  const priceReg  = parseFloat(document.getElementById('ef-fd-price-reg')?.value)||0;
+  const pricePrem = parseFloat(document.getElementById('ef-fd-price-prem')?.value)||0;
+  const priceDies = parseFloat(document.getElementById('ef-fd-price-dies')?.value)||0;
+  const costReg   = priceReg  > 0 ? parseFloat((priceReg  * regGal).toFixed(2))  : 0;
+  const costPrem  = pricePrem > 0 ? parseFloat((pricePrem * premGal).toFixed(2)) : 0;
+  const costDies  = priceDies > 0 ? parseFloat((priceDies * diesGal).toFixed(2)) : 0;
+  const totalCost = parseFloat((costReg + costPrem + costDies).toFixed(2));
+  const anyPrice  = priceReg > 0 || pricePrem > 0 || priceDies > 0;
   const updates = {
-    date:       document.getElementById('ef-date')?.value || localDate(),
-    supplier:   document.getElementById('ef-fd-supplier')?.value.trim() || '',
+    date:         document.getElementById('ef-date')?.value || localDate(),
     regularGal: regGal, premiumGal: premGal, dieselGal: diesGal, totalGal,
-    pricePerGal: pricePerGal || null,
-    totalCost:   pricePerGal > 0 ? parseFloat((pricePerGal * totalGal).toFixed(2)) : null,
-    invoiceNum:  document.getElementById('ef-fd-invoice')?.value.trim() || '',
-    notes:       document.getElementById('ef-fd-notes')?.value.trim() || '',
-    priceAddedBy: pricePerGal > 0 ? CU.name : null,
-    editedBy:    CU.name,
-    editedAt:    new Date().toISOString()
+    priceRegular: priceReg  || null,
+    pricePremium: pricePrem || null,
+    priceDiesel:  priceDies || null,
+    costRegular:  costReg   || null,
+    costPremium:  costPrem  || null,
+    costDiesel:   costDies  || null,
+    totalCost:    totalCost || null,
+    invoiceNum:   document.getElementById('ef-fd-invoice')?.value.trim() || '',
+    notes:        document.getElementById('ef-fd-notes')?.value.trim() || '',
+    priceAddedBy: anyPrice ? CU.name : null,
+    editedBy:     CU.name,
+    editedAt:     new Date().toISOString()
   };
   try{
     await window.F.updateDoc(window.F.doc(window.db,'fuelDeliveries',_fdEditId), updates);
