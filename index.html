@@ -1114,11 +1114,11 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore,collection,addDoc,getDocs,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore,collection,addDoc,getDocs,getDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyC5ZtJ25RB4gz_Ov8H0lPHExsggpP00Gok",authDomain:"robious-mart.firebaseapp.com",projectId:"robious-mart",storageBucket:"robious-mart.firebasestorage.app",messagingSenderId:"679205177455",appId:"1:679205177455:web:b10c4c2835f9cf2c2e259a"});
 const db=getFirestore(app);
 window.db=db;
-window.F={collection,addDoc,getDocs,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc};
+window.F={collection,addDoc,getDocs,getDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc};
 window.dispatchEvent(new Event('fbReady'));
 </script>
 
