@@ -1385,15 +1385,18 @@ async function loadDashboard(){
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
     const allTimeSold     = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // MTD sold revenue — always use the last closing count's totalRevenue per day.
-    // This is always the cumulative from prior-day baseline through last close, correct for all cases.
+    // MTD sold revenue — detect shared-baseline vs properly-chained counts per day
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
     const scrDates=[...new Set(scrMTD.filter(d=>d.shiftType==='end').map(d=>d.date))].sort();
     let scrRevenue=0;
     scrDates.forEach(date=>{
       const closingCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end')
         .sort((a,b)=>(a._ts||0)-(b._ts||0));
-      if(closingCounts.length) scrRevenue += closingCounts[closingCounts.length-1].totalRevenue||0;
+      if(!closingCounts.length) return;
+      if(closingCounts.length === 1){ scrRevenue += closingCounts[0].totalRevenue||0; return; }
+      const revs = closingCounts.map(d=>d.totalRevenue||0);
+      const isSharedBaseline = revs.every((v,i)=> i===0 || v >= revs[i-1]);
+      scrRevenue += isSharedBaseline ? revs[revs.length-1] : revs.reduce((s,v)=>s+v,0);
     });
 
     const recentActs=allActs;
@@ -1643,40 +1646,56 @@ async function loadDashboard(){
             //      i.e. employee[N].trueRevenue = lastClose.totalRevenue - sum(employee[0..N-1].totalRevenue)
             //      This works because each count's totalRevenue is the running cumulative from yesterday.
 
-            // Sort today's closing counts by timestamp ascending (earliest first)
             const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
               .sort((a,b)=>(a._ts||0)-(b._ts||0));
 
-            // Always use incremental difference method regardless of opening count.
-            // Reason: an opening count may exist from a previous test or tab load but not
-            // reflect a true clean baseline, causing the "sum all" branch to double-count.
-            //
-            // Incremental method works for ALL cases:
-            //   - 1 shift:  trueRev = count[0].totalRevenue (vs yesterday baseline) ✓
-            //   - 2 shifts: trueRev[0] = count[0].totalRevenue
-            //               trueRev[1] = count[1].totalRevenue - count[0].totalRevenue ✓
-            //   - N shifts: trueRev[i] = count[i].totalRevenue - count[i-1].totalRevenue ✓
-            //
-            // Total = last count's totalRevenue (the cumulative from yesterday → last close)
-
-            let todayTotal = todayCounts.length ? todayCounts[todayCounts.length-1].totalRevenue||0 : 0;
-
+            // Detect whether counts share a baseline (cumulative) or are properly chained (independent)
+            // Shared baseline: revenues monotonically increase → last count = true total, use incremental diffs
+            // Properly chained: revenues are each shift's own amount → sum all, each count is its own
+            let todayTotal = 0;
             const empMap = {};
-            let runningTotal = 0;
-            todayCounts.forEach(d => {
-              const n = d.employee||'Unknown';
-              if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
-              const trueRev = Math.max(0, (d.totalRevenue||0) - runningTotal);
-              empMap[n].revenue += trueRev;
-              empMap[n].shifts++;
-              runningTotal = d.totalRevenue||0;
-            });
+
+            if(todayCounts.length === 0){
+              // nothing
+            } else if(todayCounts.length === 1){
+              todayTotal = todayCounts[0].totalRevenue||0;
+              const n = todayCounts[0].employee||'Unknown';
+              empMap[n] = {name:n, revenue:todayTotal, shifts:1};
+            } else {
+              const revs = todayCounts.map(d=>d.totalRevenue||0);
+              const isSharedBaseline = revs.every((v,i)=> i===0 || v >= revs[i-1]);
+              if(isSharedBaseline){
+                // Shared baseline — last count is the true cumulative total
+                todayTotal = revs[revs.length-1];
+                let runningTotal = 0;
+                todayCounts.forEach(d=>{
+                  const n = d.employee||'Unknown';
+                  if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+                  empMap[n].revenue += Math.max(0,(d.totalRevenue||0)-runningTotal);
+                  empMap[n].shifts++;
+                  runningTotal = d.totalRevenue||0;
+                });
+              } else {
+                // Properly chained — sum all counts, each is its own shift
+                todayTotal = revs.reduce((s,v)=>s+v,0);
+                todayCounts.forEach(d=>{
+                  const n = d.employee||'Unknown';
+                  if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+                  empMap[n].revenue += d.totalRevenue||0;
+                  empMap[n].shifts++;
+                });
+              }
+            }
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
             // MTD daily sales — group end counts by date
             const byDay={};
-            // MTD daily breakdown — last close's totalRevenue = day total; incremental diff for per-employee
+            // MTD daily breakdown — detect whether counts were chained at submission or share a baseline.
+            // SHARED BASELINE (broken): each count's totalRevenue > previous (cumulative from same yesterday)
+            //   → day total = last count's totalRevenue; per-employee = incremental diffs
+            // PROPERLY CHAINED: each count's totalRevenue is its own shift only (small, independent)
+            //   → day total = sum of all totalRevenues; per-employee = each count's own totalRevenue
             {
               const datesInRange = [...new Set(scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end').map(d=>d.date))].sort();
               datesInRange.forEach(date=>{
@@ -1684,19 +1703,43 @@ async function loadDashboard(){
                   .sort((a,b)=>(a._ts||0)-(b._ts||0));
                 if(!byDay[date]) byDay[date]={date,revenue:0,employees:[],empBreakdown:[]};
                 if(!closingCounts.length) return;
-                // Day total = last close's totalRevenue
-                byDay[date].revenue = closingCounts[closingCounts.length-1].totalRevenue||0;
-                // Per-employee using incremental differences
-                let runningRev = 0;
-                const empTally = {};
-                closingCounts.forEach(d=>{
-                  const n = d.employee||'Unknown';
-                  if(!empTally[n]) empTally[n]={name:n,revenue:0};
-                  empTally[n].revenue += Math.max(0,(d.totalRevenue||0)-runningRev);
-                  runningRev = d.totalRevenue||0;
-                  if(!byDay[date].employees.includes(n)) byDay[date].employees.push(n);
-                });
-                byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
+                closingCounts.forEach(d=>{ if(!byDay[date].employees.includes(d.employee)) byDay[date].employees.push(d.employee); });
+
+                if(closingCounts.length === 1){
+                  // Single count — straightforward
+                  byDay[date].revenue = closingCounts[0].totalRevenue||0;
+                  byDay[date].empBreakdown = [{name:closingCounts[0].employee||'Unknown', revenue:byDay[date].revenue}];
+                } else {
+                  // Detect chaining style by checking if revenues are monotonically increasing
+                  // (shared baseline = each count higher than last = cumulative)
+                  // (properly chained = each count is its own small amount, not necessarily increasing)
+                  const revenues = closingCounts.map(d=>d.totalRevenue||0);
+                  const isSharedBaseline = revenues.every((v,i)=> i===0 || v >= revenues[i-1]);
+
+                  if(isSharedBaseline){
+                    // Counts share baseline — last count is the true cumulative total
+                    byDay[date].revenue = revenues[revenues.length-1];
+                    const empTally = {};
+                    let runningRev = 0;
+                    closingCounts.forEach(d=>{
+                      const n = d.employee||'Unknown';
+                      if(!empTally[n]) empTally[n]={name:n,revenue:0};
+                      empTally[n].revenue += Math.max(0,(d.totalRevenue||0)-runningRev);
+                      runningRev = d.totalRevenue||0;
+                    });
+                    byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
+                  } else {
+                    // Properly chained — sum all, each count is its own shift
+                    byDay[date].revenue = revenues.reduce((s,v)=>s+v,0);
+                    const empTally = {};
+                    closingCounts.forEach(d=>{
+                      const n = d.employee||'Unknown';
+                      if(!empTally[n]) empTally[n]={name:n,revenue:0};
+                      empTally[n].revenue += d.totalRevenue||0;
+                    });
+                    byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
+                  }
+                }
               });
             }
             const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
