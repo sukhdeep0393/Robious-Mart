@@ -1650,52 +1650,62 @@ async function loadDashboard(){
           ${(()=>{
             // Today's scratch-off sales.
             //
-            // Key insight: when no opening count is logged and shifts chain off each other,
-            // the LAST closing count's totalRevenue represents the full day from the cross-day
-            // baseline (it was calculated as closing# - yesterday's baseline all the way through).
-            // So we use last_close.totalRevenue as the authoritative daily total.
+            // The problem: when no opening count is logged and two employees both close,
+            // BOTH documents may have been saved using yesterday as their baseline (old bug).
+            // This means doc A has totalRevenue = full day through A's close,
+            // and doc B ALSO has totalRevenue = full day through B's close.
+            // They are NOT independent — one contains the other's sales.
             //
-            // For per-employee split: each count's own totalRevenue is correct relative to
-            // ITS baseline. First shift = from yesterday. Second shift = from first shift's close.
-            // So per-employee we CAN use each count's totalRevenue directly —
-            // they don't double-count each other when read individually.
-            // The only problem was SUMMING them for the total (which counted shared baseline twice).
+            // The only correct approach:
+            //   1. Sort closing counts by timestamp ascending (oldest = first shift).
+            //   2. The LAST count's totalRevenue = true full day total (from yesterday → last close).
+            //   3. Per-employee: first employee gets their own totalRevenue (correct, vs yesterday).
+            //      Each subsequent employee gets: (cumulative total so far) - (sum of all prior employees).
+            //      i.e. employee[N].trueRevenue = lastClose.totalRevenue - sum(employee[0..N-1].totalRevenue)
+            //      This works because each count's totalRevenue is the running cumulative from yesterday.
 
             const todayAllCounts = scrAll.filter(d => d.date === localDate()).sort((a,b)=>(a._ts||0)-(b._ts||0));
             const todayCounts = todayAllCounts.filter(d => d.shiftType === 'end');
             const todayHasOpening = todayAllCounts.some(d => d.shiftType === 'start');
 
-            // Daily total
             let todayTotal = 0;
-            if(todayHasOpening){
-              // Opening count logged: each close is independent from that opening baseline — safe to sum
-              todayTotal = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
-            } else if(todayCounts.length === 1){
-              // Single shift, no opening — totalRevenue is from yesterday's baseline, correct
-              todayTotal = todayCounts[0].totalRevenue||0;
-            } else if(todayCounts.length > 1){
-              // Multiple chained shifts, no opening:
-              // Last close's totalRevenue goes from yesterday → last close = true full day total
-              todayTotal = todayCounts[todayCounts.length-1].totalRevenue||0;
-            }
-
-            // Per-employee: each count's own totalRevenue is its true shift sales
-            // (first shift vs yesterday, second shift vs first shift's close, etc.)
-            // These are individually correct and non-overlapping.
             const empMap = {};
-            todayCounts.forEach(d=>{
-              const n = d.employee||'Unknown';
-              if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
-              empMap[n].revenue += d.totalRevenue||0;
-              empMap[n].shifts++;
-            });
 
-            // Sanity check: if per-employee sum != todayTotal (happens with old bad data),
-            // scale proportionally to match the verified total
-            const empSum = Object.values(empMap).reduce((s,e)=>s+e.revenue,0);
-            if(empSum > 0 && todayTotal > 0 && Math.abs(empSum - todayTotal) > 1){
-              const scale = todayTotal / empSum;
-              Object.values(empMap).forEach(e=>{ e.revenue = Math.round(e.revenue * scale); });
+            if(todayHasOpening){
+              // Clean case: opening count logged — each close used the opening as baseline, safe to sum
+              todayTotal = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
+              todayCounts.forEach(d=>{
+                const n = d.employee||'Unknown';
+                if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+                empMap[n].revenue += d.totalRevenue||0;
+                empMap[n].shifts++;
+              });
+            } else if(todayCounts.length <= 1){
+              // Single shift or no shifts — totalRevenue is correct as-is
+              todayTotal = todayCounts[0]?.totalRevenue||0;
+              if(todayCounts[0]){
+                const n = todayCounts[0].employee||'Unknown';
+                empMap[n] = {name:n, revenue:todayTotal, shifts:1};
+              }
+            } else {
+              // Multiple closing counts, no opening count.
+              // Last count's totalRevenue = full day total (cumulative from yesterday through last close).
+              todayTotal = todayCounts[todayCounts.length-1].totalRevenue||0;
+
+              // Per-employee: use incremental differences.
+              // counts[0].totalRevenue = sales from yesterday → first close  (employee 0's true sales)
+              // counts[1].totalRevenue = sales from yesterday → second close = counts[0] + employee 1's sales
+              // So employee 1's true sales = counts[1].totalRevenue - counts[0].totalRevenue
+              // Generally: employee[i].true = counts[i].totalRevenue - counts[i-1].totalRevenue
+              let runningTotal = 0;
+              todayCounts.forEach((d, idx) => {
+                const n = d.employee||'Unknown';
+                if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+                const trueRev = Math.max(0, (d.totalRevenue||0) - runningTotal);
+                empMap[n].revenue += trueRev;
+                empMap[n].shifts++;
+                runningTotal = d.totalRevenue||0; // next employee's baseline is this count's cumulative
+              });
             }
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
