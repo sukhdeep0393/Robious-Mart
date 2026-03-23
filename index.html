@@ -1369,16 +1369,31 @@ async function loadDashboard(){
     const actsAfterCount = allActs.filter(a => a._ts > baselineTs);
     const activatedAfterCount = actsAfterCount.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
 
-    // Sales from ALL closing counts AFTER the baseline count
-    const soldAfterCount = scrAll
-      .filter(d => d._ts > baselineTs && d.shiftType==='end')
-      .reduce((s,d)=>s+(d.totalRevenue||0),0);
+    // Sales from closing counts AFTER the baseline.
+    // Deduplicate shared-baseline days: when multiple employees close using the same opening count,
+    // each closing totalRevenue is cumulative (not per-shift). Summing naively double-counts.
+    // Fix: per date, if revenues are monotonically increasing → shared baseline → use only the last.
+    function deduplicateSoldCounts(closingDocs){
+      const byDate = {};
+      closingDocs.forEach(d => { if(!byDate[d.date]) byDate[d.date]=[]; byDate[d.date].push(d); });
+      let total = 0;
+      Object.values(byDate).forEach(dayDocs => {
+        dayDocs.sort((a,b)=>(a._ts||0)-(b._ts||0));
+        if(dayDocs.length===1){ total+=dayDocs[0].totalRevenue||0; return; }
+        const revs=dayDocs.map(d=>d.totalRevenue||0);
+        const isShared=revs.every((v,i)=>i===0||v>=revs[i-1]);
+        total+=isShared ? revs[revs.length-1] : revs.reduce((s,v)=>s+v,0);
+      });
+      return total;
+    }
+    const closingAfterBaseline = scrAll.filter(d => d._ts > baselineTs && d.shiftType==='end');
+    const soldAfterCount = deduplicateSoldCounts(closingAfterBaseline);
 
     // If no opening-count baseline exists, fall back to all-time activations minus all-time sales
     let scrVal;
     if(!latestCount){
       const allTimeActValue2 = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
-      const allTimeSold2 = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
+      const allTimeSold2 = deduplicateSoldCounts(scrAll.filter(d=>d.shiftType==='end'));
       scrVal = Math.max(0, allTimeActValue2 - allTimeSold2);
     } else {
       scrVal = Math.max(0, baselineValue + activatedAfterCount - soldAfterCount);
