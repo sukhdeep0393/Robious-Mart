@@ -1365,11 +1365,16 @@ async function loadDashboard(){
     const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
 
-    // Activations logged AFTER the baseline count
-    const actsAfterCount = allActs.filter(a => a._ts > baselineTs);
+    // Activations logged on or after the baseline date
+    // Use date comparison (not timestamp) so that activations logged the same day as the opening
+    // count are included regardless of whether they came before or after the count timestamp.
+    const actsAfterCount = allActs.filter(a => a.date >= baselineDate);
     const activatedAfterCount = actsAfterCount.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
 
-    // Sales from closing counts AFTER the baseline.
+    // Sales from closing counts on or after the baseline date.
+    // Use date comparison (not timestamp) — the opening count is sometimes submitted AFTER closing
+    // counts (e.g. operator opens their count after overnight closes), so timestamp filtering
+    // incorrectly excludes those closing counts.
     // Deduplicate shared-baseline days: when multiple employees close using the same opening count,
     // each closing totalRevenue is cumulative (not per-shift). Summing naively double-counts.
     // Fix: per date, if revenues are monotonically increasing → shared baseline → use only the last.
@@ -1386,7 +1391,7 @@ async function loadDashboard(){
       });
       return total;
     }
-    const closingAfterBaseline = scrAll.filter(d => d._ts > baselineTs && d.shiftType==='end');
+    const closingAfterBaseline = scrAll.filter(d => d.date >= baselineDate && d.shiftType==='end');
     const soldAfterCount = deduplicateSoldCounts(closingAfterBaseline);
 
     // If no opening-count baseline exists, fall back to all-time activations minus all-time sales
