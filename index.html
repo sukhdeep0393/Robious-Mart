@@ -1604,12 +1604,18 @@ async function loadDashboard(){
               d.premiumGal>0?'Prem '+d.premiumGal.toLocaleString()+'g':'',
               d.dieselGal>0?'Diesel '+d.dieselGal.toLocaleString()+'g':''
             ].filter(Boolean).join(' · ');
-            const priceLine = d.pricePerGal
-              ? '<span style="color:var(--green);font-weight:600">$'+d.pricePerGal.toFixed(3)+'/gal</span> · $'+(d.totalCost||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+            const anyDashPrice = d.priceRegular || d.pricePremium || d.priceDiesel || d.pricePerGal;
+            let dashPriceLines = [];
+            if(d.priceRegular && d.regularGal>0) dashPriceLines.push('Reg: $'+d.priceRegular.toFixed(3)+'/gal ($'+(d.costRegular||0).toFixed(2)+')');
+            if(d.pricePremium && d.premiumGal>0) dashPriceLines.push('Prem: $'+d.pricePremium.toFixed(3)+'/gal ($'+(d.costPremium||0).toFixed(2)+')');
+            if(d.priceDiesel  && d.dieselGal >0) dashPriceLines.push('Diesel: $'+d.priceDiesel.toFixed(3)+'/gal ($'+(d.costDiesel||0).toFixed(2)+')');
+            if(!dashPriceLines.length && d.pricePerGal) dashPriceLines.push('$'+d.pricePerGal.toFixed(3)+'/gal');
+            const priceLine = anyDashPrice
+              ? '<span style="color:var(--green);font-weight:600">' + dashPriceLines.join(' · ') + '</span>' + (d.totalCost ? ' · <strong>$'+d.totalCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</strong>' : '')
               : '<span style="color:var(--amber);font-size:11px;font-weight:600">⏳ Price pending</span>';
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);gap:8px">'
               + '<div style="flex:1;min-width:0">'
-              + '<div style="font-size:13px;font-weight:600">' + (d.supplier||'Unknown') + ' <span style="font-size:11px;font-weight:400;color:var(--text3)">' + fmtD(d.date) + '</span></div>'
+              + '<div style="font-size:13px;font-weight:600">⛽ Fuel Delivery <span style="font-size:11px;font-weight:400;color:var(--text3)">' + fmtD(d.date) + '</span></div>'
               + '<div style="font-size:11px;color:var(--text2)">' + galBreak + '</div>'
               + '<div style="font-size:12px;margin-top:1px">' + priceLine + '</div>'
               + '</div>'
