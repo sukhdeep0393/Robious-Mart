@@ -1385,36 +1385,15 @@ async function loadDashboard(){
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
     const allTimeSold     = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // MTD sold revenue — per-day net calculation.
-    // For each day:
-    //   - If a start-of-shift opening count exists: sum totalRevenue of all closing counts (each used the opening as baseline, no double-count)
-    //   - If NO opening count but only 1 closing count: use that count's totalRevenue directly
-    //   - If NO opening count and multiple closing counts: only the FIRST closing count has a clean cross-day baseline;
-    //     subsequent ones chain off the prior close (which the app now does correctly going forward).
-    //     For these, sum only the first count's totalRevenue + each subsequent count's own totalRevenue
-    //     BUT subtract the prior-close totalRevenue overlap. Simplest correct approach:
-    //     use last_close.totalRevenue only (it captures from the cross-day baseline through last close).
-    //     This slightly under-counts intra-day chained shifts for old bad data but is always accurate
-    //     for correctly-recorded data going forward.
+    // MTD sold revenue — always use the last closing count's totalRevenue per day.
+    // This is always the cumulative from prior-day baseline through last close, correct for all cases.
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
     const scrDates=[...new Set(scrMTD.filter(d=>d.shiftType==='end').map(d=>d.date))].sort();
     let scrRevenue=0;
     scrDates.forEach(date=>{
-      const allDateCounts = scrAll.filter(d=>d.date===date).sort((a,b)=>(a._ts||0)-(b._ts||0));
-      const closingCounts = allDateCounts.filter(d=>d.shiftType==='end');
-      const hasOpeningCount = allDateCounts.some(d=>d.shiftType==='start');
-      if(hasOpeningCount){
-        // Clean case: opening count logged, each close is independent from that baseline
-        scrRevenue += closingCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
-      } else if(closingCounts.length === 1){
-        // Single shift, no opening — totalRevenue is from cross-day baseline, correct
-        scrRevenue += closingCounts[0].totalRevenue||0;
-      } else {
-        // Multiple closing counts, no opening — chained shifts.
-        // The LAST close's totalRevenue goes from the cross-day baseline all the way to end of last shift.
-        // That IS the true daily total (it contains all sales from start-of-day to last close).
-        scrRevenue += closingCounts[closingCounts.length-1].totalRevenue||0;
-      }
+      const closingCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end')
+        .sort((a,b)=>(a._ts||0)-(b._ts||0));
+      if(closingCounts.length) scrRevenue += closingCounts[closingCounts.length-1].totalRevenue||0;
     });
 
     const recentActs=allActs;
@@ -1664,76 +1643,48 @@ async function loadDashboard(){
             //      i.e. employee[N].trueRevenue = lastClose.totalRevenue - sum(employee[0..N-1].totalRevenue)
             //      This works because each count's totalRevenue is the running cumulative from yesterday.
 
-            const todayAllCounts = scrAll.filter(d => d.date === localDate()).sort((a,b)=>(a._ts||0)-(b._ts||0));
-            const todayCounts = todayAllCounts.filter(d => d.shiftType === 'end');
-            const todayHasOpening = todayAllCounts.some(d => d.shiftType === 'start');
-            // DEBUG — remove after fix confirmed
-            console.log('=== SCRATCH DEBUG ===');
-            console.log('todayHasOpening:', todayHasOpening);
-            console.log('todayCounts count:', todayCounts.length);
-            todayCounts.forEach((d,i)=>console.log('  count['+i+'] employee:'+d.employee+' totalRevenue:'+d.totalRevenue+' _ts:'+d._ts+' timestamp:'+JSON.stringify(d.timestamp)));
+            // Sort today's closing counts by timestamp ascending (earliest first)
+            const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
+              .sort((a,b)=>(a._ts||0)-(b._ts||0));
 
-            let todayTotal = 0;
+            // Always use incremental difference method regardless of opening count.
+            // Reason: an opening count may exist from a previous test or tab load but not
+            // reflect a true clean baseline, causing the "sum all" branch to double-count.
+            //
+            // Incremental method works for ALL cases:
+            //   - 1 shift:  trueRev = count[0].totalRevenue (vs yesterday baseline) ✓
+            //   - 2 shifts: trueRev[0] = count[0].totalRevenue
+            //               trueRev[1] = count[1].totalRevenue - count[0].totalRevenue ✓
+            //   - N shifts: trueRev[i] = count[i].totalRevenue - count[i-1].totalRevenue ✓
+            //
+            // Total = last count's totalRevenue (the cumulative from yesterday → last close)
+
+            let todayTotal = todayCounts.length ? todayCounts[todayCounts.length-1].totalRevenue||0 : 0;
+
             const empMap = {};
-
-            if(todayHasOpening){
-              // Clean case: opening count logged — each close used the opening as baseline, safe to sum
-              todayTotal = todayCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
-              todayCounts.forEach(d=>{
-                const n = d.employee||'Unknown';
-                if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
-                empMap[n].revenue += d.totalRevenue||0;
-                empMap[n].shifts++;
-              });
-            } else if(todayCounts.length <= 1){
-              // Single shift or no shifts — totalRevenue is correct as-is
-              todayTotal = todayCounts[0]?.totalRevenue||0;
-              if(todayCounts[0]){
-                const n = todayCounts[0].employee||'Unknown';
-                empMap[n] = {name:n, revenue:todayTotal, shifts:1};
-              }
-            } else {
-              // Multiple closing counts, no opening count.
-              // Last count's totalRevenue = full day total (cumulative from yesterday through last close).
-              todayTotal = todayCounts[todayCounts.length-1].totalRevenue||0;
-
-              // Per-employee: use incremental differences.
-              // counts[0].totalRevenue = sales from yesterday → first close  (employee 0's true sales)
-              // counts[1].totalRevenue = sales from yesterday → second close = counts[0] + employee 1's sales
-              // So employee 1's true sales = counts[1].totalRevenue - counts[0].totalRevenue
-              // Generally: employee[i].true = counts[i].totalRevenue - counts[i-1].totalRevenue
-              let runningTotal = 0;
-              todayCounts.forEach((d, idx) => {
-                const n = d.employee||'Unknown';
-                if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
-                const trueRev = Math.max(0, (d.totalRevenue||0) - runningTotal);
-                empMap[n].revenue += trueRev;
-                empMap[n].shifts++;
-                runningTotal = d.totalRevenue||0; // next employee's baseline is this count's cumulative
-              });
-            }
+            let runningTotal = 0;
+            todayCounts.forEach(d => {
+              const n = d.employee||'Unknown';
+              if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+              const trueRev = Math.max(0, (d.totalRevenue||0) - runningTotal);
+              empMap[n].revenue += trueRev;
+              empMap[n].shifts++;
+              runningTotal = d.totalRevenue||0;
+            });
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
             // MTD daily sales — group end counts by date
             const byDay={};
-            // MTD daily breakdown — same logic as scrRevenue: correct per-day revenue
+            // MTD daily breakdown — always use last closing count's totalRevenue per day
             {
               const datesInRange = [...new Set(scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end').map(d=>d.date))].sort();
               datesInRange.forEach(date=>{
-                const allDateCounts = scrAll.filter(d=>d.date===date).sort((a,b)=>(a._ts||0)-(b._ts||0));
-                const closingCounts = allDateCounts.filter(d=>d.shiftType==='end');
-                const hasOpeningCount = allDateCounts.some(d=>d.shiftType==='start');
+                const closingCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end')
+                  .sort((a,b)=>(a._ts||0)-(b._ts||0));
                 if(!byDay[date]) byDay[date]={date,revenue:0,employees:[]};
                 closingCounts.forEach(d=>{ if(!byDay[date].employees.includes(d.employee)) byDay[date].employees.push(d.employee); });
-                if(hasOpeningCount){
-                  byDay[date].revenue = closingCounts.reduce((s,d)=>s+(d.totalRevenue||0),0);
-                } else if(closingCounts.length===1){
-                  byDay[date].revenue = closingCounts[0].totalRevenue||0;
-                } else {
-                  // Chained shifts no opening: last close's totalRevenue = full day from cross-day baseline
-                  byDay[date].revenue = closingCounts[closingCounts.length-1].totalRevenue||0;
-                }
+                if(closingCounts.length) byDay[date].revenue = closingCounts[closingCounts.length-1].totalRevenue||0;
               });
             }
             const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
