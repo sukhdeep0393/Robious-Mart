@@ -1667,6 +1667,11 @@ async function loadDashboard(){
             const todayAllCounts = scrAll.filter(d => d.date === localDate()).sort((a,b)=>(a._ts||0)-(b._ts||0));
             const todayCounts = todayAllCounts.filter(d => d.shiftType === 'end');
             const todayHasOpening = todayAllCounts.some(d => d.shiftType === 'start');
+            // DEBUG — remove after fix confirmed
+            console.log('=== SCRATCH DEBUG ===');
+            console.log('todayHasOpening:', todayHasOpening);
+            console.log('todayCounts count:', todayCounts.length);
+            todayCounts.forEach((d,i)=>console.log('  count['+i+'] employee:'+d.employee+' totalRevenue:'+d.totalRevenue+' _ts:'+d._ts+' timestamp:'+JSON.stringify(d.timestamp)));
 
             let todayTotal = 0;
             const empMap = {};
