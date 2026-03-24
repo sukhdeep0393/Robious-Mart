@@ -2293,8 +2293,9 @@ function updScrTot(){
     // Calculate sold vs previous count
     const prev = prevCounts['slot_'+s.slotIdx];
     const soldEl = document.getElementById('sc-sold-'+s.slotIdx);
-    if(prev !== undefined && document.getElementById('sc-slot-'+s.slotIdx)?.value !== ''){
-      const ticketsSold = Math.max(0, remaining - prev);  // closing# - opening# = sold
+    const openingForDisplay = prev !== undefined ? prev : (s.totalTickets || 0);
+    if((prev !== undefined || s.totalTickets > 0) && document.getElementById('sc-slot-'+s.slotIdx)?.value !== ''){
+      const ticketsSold = Math.max(0, openingForDisplay - remaining);  // opening# - closing# = sold
       const revenueSold = ticketsSold * s.price;
       totSold += revenueSold;
       if(ticketsSold > 0) hasSoldAny = true;
@@ -2359,8 +2360,9 @@ async function subScratch(){
       const totalTix = s.totalTickets || 0;
       counts[key] = totalTix; // record the final ticket# for the log
       const prev = prevCounts[key];
-      if(prev !== undefined && totalTix > 0){
-        const ticketsSold = Math.max(0, totalTix - prev);
+      const openingTix = prev !== undefined ? prev : (s.totalTickets || 0);
+      if(totalTix > 0){
+        const ticketsSold = Math.max(0, openingTix - totalTix);
         const revenue = ticketsSold * s.price;
         soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: true};
         totalRevenue += revenue;
@@ -2369,8 +2371,9 @@ async function subScratch(){
       const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
       counts[key] = remaining;
       const prev = prevCounts[key];
-      if(prev !== undefined){
-        const ticketsSold = Math.max(0, remaining - prev);
+      const openingTix = prev !== undefined ? prev : (s.totalTickets || 0);
+      if(s.totalTickets > 0 || prev !== undefined){
+        const ticketsSold = Math.max(0, openingTix - remaining);
         const revenue = ticketsSold * s.price;
         soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: false};
         totalRevenue += revenue;
