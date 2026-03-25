@@ -1018,6 +1018,47 @@
     </div>
     <div class="card"><div class="ct">Entries</div><div id="logsList"><div class="empty"><div class="ei">📊</div>Loading...</div></div></div>
   </div>
+
+  <!-- OTHER REVENUE (operator only) -->
+  <div class="page" id="page-otherrev">
+    <div class="card">
+      <div class="ct">Log other revenue</div>
+      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--blue);line-height:1.5">
+        Use this tab for revenue not captured in daily shift reports — ATM fees, air pump, vending commissions, lottery commissions, etc.
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Date</label><input type="date" id="or-date" /></div>
+        <div><label>Amount ($)</label><input type="number" id="or-amount" placeholder="0.00" step="0.01" /></div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Revenue source</label>
+        <select id="or-source-select" onchange="orSourceSelectChange()" style="width:100%">
+          <option value="">— select or type below —</option>
+          <option value="ATM Fee">ATM Fee</option>
+          <option value="Air Pump">Air Pump</option>
+          <option value="Vending Commission">Vending Commission</option>
+          <option value="Lottery Commission">Lottery Commission</option>
+          <option value="Car Wash">Car Wash</option>
+          <option value="Propane">Propane</option>
+          <option value="custom">+ Add new source...</option>
+        </select>
+        <input type="text" id="or-source-custom" placeholder="Type new revenue source name" style="display:none;margin-top:8px" />
+      </div>
+      <div style="margin-bottom:12px">
+        <label>Notes (optional)</label>
+        <textarea id="or-notes" rows="2" placeholder="e.g. Weekly ATM fee collection, air pump coin count..."></textarea>
+      </div>
+      <button class="btn bprimary" style="padding:13px" onclick="submitOtherRev()">Save revenue entry</button>
+    </div>
+    <div class="card">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Revenue log</div>
+        <input type="month" id="orMonth" onchange="loadOtherRev()" style="font-size:12px;padding:5px 8px;width:auto" />
+      </div>
+      <div id="orMTDSummary" style="margin-bottom:12px"></div>
+      <div id="orList"><div class="empty"><div class="ei">💰</div>No entries yet</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- CAMERA SCANNER MODAL -->
@@ -1197,7 +1238,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'margins',l:'💰 Margins'},{id:'logs',l:'📊 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'margins',l:'📊 Margins'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Tobacco'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
@@ -1232,6 +1273,8 @@ function loginOK(u){
   // Set fuel delivery date
   const fdDate=document.getElementById('fd-date');
   if(fdDate) fdDate.value=localDate();
+  const orDate=document.getElementById('or-date');
+  if(orDate) orDate.value=localDate();
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
@@ -1263,6 +1306,7 @@ function showTab(id){
   if(id==='deliveries')initDeliveries();
   if(id==='myhours')loadMyHours();
   if(id==='margins')loadMargins();
+  if(id==='otherrev'){const om=document.getElementById('orMonth');if(om&&!om.value)om.value=new Date().toISOString().slice(0,7);loadOtherRev();}
 }
 
 // ---- TOAST ----
@@ -1330,6 +1374,14 @@ async function loadDashboard(){
     const expSnap=await getDocs(query(collection(window.db,'expenses'),orderBy('timestamp','desc'),limit(200)));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
+
+    // Other revenue for selected month
+    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('timestamp','desc'),limit(200)));
+    const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
+    const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    // Group by source for dashboard breakdown
+    const orBySource={};
+    mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
     // Deliveries for selected month
     const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('timestamp','desc'),limit(200)));
@@ -1541,6 +1593,25 @@ async function loadDashboard(){
           <div style="padding:14px 16px">
             <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Net (Sales − Expenses)</div>
             <div style="font-size:22px;font-weight:800;color:${mtdSales-mtdExpTotal>=0?'var(--green)':'var(--red)'}">$${(mtdSales-mtdExpTotal).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Other Revenue -->
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">💰 Other revenue — ${monthName}</span>
+        <span class="dash-section-link" onclick="showTab('otherrev')" style="cursor:pointer">View all →</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="display:grid;grid-template-columns:1fr 1fr;${mtdORTotal>0?'':''}">
+          <div style="padding:14px 16px;border-right:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total other revenue</div>
+            <div style="font-size:22px;font-weight:800;color:var(--green)">$${mtdORTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${mtdOR.length} entr${mtdOR.length!==1?'ies':'y'}</div>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">By source</div>
+            ${Object.keys(orBySource).length?Object.entries(orBySource).sort((a,b)=>b[1]-a[1]).map(([src,amt])=>`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text2)">${src}</span><span style="font-weight:600;color:var(--green)">$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`).join(''):'<div style="font-size:12px;color:var(--text3)">No entries this month</div>'}
           </div>
         </div>
       </div>
@@ -4750,7 +4821,122 @@ async function deleteExpense(id){
   }catch(e){ toast('Error deleting'); }
 }
 
+// ---- OTHER REVENUE ----
+function orSourceSelectChange(){
+  const sel = document.getElementById('or-source-select');
+  const custom = document.getElementById('or-source-custom');
+  if(sel.value === 'custom'){
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+  }
+}
+
+async function submitOtherRev(){
+  const date   = document.getElementById('or-date').value;
+  const amount = parseFloat(document.getElementById('or-amount').value);
+  const selVal = document.getElementById('or-source-select').value;
+  const custom = document.getElementById('or-source-custom').value.trim();
+  const source = selVal === 'custom' ? custom : selVal;
+  const notes  = document.getElementById('or-notes').value.trim();
+
+  if(!date){ toast('Please enter a date'); return; }
+  if(!amount || amount <= 0){ toast('Please enter a valid amount'); return; }
+  if(!source){ toast('Please select or enter a revenue source'); return; }
+
+  const btn = document.querySelector('#page-otherrev .bprimary');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'otherRevenue'),{
+      type: 'otherRevenue',
+      date, amount, source, notes,
+      employee: CU.name,
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Revenue entry saved');
+    document.getElementById('or-amount').value = '';
+    document.getElementById('or-notes').value = '';
+    document.getElementById('or-source-select').value = '';
+    document.getElementById('or-source-custom').style.display = 'none';
+    document.getElementById('or-source-custom').value = '';
+    loadOtherRev();
+  }catch(e){ toast('Error saving entry'); console.error(e); }
+  finally{ btn.disabled=false; btn.textContent='Save revenue entry'; }
+}
+
+async function loadOtherRev(){
+  const el    = document.getElementById('orList');
+  const sumEl = document.getElementById('orMTDSummary');
+  if(!el) return;
+
+  const month    = document.getElementById('orMonth')?.value || localDate().slice(0,7);
+  const mtdStart = month+'-01';
+  const mtdEnd   = month+'-31';
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'otherRevenue'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(200)
+    ));
+    const all      = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const filtered = all.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
+
+    const total = filtered.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    const bySource={};
+    filtered.forEach(x=>{ bySource[x.source]=(bySource[x.source]||0)+(parseFloat(x.amount)||0); });
+
+    if(sumEl && filtered.length){
+      sumEl.innerHTML=`<div style="background:var(--green-light);border-radius:var(--r);padding:12px;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:var(--green)">Total other revenue</span>
+          <span style="font-size:22px;font-weight:800;color:var(--green)">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
+        ${Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([src,amt])=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(59,109,17,.15);font-size:13px">
+            <span style="color:var(--green)">💰 ${src}</span>
+            <strong style="color:var(--green)">$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+          </div>`).join('')}
+      </div>`;
+    } else if(sumEl){ sumEl.innerHTML=''; }
+
+    if(!filtered.length){
+      el.innerHTML='<div class="empty"><div class="ei">💰</div>No entries this month</div>';
+      return;
+    }
+
+    el.innerHTML = filtered.map(x=>`
+      <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700">💰 ${x.source}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${x.date}${x.employee?' · '+x.employee:''}</div>
+            ${x.notes?`<div style="font-size:12px;color:var(--text2);margin-top:3px">${x.notes}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:800;color:var(--green)">$${(parseFloat(x.amount)||0).toFixed(2)}</div>
+            <div style="margin-top:4px"><button onclick="deleteOtherRev('${x.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">Delete</button></div>
+          </div>
+        </div>
+      </div>`).join('');
+  }catch(e){
+    el.innerHTML='<div class="empty">Error loading entries</div>';
+    console.error('loadOtherRev',e);
+  }
+}
+
+async function deleteOtherRev(id){
+  if(!confirm('Delete this revenue entry?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'otherRevenue',id));
+    toast('Entry deleted');
+    loadOtherRev();
+  }catch(e){ toast('Error deleting'); }
+}
+
 // ---- MARGINS SPREADSHEET IMPORT ----
+
 let mgRawRows    = [];   // raw parsed rows from XLSX [{col:val,...}]
 let mgRawHeaders = [];   // column header names
 let mgMapped     = [];   // [{name,cost,sell,category}] after AI mapping
