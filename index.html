@@ -2356,13 +2356,14 @@ async function subScratch(){
     const key = 'slot_'+s.slotIdx;
     const isSoldOut = !!window._soldOutSlots[key];
     if(isSoldOut){
-      // Book sold out: closing# = totalTickets, remaining value = 0
+      // Book sold out: 0 tickets remaining
       const totalTix = s.totalTickets || 0;
-      counts[key] = totalTix; // record the final ticket# for the log
+      counts[key] = 0; // sold out = 0 remaining tickets
       const prev = prevCounts[key];
-      const openingTix = prev !== undefined ? prev : (s.totalTickets || 0);
-      if(totalTix > 0){
-        const ticketsSold = Math.max(0, openingTix - totalTix);
+      // Opening baseline: use prev count if available, otherwise full pack size (newly activated & sold out)
+      const openingTix = prev !== undefined ? prev : totalTix;
+      if(openingTix > 0){
+        const ticketsSold = openingTix; // all remaining tickets from opening were sold
         const revenue = ticketsSold * s.price;
         soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: true};
         totalRevenue += revenue;
