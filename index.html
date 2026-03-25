@@ -1810,7 +1810,8 @@ async function loadDashboard(){
             // PROPERLY CHAINED: each count's totalRevenue is its own shift only (small, independent)
             //   → day total = sum of all totalRevenues; per-employee = each count's own totalRevenue
             {
-              const datesInRange = [...new Set(scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end').map(d=>d.date))].sort();
+              const todayDateStr = localDate();
+              const datesInRange = [...new Set(scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.date!==todayDateStr&&d.shiftType==='end').map(d=>d.date))].sort();
               datesInRange.forEach(date=>{
                 const closingCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end')
                   .sort((a,b)=>(a._ts||0)-(b._ts||0));
@@ -2433,12 +2434,11 @@ async function subScratch(){
       const prev = prevCounts[key];
       // Opening baseline: use prev count if available, otherwise full pack size (newly activated & sold out)
       const openingTix = prev !== undefined ? prev : totalTix;
-      if(openingTix > 0){
-        const ticketsSold = openingTix; // all remaining tickets from opening were sold
-        const revenue = ticketsSold * s.price;
-        soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: true};
-        totalRevenue += revenue;
-      }
+      // Always record the sold-out entry even if openingTix is 0 (e.g. totalTickets not set)
+      const ticketsSold = openingTix;
+      const revenue = ticketsSold * s.price;
+      soldBySlot[key] = {ticketsSold, revenue, price: s.price, name: s.name, soldOut: true};
+      if(revenue > 0) totalRevenue += revenue;
     } else {
       const remaining = parseFloat(document.getElementById('sc-slot-'+s.slotIdx)?.value)||0;
       counts[key] = remaining;
