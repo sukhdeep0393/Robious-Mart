@@ -1439,39 +1439,37 @@ async function loadDashboard(){
     // Use date comparison (not timestamp) — the opening count is sometimes submitted AFTER closing
     // counts (e.g. operator opens their count after overnight closes), so timestamp filtering
     // incorrectly excludes those closing counts.
-    // Deduplicate shared-baseline days: when multiple employees close using the same opening count,
-    // each closing totalRevenue is cumulative (not per-shift). Summing naively double-counts.
-    // Fix: per date, if revenues are monotonically increasing → shared baseline → use only the last.
-    // shiftRev: sum soldBySlot revenues for a single closing-count doc.
-    // soldBySlot is always computed relative to that shift's actual opening baseline,
-    // so it is always the true per-shift revenue — no deduplication needed.
-    // Falls back to totalRevenue for older docs that pre-date soldBySlot.
-    function shiftRev(doc){
-      if(doc.soldBySlot && Object.keys(doc.soldBySlot).length > 0){
-        return Object.values(doc.soldBySlot).reduce((s,v)=>s+(v.revenue||0),0);
+    // soldBySlot stores per-slot revenue calculated at submission time against the correct baseline —
+    // it is always shift-accurate regardless of how many counts share a day. Sum it directly.
+    function docShiftRev(d){
+      if(d.soldBySlot && Object.keys(d.soldBySlot).length > 0){
+        return Object.values(d.soldBySlot).reduce((s, slot) => s + (slot.revenue || 0), 0);
       }
-      return doc.totalRevenue||0;
+      return d.totalRevenue || 0;
     }
-
+    function sumClosingDocs(closingDocs){
+      return closingDocs.reduce((s, d) => s + docShiftRev(d), 0);
+    }
     const closingAfterBaseline = scrAll.filter(d => d.date >= baselineDate && d.shiftType==='end');
-    const soldAfterCount = closingAfterBaseline.reduce((s,d)=>s+shiftRev(d),0);
+    const soldAfterCount = sumClosingDocs(closingAfterBaseline);
 
     // If no opening-count baseline exists, fall back to all-time activations minus all-time sales
     let scrVal;
     if(!latestCount){
       const allTimeActValue2 = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
-      const allTimeSold2 = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+shiftRev(d),0);
+      const allTimeSold2 = sumClosingDocs(scrAll.filter(d=>d.shiftType==='end'));
       scrVal = Math.max(0, allTimeActValue2 - allTimeSold2);
     } else {
       scrVal = Math.max(0, baselineValue + activatedAfterCount - soldAfterCount);
     }
 
-    // All-time totals (for potential future use)
+    // All-time totals for the breakdown sub-line
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
+    const allTimeSold     = sumClosingDocs(scrAll.filter(d=>d.shiftType==='end'));
 
-    // MTD sold revenue — sum shiftRev for all closing counts in range (no deduplication needed)
+    // MTD sold revenue — sum soldBySlot revenue per closing count, group by date
     const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end');
-    let scrRevenue = scrMTD.reduce((s,d)=>s+shiftRev(d),0);
+    const scrRevenue = sumClosingDocs(scrMTD);
 
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
@@ -1732,25 +1730,49 @@ async function loadDashboard(){
           ${(()=>{
             // Today's scratch-off sales.
             //
+            // The problem: when no opening count is logged and two employees both close,
+            // BOTH documents may have been saved using yesterday as their baseline (old bug).
+            // This means doc A has totalRevenue = full day through A's close,
+            // and doc B ALSO has totalRevenue = full day through B's close.
+            // They are NOT independent — one contains the other's sales.
+            //
+            // The only correct approach:
+            //   1. Sort closing counts by timestamp ascending (oldest = first shift).
+            //   2. The LAST count's totalRevenue = true full day total (from yesterday → last close).
+            //   3. Per-employee: first employee gets their own totalRevenue (correct, vs yesterday).
+            //      Each subsequent employee gets: (cumulative total so far) - (sum of all prior employees).
+            //      i.e. employee[N].trueRevenue = lastClose.totalRevenue - sum(employee[0..N-1].totalRevenue)
+            //      soldBySlot stores per-slot revenue calculated at submission time against the correct
+            //      baseline — it is always shift-accurate regardless of how many counts share a day.
+
+            // Helper: get shift revenue from a single closing count doc.
+            // Uses soldBySlot (sum of per-slot revenue) when available; falls back to totalRevenue for old docs.
+            const shiftRev = d => {
+              if(d.soldBySlot && Object.keys(d.soldBySlot).length > 0){
+                return Object.values(d.soldBySlot).reduce((s, slot) => s + (slot.revenue || 0), 0);
+              }
+              return d.totalRevenue || 0;
+            };
+
             const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
               .sort((a,b)=>(a._ts||0)-(b._ts||0));
 
-            // Each closing doc stores soldBySlot computed from its own baseline → shiftRev is always accurate.
             let todayTotal = 0;
             const empMap = {};
 
-            todayCounts.forEach(d=>{
-              const n = d.employee||'Unknown';
+            todayCounts.forEach(d => {
               const rev = shiftRev(d);
-              if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+              todayTotal += rev;
+              const n = d.employee || 'Unknown';
+              if(!empMap[n]) empMap[n] = {name:n, revenue:0, shifts:0};
               empMap[n].revenue += rev;
               empMap[n].shifts++;
-              todayTotal += rev;
             });
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
-            // MTD daily sales — group end counts by date, use shiftRev for each doc
+            // MTD daily breakdown — sum soldBySlot revenue per closing count, group by date.
+            // No baseline detection needed: soldBySlot is always shift-accurate.
             const byDay={};
             {
               const todayDateStr = localDate();
@@ -1760,25 +1782,16 @@ async function loadDashboard(){
                   .sort((a,b)=>(a._ts||0)-(b._ts||0));
                 if(!byDay[date]) byDay[date]={date,revenue:0,employees:[],empBreakdown:[]};
                 if(!closingCounts.length) return;
-                closingCounts.forEach(d=>{ if(!byDay[date].employees.includes(d.employee)) byDay[date].employees.push(d.employee); });
-
-                if(closingCounts.length === 1){
-                  // Single count — use shiftRev for consistency
-                  const rev = shiftRev(closingCounts[0]);
-                  byDay[date].revenue = rev;
-                  byDay[date].empBreakdown = [{name:closingCounts[0].employee||'Unknown', revenue:rev}];
-                } else {
-                  // Each closing doc has soldBySlot computed from its own baseline → just sum shiftRev
-                  const empTally = {};
-                  closingCounts.forEach(d=>{
-                    const n = d.employee||'Unknown';
-                    const rev = shiftRev(d);
-                    byDay[date].revenue += rev;
-                    if(!empTally[n]) empTally[n]={name:n,revenue:0};
-                    empTally[n].revenue += rev;
-                  });
-                  byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
-                }
+                const empTally = {};
+                closingCounts.forEach(d=>{
+                  const rev = shiftRev(d);
+                  const n = d.employee || 'Unknown';
+                  byDay[date].revenue += rev;
+                  if(!byDay[date].employees.includes(n)) byDay[date].employees.push(n);
+                  if(!empTally[n]) empTally[n] = {name:n, revenue:0};
+                  empTally[n].revenue += rev;
+                });
+                byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
               });
             }
             const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
