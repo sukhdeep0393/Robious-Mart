@@ -333,7 +333,7 @@
       <div class="ct">C-store sales</div>
       <!-- Column headers -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;padding:0 2px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px"></div>
+        <div></div>
         <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;text-align:center">NRS</div>
         <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;text-align:center">Verifone</div>
       </div>
@@ -350,18 +350,54 @@
         <input type="number" id="d-cash-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
       </div>
       <!-- Credit row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:12px">
         <div style="font-size:13px;font-weight:500;color:var(--text2)">Credit</div>
         <input type="number" id="d-cred-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
         <input type="number" id="d-cred-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
       </div>
-      <!-- Combined totals display -->
+
+      <!-- Deductions section -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Deductions from total sales</div>
+        <!-- Lottery deduction -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:500;color:var(--text2)">🎟 Lottery</div>
+          <input type="number" id="d-deduct-lottery" placeholder="0.00" oninput="calcSalesCombined()" />
+        </div>
+        <!-- Other deduction -->
+        <div style="margin-bottom:6px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:500;color:var(--text2)">Other deduction</div>
+            <input type="number" id="d-deduct-other" placeholder="0.00" oninput="calcSalesCombined()" />
+          </div>
+          <input type="text" id="d-deduct-other-note" placeholder="What is this? e.g. Cashback, ATM fee, promo..." style="font-size:13px" />
+        </div>
+      </div>
+
+      <!-- Net sales summary -->
       <div id="salesCombinedDisplay" style="display:none;background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:2px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Combined totals</div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-          <div><span style="font-size:12px;color:var(--text2)">Total </span><span id="d-tot-combined" style="font-weight:700;color:var(--text)">$0.00</span></div>
-          <div><span style="font-size:12px;color:var(--text2)">Cash </span><span id="d-cash-combined" style="font-weight:700;color:var(--text)">$0.00</span></div>
-          <div><span style="font-size:12px;color:var(--text2)">Credit </span><span id="d-cred-combined" style="font-weight:700;color:var(--text)">$0.00</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Summary</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">Gross sales (NRS + Verifone)</span>
+            <span id="d-gross-display" style="font-weight:600">$0.00</span>
+          </div>
+          <div id="d-deduct-lottery-row" style="display:none;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">− Lottery</span>
+            <span id="d-deduct-lottery-display" style="color:var(--red)">$0.00</span>
+          </div>
+          <div id="d-deduct-other-row" style="display:none;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)" id="d-deduct-other-label">− Other</span>
+            <span id="d-deduct-other-display" style="color:var(--red)">$0.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
+            <span>Net sales</span>
+            <span id="d-tot-combined" style="color:var(--green)">$0.00</span>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
+            <div><span style="font-size:12px;color:var(--text2)">Cash </span><span id="d-cash-combined" style="font-weight:600">$0.00</span></div>
+            <div><span style="font-size:12px;color:var(--text2)">Credit </span><span id="d-cred-combined" style="font-weight:600">$0.00</span></div>
+          </div>
         </div>
       </div>
       <!-- Hidden combined fields used by subDaily -->
@@ -369,21 +405,37 @@
       <input type="hidden" id="d-cash" />
       <input type="hidden" id="d-cred" />
 
+      <!-- Cash drawer section -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
         <div class="ct" style="margin-bottom:6px">Cash drawer — short or over</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Enter expected cash from each register separately</div>
-        <!-- Expected cash split -->
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Enter expected and actual cash from each register</div>
+        <!-- Column headers -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div></div>
+          <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;text-align:center">NRS</div>
+          <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;text-align:center">Verifone</div>
+        </div>
+        <!-- Expected row -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
           <div style="font-size:13px;font-weight:500;color:var(--text2)">Expected</div>
           <input type="number" id="d-exp-nrs" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--blue)" />
           <input type="number" id="d-exp-vfn" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--amber)" />
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div><label>Actual counted ($) — total</label><input type="number" id="d-actual" placeholder="0.00" oninput="calcShortOver()" /></div>
+        <!-- Actual row — split -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:500;color:var(--text2)">Actual counted</div>
+          <input type="number" id="d-actual-nrs" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--blue)" />
+          <input type="number" id="d-actual-vfn" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--amber)" />
         </div>
-        <!-- Hidden combined expected -->
+        <!-- Hidden combined fields -->
         <input type="hidden" id="d-expected" />
+        <input type="hidden" id="d-actual" />
         <div id="shortOverResult"></div>
+        <!-- Discrepancy notes -->
+        <div id="cashDiscrepancyNote" style="display:none;margin-top:10px">
+          <label>Explain the discrepancy</label>
+          <textarea id="d-cash-disc-note" rows="2" placeholder="e.g. Customer paid with broken $50, gave change from both registers..."></textarea>
+        </div>
       </div>
     </div>
     <div class="card"><div class="ct">Fuel sold (gallons)</div>
@@ -2049,30 +2101,58 @@ function calcSalesCombined(){
   const cashVfn=parseFloat(document.getElementById('d-cash-vfn').value)||0;
   const credNrs=parseFloat(document.getElementById('d-cred-nrs').value)||0;
   const credVfn=parseFloat(document.getElementById('d-cred-vfn').value)||0;
-  const tot=totNrs+totVfn, cash=cashNrs+cashVfn, cred=credNrs+credVfn;
-  // Write combined values into hidden fields used by subDaily
-  document.getElementById('d-tot').value=tot||'';
+  const deductLottery=parseFloat(document.getElementById('d-deduct-lottery').value)||0;
+  const deductOther=parseFloat(document.getElementById('d-deduct-other').value)||0;
+  const deductOtherNote=document.getElementById('d-deduct-other-note').value.trim();
+
+  const gross=totNrs+totVfn;
+  const net=Math.max(0, gross - deductLottery - deductOther);
+  const cash=cashNrs+cashVfn;
+  const cred=credNrs+credVfn;
+
+  // Write into hidden fields used by subDaily
+  document.getElementById('d-tot').value=net||'';
   document.getElementById('d-cash').value=cash||'';
   document.getElementById('d-cred').value=cred||'';
-  // Show combined display only when any value entered
+
+  // Show summary when any value entered
+  const hasAny=totNrs||totVfn||cashNrs||cashVfn||credNrs||credVfn||deductLottery||deductOther;
   const disp=document.getElementById('salesCombinedDisplay');
-  const hasAny=totNrs||totVfn||cashNrs||cashVfn||credNrs||credVfn;
   disp.style.display=hasAny?'block':'none';
-  document.getElementById('d-tot-combined').textContent='$'+tot.toFixed(2);
+
+  document.getElementById('d-gross-display').textContent='$'+gross.toFixed(2);
+  document.getElementById('d-tot-combined').textContent='$'+net.toFixed(2);
   document.getElementById('d-cash-combined').textContent='$'+cash.toFixed(2);
   document.getElementById('d-cred-combined').textContent='$'+cred.toFixed(2);
+
+  // Lottery deduction row
+  const lotRow=document.getElementById('d-deduct-lottery-row');
+  lotRow.style.display=deductLottery?'flex':'none';
+  document.getElementById('d-deduct-lottery-display').textContent='−$'+deductLottery.toFixed(2);
+
+  // Other deduction row
+  const otherRow=document.getElementById('d-deduct-other-row');
+  otherRow.style.display=deductOther?'flex':'none';
+  document.getElementById('d-deduct-other-display').textContent='−$'+deductOther.toFixed(2);
+  document.getElementById('d-deduct-other-label').textContent='− '+(deductOtherNote||'Other');
 }
 function calcShortOver(){
   const expNrs=parseFloat(document.getElementById('d-exp-nrs').value)||0;
   const expVfn=parseFloat(document.getElementById('d-exp-vfn').value)||0;
   const exp=expNrs+expVfn;
-  // Write combined expected into hidden field
   document.getElementById('d-expected').value=exp||'';
-  const act=parseFloat(document.getElementById('d-actual').value)||0;
+
+  const actNrs=parseFloat(document.getElementById('d-actual-nrs').value)||0;
+  const actVfn=parseFloat(document.getElementById('d-actual-vfn').value)||0;
+  const act=actNrs+actVfn;
+  document.getElementById('d-actual').value=act||'';
+
   const el=document.getElementById('shortOverResult');
-  if(!exp&&!act){el.innerHTML='';return;}
+  if(!exp&&!act){el.innerHTML='';document.getElementById('cashDiscrepancyNote').style.display='none';return;}
   const diff=act-exp;
-  if(Math.abs(diff)<0.01){el.innerHTML='<div class="short-over-box even-box">✓ Cash drawer is exact</div>';}
+  const hasDisc=Math.abs(diff)>=0.01;
+  document.getElementById('cashDiscrepancyNote').style.display=hasDisc?'block':'none';
+  if(!hasDisc){el.innerHTML='<div class="short-over-box even-box">✓ Cash drawer is exact</div>';}
   else if(diff<0){el.innerHTML=`<div class="short-over-box short-box">⚑ SHORT by $${Math.abs(diff).toFixed(2)}</div>`;}
   else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
 }
@@ -2094,9 +2174,15 @@ async function subDaily(){
       totalSales:parseFloat(document.getElementById('d-tot').value)||0,
       cashSales:parseFloat(document.getElementById('d-cash').value)||0,
       creditSales:parseFloat(document.getElementById('d-cred').value)||0,
-      expectedCash:exp,actualCash:act,
+      grossSales:(parseFloat(document.getElementById('d-tot-nrs').value)||0)+(parseFloat(document.getElementById('d-tot-vfn').value)||0),
+      deductLottery:parseFloat(document.getElementById('d-deduct-lottery').value)||0,
+      deductOther:parseFloat(document.getElementById('d-deduct-other').value)||0,
+      deductOtherNote:document.getElementById('d-deduct-other-note').value,
+      expectedCash:parseFloat(document.getElementById('d-expected').value)||0,
+      actualCash:parseFloat(document.getElementById('d-actual').value)||0,
       cashStatus:Math.abs(cashDiff)<0.01?'exact':cashDiff<0?'short':'over',
       cashDifference:cashDiff,
+      cashDiscrepancyNote:document.getElementById('d-cash-disc-note').value,
       regularGal:parseFloat(document.getElementById('d-reg').value)||0,
       premiumGal:parseFloat(document.getElementById('d-prem').value)||0,
       dieselGal:parseFloat(document.getElementById('d-dies').value)||0,
@@ -2113,8 +2199,9 @@ async function subDaily(){
     });
     toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
     setTimeout(()=>{btn.innerHTML='Submit shift report';btn.disabled=false;btn.style.background='';},3000);
-    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-exp-nrs','d-exp-vfn','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('salesCombinedDisplay').style.display='none';
+    document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
     const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
     document.getElementById('shiftPhotos').value='';
