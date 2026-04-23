@@ -1459,6 +1459,15 @@ async function loadDashboard(){
     const mtdDiesGal=sum(mtdR,'dieselGal');
     const mtdTotalGal=mtdRegGal+mtdPremGal+mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
+
+    // Cash discrepancy summary
+    const cashDiscReports=mtdR.filter(r=>r.cashStatus&&r.cashStatus!=='exact'&&r.cashDifference!=null);
+    const mtdShortReports=cashDiscReports.filter(r=>r.cashDifference<0);
+    const mtdOverReports=cashDiscReports.filter(r=>r.cashDifference>0);
+    const mtdTotalShort=mtdShortReports.reduce((s,r)=>s+Math.abs(r.cashDifference||0),0);
+    const mtdTotalOver=mtdOverReports.reduce((s,r)=>s+Math.abs(r.cashDifference||0),0);
+    const mtdNetCashDisc=mtdTotalOver-mtdTotalShort;
+    const cleanShiftCount=mtdR.filter(r=>!r.cashStatus||r.cashStatus==='exact').length;
     const todaySales=sum(todayR,'totalSales');
     const yestSales=sum(yestR,'totalSales');
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
@@ -1670,6 +1679,57 @@ async function loadDashboard(){
           <div class="dash-kpi-val" style="color:${mtdLotNet>=0?'var(--green)':'var(--red)'};font-size:17px">${mtdLotNet>=0?'+':''}$${mtdLotNet.toFixed(0)}</div>
           <div class="dash-kpi-sub">${monthName}</div>
         </div>
+      </div>
+
+      <!-- Cash Discrepancies -->
+      <div class="dash-section-hdr">
+        <span class="dash-section-title">💵 Cash discrepancies — ${monthName}</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${(()=>{
+          if(!mtdR.length) return '<div style="padding:14px;font-size:13px;color:var(--text3)">No shift reports yet</div>';
+          const shortColor = mtdTotalShort>0 ? 'var(--red)' : 'var(--text3)';
+          const overColor  = mtdTotalOver>0  ? 'var(--green)' : 'var(--text3)';
+          const netColor   = mtdNetCashDisc<0 ? 'var(--red)' : mtdNetCashDisc>0 ? 'var(--green)' : 'var(--text3)';
+          const netLabel   = mtdNetCashDisc<0 ? 'Net short' : mtdNetCashDisc>0 ? 'Net over' : 'Balanced';
+          let html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border)">'
+            + '<div style="padding:12px 14px;border-right:1px solid var(--border)">'
+            +   '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total short</div>'
+            +   '<div style="font-size:20px;font-weight:800;color:'+shortColor+'">$'+mtdTotalShort.toFixed(2)+'</div>'
+            +   '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+mtdShortReports.length+' shift'+(mtdShortReports.length!==1?'s':'')+'</div>'
+            + '</div>'
+            + '<div style="padding:12px 14px;border-right:1px solid var(--border)">'
+            +   '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total over</div>'
+            +   '<div style="font-size:20px;font-weight:800;color:'+overColor+'">$'+mtdTotalOver.toFixed(2)+'</div>'
+            +   '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+mtdOverReports.length+' shift'+(mtdOverReports.length!==1?'s':'')+'</div>'
+            + '</div>'
+            + '<div style="padding:12px 14px">'
+            +   '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">'+netLabel+'</div>'
+            +   '<div style="font-size:20px;font-weight:800;color:'+netColor+'">'+(mtdNetCashDisc>=0?'+':'')+mtdNetCashDisc.toFixed(2)+'</div>'
+            +   '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+cleanShiftCount+' clean shift'+(cleanShiftCount!==1?'s':'')+'</div>'
+            + '</div>'
+            + '</div>';
+          if(cashDiscReports.length===0){
+            html += '<div style="padding:12px 14px;font-size:13px;color:var(--green)">✓ All shifts balanced this month</div>';
+          } else {
+            html += '<div>';
+            const sorted = cashDiscReports.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+            sorted.forEach(r=>{
+              const isShort = r.cashDifference<0;
+              const amt = Math.abs(r.cashDifference||0).toFixed(2);
+              html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);gap:8px">'
+                + '<div style="flex:1;min-width:0">'
+                +   '<div style="font-size:13px;font-weight:500">'+(r.employee||'—')+' · '+(r.shift||'')+'</div>'
+                +   '<div style="font-size:11px;color:var(--text3)">'+fmtD(r.date)+'</div>'
+                +   (r.cashDiscrepancyNote ? '<div style="font-size:11px;color:var(--text2);margin-top:2px;font-style:italic">'+r.cashDiscrepancyNote+'</div>' : '')
+                + '</div>'
+                + '<div style="font-size:14px;font-weight:700;color:'+(isShort?'var(--red)':'var(--green)')+';flex-shrink:0">'+(isShort?'⚑ −$':'+ $')+amt+'</div>'
+                + '</div>';
+            });
+            html += '</div>';
+          }
+          return html;
+        })()}
       </div>
 
       <!-- Expenses -->
