@@ -2562,6 +2562,101 @@ async function loadScrHistory(){
 }
 
 
+// ---- COMPLIANCE ----
+const DEFAULT_LICS=[
+  {id:'abc',name:'ABC License (Alcohol)',due:'2026-09-15',ack:false},
+  {id:'deq',name:'DEQ Inspection',due:'2026-08-01',ack:false},
+  {id:'biz',name:'Business License',due:'2027-06-01',ack:true},
+  {id:'lot',name:'Lottery License',due:'2027-09-01',ack:false},
+];
+let lics = JSON.parse(JSON.stringify(DEFAULT_LICS)); // mutable working copy
+
+async function saveLics(){
+  try{
+    const ref = window.F.doc(window.db,'settings','complianceLics');
+    await window.F.updateDoc(ref,{lics, updatedAt:new Date().toISOString()}).catch(async ()=>{
+      await window.F.addDoc(window.F.collection(window.db,'settings'),{lics, updatedAt:new Date().toISOString()});
+    });
+  }catch(e){console.error('saveLics error',e);}
+}
+
+async function loadLics(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(10)));
+    const settingsDoc = snap.docs.find(d=>d.id==='complianceLics'||d.data().lics);
+    if(settingsDoc && settingsDoc.data().lics && settingsDoc.data().lics.length){
+      lics = settingsDoc.data().lics;
+      window._licsDocId = settingsDoc.id;
+    }
+  }catch(e){console.error('loadLics error',e);}
+  checkComp();
+}
+
+async function saveLicsPersist(){
+  try{
+    if(window._licsDocId){
+      await window.F.updateDoc(window.F.doc(window.db,'settings',window._licsDocId),{lics, updatedAt:new Date().toISOString()});
+    } else {
+      const ref = await window.F.addDoc(window.F.collection(window.db,'settings'),{lics, updatedAt:new Date().toISOString()});
+      window._licsDocId = ref.id;
+    }
+  }catch(e){console.error('saveLicsPersist error',e);}
+}
+
+function du(d){return Math.ceil((new Date(d)-new Date())/(864e5));}
+function renderLics(){
+  document.getElementById('licList').innerHTML=lics.map(l=>{
+    const d=du(l.due);let bc='bgrn',bt=d+'d left';
+    if(d<0){bc='bred';bt='Overdue';}else if(d<=30){bc='bred';bt=d+'d left';}else if(d<=90){bc='bamb';bt=d+'d left';}
+    const editForm=`<div id="edit-${l.id}" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-top:8px">
+      <label style="margin-bottom:4px">Update renewal date</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="newdate-${l.id}" value="${l.due}" style="flex:1" />
+        <button class="bsm" onclick="updateLicDate('${l.id}')">Save</button>
+        <button class="bsm" onclick="document.getElementById('edit-${l.id}').style.display='none'">Cancel</button>
+      </div>
+    </div>`;
+    return`<div class="crow" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="flex:1"><div style="font-size:14px;font-weight:500;margin-bottom:3px">${l.name}</div><div style="font-size:12px;color:var(--text2)">Due: ${new Date(l.due).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="badge ${bc}">${bt}</span>
+          ${(!l.ack&&d<=90)?`<button class="bsm" onclick="ackLic('${l.id}')">Ack</button>`:''}
+          <button class="bsm" onclick="toggleEditLic('${l.id}')">✏️ Edit</button>
+        </div>
+      </div>
+      ${editForm}
+    </div>`;
+  }).join('');
+}
+function checkComp(){
+  if(!CU||CU.role!=='operator')return;
+  const urg=lics.filter(l=>!l.ack&&du(l.due)<=30);
+  const ban=document.getElementById('alertBanner');
+  if(urg.length){ban.style.display='block';ban.textContent=`⚑ ${urg.length} compliance item${urg.length>1?'s':''} need attention — check Compliance tab`;}else{ban.style.display='none';}
+  const ca=document.getElementById('compAlerts');
+  if(ca&&urg.length){ca.innerHTML=`<div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px">⚑ Action required</div>${urg.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+' days left'}</div>`).join('')}</div>`;}else if(ca){ca.innerHTML='';}
+  renderLics();
+}
+function ackLic(id){
+  lics=lics.map(l=>l.id===id?{...l,ack:true}:l);saveLicsPersist();checkComp();toast('Acknowledged');
+  setTimeout(()=>{const ef=document.getElementById('edit-'+id);if(ef)ef.style.display='block';},400);
+}
+function toggleEditLic(id){const f=document.getElementById('edit-'+id);if(f)f.style.display=f.style.display==='none'?'block':'none';}
+function updateLicDate(id){
+  const newDate=document.getElementById('newdate-'+id)?.value;
+  if(!newDate){toast('Pick a date');return;}
+  lics=lics.map(l=>l.id===id?{...l,due:newDate,ack:false}:l);saveLicsPersist();checkComp();toast('✓ Date saved');
+}
+function togAddLic(){const f=document.getElementById('addLicForm');f.style.display=f.style.display==='none'?'block':'none';}
+function addLic(){
+  const n=document.getElementById('ln').value.trim(),d=document.getElementById('ld').value;
+  if(!n||!d){toast('Enter name and date');return;}
+  lics.push({id:Date.now().toString(),name:n,due:d,ack:false});
+  document.getElementById('ln').value='';document.getElementById('ld').value='';document.getElementById('addLicForm').style.display='none';
+  saveLicsPersist();checkComp();toast('✓ License added');
+}
+
 // ---- TOBACCO INVENTORY ----
 let tobBrands = []; // cached brand list
 
@@ -5286,6 +5381,21 @@ function onActSlotChange(val){
     });
     document.getElementById('act-pack-val').style.display='none';
     if(hint) hint.style.display='none';
+  }
+}
+
+function updSlotPackCalc(){
+  const price   = parseFloat(document.getElementById('se-price')?.value)||0;
+  const tickets = parseInt(document.getElementById('se-tickets')?.value)||0;
+  const valWrap = document.getElementById('se-pack-val');
+  if(!valWrap) return;
+  if(price && tickets){
+    const packVal = price * tickets;
+    document.getElementById('se-pack-num').textContent = '$'+packVal.toLocaleString();
+    document.getElementById('se-pack-sub').textContent = tickets+' tickets × $'+price;
+    valWrap.style.display = 'block';
+  } else {
+    valWrap.style.display = 'none';
   }
 }
 
