@@ -1923,8 +1923,6 @@ async function loadDashboard(){
           })()}
         </div>
     `;
-
-    `;
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">⚠️</div><div style="margin-bottom:8px">Error loading dashboard</div><div style="font-size:11px;background:#f0f0f0;padding:8px;border-radius:6px;text-align:left;word-break:break-all;color:#333">${e.message||e.toString()}</div><button class="btn bsecondary" style="margin-top:12px;font-size:13px;padding:10px" onclick="loadDashboard()">Try again</button></div>`;
     console.error('Dashboard error:',e);
