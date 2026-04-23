@@ -1720,7 +1720,7 @@ async function loadDashboard(){
               html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);gap:8px">'
                 + '<div style="flex:1;min-width:0">'
                 +   '<div style="font-size:13px;font-weight:500">'+(r.employee||'—')+' · '+(r.shift||'')+'</div>'
-                +   '<div style="font-size:11px;color:var(--text3)">'+fmtD(r.date)+'</div>'
+                +   '<div style="font-size:11px;color:var(--text3)">'+fmtDate(r.date)+'</div>'
                 +   (r.cashDiscrepancyNote ? '<div style="font-size:11px;color:var(--text2);margin-top:2px;font-style:italic">'+r.cashDiscrepancyNote+'</div>' : '')
                 + '</div>'
                 + '<div style="font-size:14px;font-weight:700;color:'+(isShort?'var(--red)':'var(--green)')+';flex-shrink:0">'+(isShort?'⚑ −$':'+ $')+amt+'</div>'
