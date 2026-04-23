@@ -331,17 +331,58 @@
     </div>
     <div class="card">
       <div class="ct">C-store sales</div>
-      <div class="g3" style="margin-bottom:10px">
-        <div><label>Total sales ($)</label><input type="number" id="d-tot" placeholder="0.00" /></div>
-        <div><label>Cash ($)</label><input type="number" id="d-cash" placeholder="0.00" /></div>
-        <div><label>Credit ($)</label><input type="number" id="d-cred" placeholder="0.00" /></div>
+      <!-- Column headers -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;padding:0 2px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;text-align:center">NRS</div>
+        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;text-align:center">Verifone</div>
       </div>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div class="ct" style="margin-bottom:10px">Cash drawer — short or over</div>
-        <div class="g2" style="margin-bottom:8px">
-          <div><label>Expected cash ($)</label><input type="number" id="d-expected" placeholder="0.00" oninput="calcShortOver()" /></div>
-          <div><label>Actual counted ($)</label><input type="number" id="d-actual" placeholder="0.00" oninput="calcShortOver()" /></div>
+      <!-- Total sales row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:500;color:var(--text2)">Total sales</div>
+        <input type="number" id="d-tot-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
+        <input type="number" id="d-tot-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
+      </div>
+      <!-- Cash row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:500;color:var(--text2)">Cash</div>
+        <input type="number" id="d-cash-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
+        <input type="number" id="d-cash-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
+      </div>
+      <!-- Credit row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:500;color:var(--text2)">Credit</div>
+        <input type="number" id="d-cred-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
+        <input type="number" id="d-cred-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
+      </div>
+      <!-- Combined totals display -->
+      <div id="salesCombinedDisplay" style="display:none;background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:2px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Combined totals</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div><span style="font-size:12px;color:var(--text2)">Total </span><span id="d-tot-combined" style="font-weight:700;color:var(--text)">$0.00</span></div>
+          <div><span style="font-size:12px;color:var(--text2)">Cash </span><span id="d-cash-combined" style="font-weight:700;color:var(--text)">$0.00</span></div>
+          <div><span style="font-size:12px;color:var(--text2)">Credit </span><span id="d-cred-combined" style="font-weight:700;color:var(--text)">$0.00</span></div>
         </div>
+      </div>
+      <!-- Hidden combined fields used by subDaily -->
+      <input type="hidden" id="d-tot" />
+      <input type="hidden" id="d-cash" />
+      <input type="hidden" id="d-cred" />
+
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="ct" style="margin-bottom:6px">Cash drawer — short or over</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Enter expected cash from each register separately</div>
+        <!-- Expected cash split -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:500;color:var(--text2)">Expected</div>
+          <input type="number" id="d-exp-nrs" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--blue)" />
+          <input type="number" id="d-exp-vfn" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--amber)" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><label>Actual counted ($) — total</label><input type="number" id="d-actual" placeholder="0.00" oninput="calcShortOver()" /></div>
+        </div>
+        <!-- Hidden combined expected -->
+        <input type="hidden" id="d-expected" />
         <div id="shortOverResult"></div>
       </div>
     </div>
@@ -1439,25 +1480,30 @@ async function loadDashboard(){
     // Use date comparison (not timestamp) — the opening count is sometimes submitted AFTER closing
     // counts (e.g. operator opens their count after overnight closes), so timestamp filtering
     // incorrectly excludes those closing counts.
-    // soldBySlot stores per-slot revenue calculated at submission time against the correct baseline —
-    // it is always shift-accurate regardless of how many counts share a day. Sum it directly.
-    function docShiftRev(d){
-      if(d.soldBySlot && Object.keys(d.soldBySlot).length > 0){
-        return Object.values(d.soldBySlot).reduce((s, slot) => s + (slot.revenue || 0), 0);
-      }
-      return d.totalRevenue || 0;
-    }
-    function sumClosingDocs(closingDocs){
-      return closingDocs.reduce((s, d) => s + docShiftRev(d), 0);
+    // Deduplicate shared-baseline days: when multiple employees close using the same opening count,
+    // each closing totalRevenue is cumulative (not per-shift). Summing naively double-counts.
+    // Fix: per date, if revenues are monotonically increasing → shared baseline → use only the last.
+    function deduplicateSoldCounts(closingDocs){
+      const byDate = {};
+      closingDocs.forEach(d => { if(!byDate[d.date]) byDate[d.date]=[]; byDate[d.date].push(d); });
+      let total = 0;
+      Object.values(byDate).forEach(dayDocs => {
+        dayDocs.sort((a,b)=>(a._ts||0)-(b._ts||0));
+        if(dayDocs.length===1){ total+=dayDocs[0].totalRevenue||0; return; }
+        const revs=dayDocs.map(d=>d.totalRevenue||0);
+        const isShared=revs.every((v,i)=>i===0||v>=revs[i-1]);
+        total+=isShared ? revs[revs.length-1] : revs.reduce((s,v)=>s+v,0);
+      });
+      return total;
     }
     const closingAfterBaseline = scrAll.filter(d => d.date >= baselineDate && d.shiftType==='end');
-    const soldAfterCount = sumClosingDocs(closingAfterBaseline);
+    const soldAfterCount = deduplicateSoldCounts(closingAfterBaseline);
 
     // If no opening-count baseline exists, fall back to all-time activations minus all-time sales
     let scrVal;
     if(!latestCount){
       const allTimeActValue2 = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
-      const allTimeSold2 = sumClosingDocs(scrAll.filter(d=>d.shiftType==='end'));
+      const allTimeSold2 = deduplicateSoldCounts(scrAll.filter(d=>d.shiftType==='end'));
       scrVal = Math.max(0, allTimeActValue2 - allTimeSold2);
     } else {
       scrVal = Math.max(0, baselineValue + activatedAfterCount - soldAfterCount);
@@ -1465,11 +1511,21 @@ async function loadDashboard(){
 
     // All-time totals for the breakdown sub-line
     const allTimeActValue = allActs.reduce((s,a)=>s+((a.qty||1)*(a.ticketsPerBook||0)*(a.price||0)),0);
-    const allTimeSold     = sumClosingDocs(scrAll.filter(d=>d.shiftType==='end'));
+    const allTimeSold     = scrAll.filter(d=>d.shiftType==='end').reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // MTD sold revenue — sum soldBySlot revenue per closing count, group by date
-    const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.shiftType==='end');
-    const scrRevenue = sumClosingDocs(scrMTD);
+    // MTD sold revenue — detect shared-baseline vs properly-chained counts per day
+    const scrMTD=scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd);
+    const scrDates=[...new Set(scrMTD.filter(d=>d.shiftType==='end').map(d=>d.date))].sort();
+    let scrRevenue=0;
+    scrDates.forEach(date=>{
+      const closingCounts = scrAll.filter(d=>d.date===date&&d.shiftType==='end')
+        .sort((a,b)=>(a._ts||0)-(b._ts||0));
+      if(!closingCounts.length) return;
+      if(closingCounts.length === 1){ scrRevenue += closingCounts[0].totalRevenue||0; return; }
+      const revs = closingCounts.map(d=>d.totalRevenue||0);
+      const isSharedBaseline = revs.every((v,i)=> i===0 || v >= revs[i-1]);
+      scrRevenue += isSharedBaseline ? revs[revs.length-1] : revs.reduce((s,v)=>s+v,0);
+    });
 
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
@@ -1742,38 +1798,58 @@ async function loadDashboard(){
             //   3. Per-employee: first employee gets their own totalRevenue (correct, vs yesterday).
             //      Each subsequent employee gets: (cumulative total so far) - (sum of all prior employees).
             //      i.e. employee[N].trueRevenue = lastClose.totalRevenue - sum(employee[0..N-1].totalRevenue)
-            //      soldBySlot stores per-slot revenue calculated at submission time against the correct
-            //      baseline — it is always shift-accurate regardless of how many counts share a day.
-
-            // Helper: get shift revenue from a single closing count doc.
-            // Uses soldBySlot (sum of per-slot revenue) when available; falls back to totalRevenue for old docs.
-            const shiftRev = d => {
-              if(d.soldBySlot && Object.keys(d.soldBySlot).length > 0){
-                return Object.values(d.soldBySlot).reduce((s, slot) => s + (slot.revenue || 0), 0);
-              }
-              return d.totalRevenue || 0;
-            };
+            //      This works because each count's totalRevenue is the running cumulative from yesterday.
 
             const todayCounts = scrAll.filter(d => d.date === localDate() && d.shiftType === 'end')
               .sort((a,b)=>(a._ts||0)-(b._ts||0));
 
+            // Detect whether counts share a baseline (cumulative) or are properly chained (independent)
+            // Shared baseline: revenues monotonically increase → last count = true total, use incremental diffs
+            // Properly chained: revenues are each shift's own amount → sum all, each count is its own
             let todayTotal = 0;
             const empMap = {};
 
-            todayCounts.forEach(d => {
-              const rev = shiftRev(d);
-              todayTotal += rev;
-              const n = d.employee || 'Unknown';
-              if(!empMap[n]) empMap[n] = {name:n, revenue:0, shifts:0};
-              empMap[n].revenue += rev;
-              empMap[n].shifts++;
-            });
+            if(todayCounts.length === 0){
+              // nothing
+            } else if(todayCounts.length === 1){
+              todayTotal = todayCounts[0].totalRevenue||0;
+              const n = todayCounts[0].employee||'Unknown';
+              empMap[n] = {name:n, revenue:todayTotal, shifts:1};
+            } else {
+              const revs = todayCounts.map(d=>d.totalRevenue||0);
+              const isSharedBaseline = revs.every((v,i)=> i===0 || v >= revs[i-1]);
+              if(isSharedBaseline){
+                // Shared baseline — last count is the true cumulative total
+                todayTotal = revs[revs.length-1];
+                let runningTotal = 0;
+                todayCounts.forEach(d=>{
+                  const n = d.employee||'Unknown';
+                  if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+                  empMap[n].revenue += Math.max(0,(d.totalRevenue||0)-runningTotal);
+                  empMap[n].shifts++;
+                  runningTotal = d.totalRevenue||0;
+                });
+              } else {
+                // Properly chained — sum all counts, each is its own shift
+                todayTotal = revs.reduce((s,v)=>s+v,0);
+                todayCounts.forEach(d=>{
+                  const n = d.employee||'Unknown';
+                  if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
+                  empMap[n].revenue += d.totalRevenue||0;
+                  empMap[n].shifts++;
+                });
+              }
+            }
 
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
-            // MTD daily breakdown — sum soldBySlot revenue per closing count, group by date.
-            // No baseline detection needed: soldBySlot is always shift-accurate.
+            // MTD daily sales — group end counts by date
             const byDay={};
+            // MTD daily breakdown — detect whether counts were chained at submission or share a baseline.
+            // SHARED BASELINE (broken): each count's totalRevenue > previous (cumulative from same yesterday)
+            //   → day total = last count's totalRevenue; per-employee = incremental diffs
+            // PROPERLY CHAINED: each count's totalRevenue is its own shift only (small, independent)
+            //   → day total = sum of all totalRevenues; per-employee = each count's own totalRevenue
             {
               const todayDateStr = localDate();
               const datesInRange = [...new Set(scrAll.filter(d=>d.date>=mtdStart&&d.date<=mtdEnd&&d.date!==todayDateStr&&d.shiftType==='end').map(d=>d.date))].sort();
@@ -1782,16 +1858,43 @@ async function loadDashboard(){
                   .sort((a,b)=>(a._ts||0)-(b._ts||0));
                 if(!byDay[date]) byDay[date]={date,revenue:0,employees:[],empBreakdown:[]};
                 if(!closingCounts.length) return;
-                const empTally = {};
-                closingCounts.forEach(d=>{
-                  const rev = shiftRev(d);
-                  const n = d.employee || 'Unknown';
-                  byDay[date].revenue += rev;
-                  if(!byDay[date].employees.includes(n)) byDay[date].employees.push(n);
-                  if(!empTally[n]) empTally[n] = {name:n, revenue:0};
-                  empTally[n].revenue += rev;
-                });
-                byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
+                closingCounts.forEach(d=>{ if(!byDay[date].employees.includes(d.employee)) byDay[date].employees.push(d.employee); });
+
+                if(closingCounts.length === 1){
+                  // Single count — straightforward
+                  byDay[date].revenue = closingCounts[0].totalRevenue||0;
+                  byDay[date].empBreakdown = [{name:closingCounts[0].employee||'Unknown', revenue:byDay[date].revenue}];
+                } else {
+                  // Detect chaining style by checking if revenues are monotonically increasing
+                  // (shared baseline = each count higher than last = cumulative)
+                  // (properly chained = each count is its own small amount, not necessarily increasing)
+                  const revenues = closingCounts.map(d=>d.totalRevenue||0);
+                  const isSharedBaseline = revenues.every((v,i)=> i===0 || v >= revenues[i-1]);
+
+                  if(isSharedBaseline){
+                    // Counts share baseline — last count is the true cumulative total
+                    byDay[date].revenue = revenues[revenues.length-1];
+                    const empTally = {};
+                    let runningRev = 0;
+                    closingCounts.forEach(d=>{
+                      const n = d.employee||'Unknown';
+                      if(!empTally[n]) empTally[n]={name:n,revenue:0};
+                      empTally[n].revenue += Math.max(0,(d.totalRevenue||0)-runningRev);
+                      runningRev = d.totalRevenue||0;
+                    });
+                    byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
+                  } else {
+                    // Properly chained — sum all, each count is its own shift
+                    byDay[date].revenue = revenues.reduce((s,v)=>s+v,0);
+                    const empTally = {};
+                    closingCounts.forEach(d=>{
+                      const n = d.employee||'Unknown';
+                      if(!empTally[n]) empTally[n]={name:n,revenue:0};
+                      empTally[n].revenue += d.totalRevenue||0;
+                    });
+                    byDay[date].empBreakdown = Object.values(empTally).sort((a,b)=>b.revenue-a.revenue);
+                  }
+                }
               });
             }
             const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
@@ -1939,8 +2042,33 @@ async function handleShiftPhotos(input){
 }
 
 
+function calcSalesCombined(){
+  const totNrs=parseFloat(document.getElementById('d-tot-nrs').value)||0;
+  const totVfn=parseFloat(document.getElementById('d-tot-vfn').value)||0;
+  const cashNrs=parseFloat(document.getElementById('d-cash-nrs').value)||0;
+  const cashVfn=parseFloat(document.getElementById('d-cash-vfn').value)||0;
+  const credNrs=parseFloat(document.getElementById('d-cred-nrs').value)||0;
+  const credVfn=parseFloat(document.getElementById('d-cred-vfn').value)||0;
+  const tot=totNrs+totVfn, cash=cashNrs+cashVfn, cred=credNrs+credVfn;
+  // Write combined values into hidden fields used by subDaily
+  document.getElementById('d-tot').value=tot||'';
+  document.getElementById('d-cash').value=cash||'';
+  document.getElementById('d-cred').value=cred||'';
+  // Show combined display only when any value entered
+  const disp=document.getElementById('salesCombinedDisplay');
+  const hasAny=totNrs||totVfn||cashNrs||cashVfn||credNrs||credVfn;
+  disp.style.display=hasAny?'block':'none';
+  document.getElementById('d-tot-combined').textContent='$'+tot.toFixed(2);
+  document.getElementById('d-cash-combined').textContent='$'+cash.toFixed(2);
+  document.getElementById('d-cred-combined').textContent='$'+cred.toFixed(2);
+}
 function calcShortOver(){
-  const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0;
+  const expNrs=parseFloat(document.getElementById('d-exp-nrs').value)||0;
+  const expVfn=parseFloat(document.getElementById('d-exp-vfn').value)||0;
+  const exp=expNrs+expVfn;
+  // Write combined expected into hidden field
+  document.getElementById('d-expected').value=exp||'';
+  const act=parseFloat(document.getElementById('d-actual').value)||0;
   const el=document.getElementById('shortOverResult');
   if(!exp&&!act){el.innerHTML='';return;}
   const diff=act-exp;
@@ -1956,6 +2084,8 @@ function updLot(){
 }
 async function subDaily(){
   const btn=document.getElementById('dailyBtn');btn.innerHTML='<span class="spinner"></span>Saving...';btn.disabled=true;
+  // Recalculate combined values from split inputs before saving
+  calcSalesCombined(); calcShortOver();
   const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0,cashDiff=act-exp;
   try{
     await window.F.addDoc(window.F.collection(window.db,'dailyReports'),{
@@ -1983,7 +2113,8 @@ async function subDaily(){
     });
     toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
     setTimeout(()=>{btn.innerHTML='Submit shift report';btn.disabled=false;btn.style.background='';},3000);
-    ['d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>document.getElementById(id).value='');
+    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-exp-nrs','d-exp-vfn','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
     const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
     document.getElementById('shiftPhotos').value='';
