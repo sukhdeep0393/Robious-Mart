@@ -208,6 +208,23 @@
   .mg-empty-cat{padding:20px 16px;text-align:center;color:var(--text3);font-size:13px;}
   .search-result-tag{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--blue-light);color:var(--blue);text-transform:uppercase;letter-spacing:.05em;}
 
+  /* UPC BARCODE SCANNER */
+  #upcScannerModal{position:fixed;inset:0;background:#000;z-index:600;display:none;flex-direction:column;}
+  #upcScannerModal.open{display:flex;}
+  #upcVideo{width:100%;flex:1;object-fit:cover;display:block;}
+  .upc-overlay{position:absolute;inset:0;pointer-events:none;}
+  .upc-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 80% 35% at 50% 50%, transparent 50%, rgba(0,0,0,0.75) 100%);}
+  .upc-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88%;max-width:360px;height:100px;border:2px solid rgba(255,255,255,0.6);border-radius:10px;}
+  .upc-laser{position:absolute;top:50%;left:6px;right:6px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,80,80,.9),rgba(255,160,160,1),rgba(255,80,80,.9),transparent);border-radius:1px;box-shadow:0 0 8px 2px rgba(255,100,100,.6);animation:upcLaser 1.5s ease-in-out infinite;}
+  @keyframes upcLaser{0%,100%{opacity:1}50%{opacity:.4}}
+  .upc-bar{background:rgba(0,0,0,.85);backdrop-filter:blur(12px);padding:16px 20px 36px;flex-shrink:0;text-align:center;}
+  .upc-status{color:rgba(255,255,255,.8);font-size:13px;margin-bottom:14px;min-height:20px;line-height:1.4;}
+  .upc-result{background:rgba(255,255,255,.1);border-radius:10px;padding:14px;margin-bottom:14px;display:none;}
+  .upc-result-name{color:#fff;font-size:16px;font-weight:700;margin-bottom:4px;}
+  .upc-result-upc{color:rgba(255,255,255,.5);font-size:11px;}
+  .upc-actions{display:flex;gap:10px;justify-content:center;}
+  .upc-btn{height:44px;border-radius:22px;padding:0 20px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
+
   /* CAMERA SCANNER */
   #scannerModal{position:fixed;inset:0;background:#000;z-index:500;display:none;flex-direction:column;}
   #scannerModal.open{display:flex;}
@@ -814,9 +831,12 @@
         <div class="g2" style="margin-bottom:10px">
           <div>
             <label>Brand</label>
-            <select id="oc-brand" onchange="updOcCalc()">
-              <option value="">— select brand —</option>
-            </select>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="oc-brand" onchange="updOcCalc()" style="flex:1">
+                <option value="">— select brand —</option>
+              </select>
+              <button class="bsm" style="flex-shrink:0;background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="openUpcScanner('oc')">📷 Scan</button>
+            </div>
           </div>
           <div>
             <label>Cartons opened</label>
@@ -1209,6 +1229,33 @@
       </div>
       <div id="orMTDSummary" style="margin-bottom:12px"></div>
       <div id="orList"><div class="empty"><div class="ei">💰</div>No entries yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- UPC BARCODE SCANNER MODAL -->
+<div id="upcScannerModal">
+  <div style="position:relative;flex:1;overflow:hidden;background:#000;">
+    <video id="upcVideo" autoplay playsinline muted></video>
+    <div class="upc-overlay">
+      <div class="upc-vignette"></div>
+      <div class="upc-frame">
+        <div class="upc-laser"></div>
+      </div>
+    </div>
+    <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:rgba(255,255,255,.85);font-size:12px;padding:5px 14px;border-radius:20px;">
+      Point at the barcode on the carton
+    </div>
+  </div>
+  <div class="upc-bar">
+    <div class="upc-status" id="upcStatus">Scanning for barcode…</div>
+    <div class="upc-result" id="upcResult">
+      <div class="upc-result-name" id="upcResultName"></div>
+      <div class="upc-result-upc" id="upcResultCode"></div>
+    </div>
+    <div class="upc-actions">
+      <button class="upc-btn" style="background:rgba(255,255,255,.15);color:#fff;" onclick="closeUpcScanner()">Cancel</button>
+      <button class="upc-btn" style="background:var(--blue);color:#fff;display:none;" id="upcConfirmBtn" onclick="confirmUpcResult()">Use this product</button>
     </div>
   </div>
 </div>
@@ -3279,18 +3326,24 @@ function addDeliveryBrandRow(){
   const brandOptions = tobBrands.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   const row = document.createElement('div');
   row.id = rowId;
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 28px;gap:8px;align-items:end;margin-bottom:8px';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 32px 28px;gap:6px;align-items:end;margin-bottom:8px';
   row.innerHTML = `
     <div>
       ${_deliveryBrandRowCount===1 ? '<label>Brand</label>' : ''}
-      <select id="dr-brand-${_deliveryBrandRowCount}" onchange="updDeliveryTotal()">
-        <option value="">— select brand —</option>
-        ${brandOptions}
-      </select>
+      <div style="display:flex;gap:4px">
+        <select id="dr-brand-${_deliveryBrandRowCount}" onchange="updDeliveryTotal()" style="flex:1">
+          <option value="">— select —</option>
+          ${brandOptions}
+        </select>
+      </div>
     </div>
     <div>
       ${_deliveryBrandRowCount===1 ? '<label>Cartons</label>' : ''}
       <input type="number" id="dr-qty-${_deliveryBrandRowCount}" placeholder="0" min="0" oninput="updDeliveryTotal()" style="text-align:center" />
+    </div>
+    <div>
+      ${_deliveryBrandRowCount===1 ? '<label style="font-size:9px">Scan</label>' : ''}
+      <button class="bsm" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue);padding:8px 5px;width:100%" onclick="openUpcScanner('dr-${_deliveryBrandRowCount}')">📷</button>
     </div>
     <button class="bsm" style="background:var(--red-light);color:var(--red);border-color:#f7c1c1;padding:8px 6px;margin-bottom:1px" onclick="removeDeliveryRow('${rowId}')">✕</button>
   `;
@@ -4856,6 +4909,203 @@ function setShiftMode(mode){
   document.getElementById('shift-upload-mode').style.display = mode==='upload' ? 'block' : 'none';
   document.getElementById('shift-tab-scan').classList.toggle('active',   mode==='scan');
   document.getElementById('shift-tab-upload').classList.toggle('active', mode==='upload');
+}
+
+// ---- UPC BARCODE SCANNER ----
+let upcStream       = null;
+let upcDetecting    = false;
+let upcContext      = null;   // 'oc' = carton open, 'dr-N' = delivery row N
+let upcLastResult   = null;   // { upc, name, brandId }
+let upcAnimFrame    = null;
+
+function openUpcScanner(ctx){
+  upcContext   = ctx;
+  upcLastResult = null;
+  document.getElementById('upcScannerModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('upcStatus').textContent = 'Scanning for barcode…';
+  document.getElementById('upcResult').style.display = 'none';
+  document.getElementById('upcConfirmBtn').style.display = 'none';
+  startUpcCamera();
+}
+
+async function startUpcCamera(){
+  if(upcStream){ upcStream.getTracks().forEach(t=>t.stop()); upcStream=null; }
+  try{
+    upcStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
+    });
+    const vid = document.getElementById('upcVideo');
+    vid.srcObject = upcStream;
+    await vid.play();
+    startUpcDetection();
+  }catch(e){
+    closeUpcScanner();
+    toast('Camera not available — select brand manually');
+  }
+}
+
+function startUpcDetection(){
+  upcDetecting = true;
+  // Prefer native BarcodeDetector (Chrome Android, Safari 17+)
+  if(window.BarcodeDetector){
+    const detector = new BarcodeDetector({ formats:['upc_a','upc_e','ean_13','ean_8','code_128','code_39'] });
+    const detect = async () => {
+      if(!upcDetecting) return;
+      const vid = document.getElementById('upcVideo');
+      if(vid.readyState === vid.HAVE_ENOUGH_DATA){
+        try{
+          const codes = await detector.detect(vid);
+          if(codes.length){
+            await onUpcDetected(codes[0].rawValue);
+            return;
+          }
+        }catch(e){}
+      }
+      upcAnimFrame = requestAnimationFrame(detect);
+    };
+    upcAnimFrame = requestAnimationFrame(detect);
+  } else {
+    // Fallback: use ZXing from CDN
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing.min.js';
+    script.onload = () => startZxingDetection();
+    script.onerror = () => {
+      document.getElementById('upcStatus').textContent = 'Barcode scanning not supported on this browser — select brand manually';
+    };
+    document.head.appendChild(script);
+  }
+}
+
+function startZxingDetection(){
+  try{
+    const hints = new Map();
+    const formats = [
+      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128
+    ];
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    const reader = new ZXing.MultiFormatReader();
+    reader.setHints(hints);
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d');
+    const decode = () => {
+      if(!upcDetecting) return;
+      const vid = document.getElementById('upcVideo');
+      if(vid.readyState === vid.HAVE_ENOUGH_DATA){
+        canvas.width  = vid.videoWidth;
+        canvas.height = vid.videoHeight;
+        ctx.drawImage(vid, 0, 0);
+        try{
+          const lum  = ZXing.HTMLCanvasElementLuminanceSource ? new ZXing.HTMLCanvasElementLuminanceSource(canvas) : null;
+          if(lum){
+            const bmp  = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+            const res  = reader.decode(bmp);
+            if(res){ onUpcDetected(res.getText()); return; }
+          }
+        }catch(e){}
+      }
+      upcAnimFrame = requestAnimationFrame(decode);
+    };
+    upcAnimFrame = requestAnimationFrame(decode);
+  }catch(e){
+    document.getElementById('upcStatus').textContent = 'Could not start barcode reader — select brand manually';
+  }
+}
+
+async function onUpcDetected(upc){
+  upcDetecting = false;
+  if(upcAnimFrame){ cancelAnimationFrame(upcAnimFrame); upcAnimFrame=null; }
+
+  document.getElementById('upcStatus').textContent = `Barcode: ${upc} — looking up product…`;
+
+  // Try to match against existing brands first (by stored UPC)
+  const brandMatch = tobBrands.find(b=>b.upc===upc);
+  if(brandMatch){
+    showUpcResult(upc, brandMatch.name, brandMatch.id);
+    return;
+  }
+
+  // Look up via Open Food Facts API
+  try{
+    const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
+    const data = await res.json();
+    if(data.status===1 && data.product){
+      const p    = data.product;
+      const name = p.product_name || p.brands || '';
+      if(name){
+        // Try to fuzzy-match to existing brand list
+        const nameLower = name.toLowerCase();
+        const fuzzy = tobBrands.find(b=>
+          nameLower.includes(b.name.toLowerCase()) ||
+          b.name.toLowerCase().includes(nameLower.split(' ')[0])
+        );
+        showUpcResult(upc, name, fuzzy?.id || null, fuzzy?.name || null);
+        return;
+      }
+    }
+  }catch(e){}
+
+  // Not found anywhere
+  document.getElementById('upcStatus').textContent = `UPC ${upc} not found in database — select brand manually`;
+  document.getElementById('upcResult').style.display = 'none';
+  document.getElementById('upcConfirmBtn').style.display = 'none';
+  // Close after 2s so employee can select manually
+  setTimeout(()=>closeUpcScanner(), 2000);
+}
+
+function showUpcResult(upc, rawName, matchedBrandId, matchedBrandName){
+  const displayName = matchedBrandName || rawName;
+  upcLastResult = { upc, rawName, brandId: matchedBrandId, displayName };
+
+  document.getElementById('upcResultName').textContent = displayName;
+  document.getElementById('upcResultCode').textContent = `UPC: ${upc}${matchedBrandId ? ' · matched to your brand list' : ' · new product'}`;
+  document.getElementById('upcResult').style.display = 'block';
+  document.getElementById('upcConfirmBtn').style.display = 'inline-block';
+  document.getElementById('upcStatus').textContent = matchedBrandId
+    ? '✅ Found in your brand list'
+    : '⚠️ Not in brand list — will pre-fill name';
+}
+
+function confirmUpcResult(){
+  if(!upcLastResult) return;
+  const { brandId, displayName, upc } = upcLastResult;
+  const ctx = upcContext;
+  closeUpcScanner();
+
+  if(ctx === 'oc'){
+    // Carton open form
+    const sel = document.getElementById('oc-brand');
+    if(sel && brandId){
+      sel.value = brandId;
+      updOcCalc();
+      toast(`✓ ${displayName} selected`);
+    } else {
+      toast(`Brand "${displayName}" not in list — please select manually`);
+    }
+  } else if(ctx && ctx.startsWith('dr-')){
+    // Delivery row — ctx is 'dr-N'
+    const rowNum = ctx.replace('dr-','');
+    const sel = document.getElementById('dr-brand-'+rowNum);
+    if(sel && brandId){
+      sel.value = brandId;
+      updDeliveryTotal();
+      toast(`✓ ${displayName} selected`);
+    } else {
+      toast(`Brand "${displayName}" not in list — please select manually`);
+    }
+  }
+}
+
+function closeUpcScanner(){
+  upcDetecting = false;
+  if(upcAnimFrame){ cancelAnimationFrame(upcAnimFrame); upcAnimFrame=null; }
+  if(upcStream){ upcStream.getTracks().forEach(t=>t.stop()); upcStream=null; }
+  const vid = document.getElementById('upcVideo');
+  if(vid) vid.srcObject = null;
+  document.getElementById('upcScannerModal').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 // ---- CAMERA SCANNER ----
