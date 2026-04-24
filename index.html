@@ -800,6 +800,69 @@
       <div id="tobInventoryList"><div class="empty"><div class="ei">📦</div>No counts submitted yet</div></div>
     </div>
 
+    <!-- Log opened carton -->
+    <div class="card">
+      <div class="sh2">
+        <div class="ct" style="margin:0">📦 Log opened carton</div>
+        <button class="bsm" onclick="togOpenCartonForm()">+ Log</button>
+      </div>
+      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.5">
+        Every time you open a carton to restock the shelf, log it here. This keeps inventory accurate and flags discrepancies.
+      </div>
+      <div id="openCartonForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Carton opened</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div>
+            <label>Brand</label>
+            <select id="oc-brand" onchange="updOcCalc()">
+              <option value="">— select brand —</option>
+            </select>
+          </div>
+          <div>
+            <label>Cartons opened</label>
+            <input type="number" id="oc-qty" value="1" min="1" max="20" placeholder="1" oninput="updOcCalc()" />
+          </div>
+        </div>
+        <div id="oc-info" style="display:none;background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--blue)"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="saveOpenedCarton()">Save</button>
+          <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togOpenCartonForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="openCartonLog"><div class="empty" style="padding:12px"><div class="ei">📦</div>No cartons logged today</div></div>
+    </div>
+
+    <!-- Delivery received -->
+    <div class="card">
+      <div class="sh2">
+        <div class="ct" style="margin:0">🚚 Delivery received</div>
+        <button class="bsm" onclick="togDeliveryForm()">+ Log delivery</button>
+      </div>
+      <div style="background:var(--green-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--green);line-height:1.5">
+        Log each tobacco delivery as it arrives. Cartons are automatically added to your inventory.
+      </div>
+      <div id="tobDeliveryForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Log delivery</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><label>Vendor / distributor</label><input id="td-vendor" placeholder="e.g. McLane, Core-Mark" /></div>
+          <div><label>Invoice # (optional)</label><input id="td-invoice" placeholder="e.g. 84721" /></div>
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><label>Invoice total ($)</label><input type="number" id="td-cost" placeholder="0.00" min="0" step="0.01" /></div>
+          <div><label>Date received</label><input type="date" id="td-date" /></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:12px 0 8px">Cartons by brand</div>
+        <div id="td-brand-rows"></div>
+        <button class="btn bsecondary" style="width:100%;padding:9px;font-size:12px;margin-bottom:12px" onclick="addDeliveryBrandRow()">+ Add brand</button>
+        <div id="td-total-line" style="display:none;background:var(--green-light);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--green);font-weight:600"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="saveTobDelivery()">Save delivery</button>
+          <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togDeliveryForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="tobDeliveryLog"><div class="empty" style="padding:12px"><div class="ei">🚚</div>No deliveries logged yet</div></div>
+    </div>
+
     <!-- Count history (operator only) -->
     <div class="card" id="tobHistoryCard" style="display:none">
       <div class="sh2">
@@ -2679,6 +2742,8 @@ async function loadTobaccoTab(){
   await loadTobBrands();
   renderTobCountForm();
   await loadTobInventory();
+  loadOpenCartonLog();
+  loadTobDeliveryLog();
   if(CU&&CU.role==='operator') loadTobHistory();
 }
 
@@ -3052,6 +3117,305 @@ async function loadTobHistory(){
       </div>`;
     }).join('');
   }catch(e){ el.innerHTML='<div class="empty">Error loading history</div>'; }
+}
+
+// ---- TOBACCO CARTON OPENS ----
+
+function togOpenCartonForm(){
+  const f = document.getElementById('openCartonForm');
+  if(!f) return;
+  const opening = f.style.display === 'none';
+  f.style.display = opening ? 'block' : 'none';
+  if(opening){
+    populateOcBrandSelect();
+    document.getElementById('oc-qty').value = '1';
+    document.getElementById('oc-info').style.display = 'none';
+    setTimeout(()=>document.getElementById('oc-brand')?.focus(), 80);
+  }
+}
+
+function populateOcBrandSelect(){
+  const sel = document.getElementById('oc-brand');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— select brand —</option>'
+    + tobBrands.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+}
+
+function updOcCalc(){
+  const brandId = document.getElementById('oc-brand')?.value;
+  const qty     = parseInt(document.getElementById('oc-qty')?.value)||1;
+  const info    = document.getElementById('oc-info');
+  if(!info) return;
+  if(!brandId){ info.style.display='none'; return; }
+  const brand = tobBrands.find(b=>b.id===brandId);
+  if(!brand){ info.style.display='none'; return; }
+  const packs = qty * 10;
+  info.style.display = 'block';
+  info.innerHTML = `Opening <strong>${qty} carton${qty!==1?'s':''}</strong> of ${brand.name} → <strong>${packs} packs</strong> added to shelf · Inventory reduced by ${qty} carton${qty!==1?'s':''}`;
+}
+
+async function saveOpenedCarton(){
+  const brandId = document.getElementById('oc-brand')?.value;
+  const qty     = parseInt(document.getElementById('oc-qty')?.value)||1;
+  if(!brandId){ toast('Select a brand'); return; }
+  const brand = tobBrands.find(b=>b.id===brandId);
+  if(!brand){ toast('Brand not found'); return; }
+  try{
+    // Log the carton open event
+    await window.F.addDoc(window.F.collection(window.db,'tobaccoCartonOpens'),{
+      brandId,
+      brandName: brand.name,
+      cartonsOpened: qty,
+      packsAdded: qty * 10,
+      employee: CU.name,
+      date: localDate(),
+      timestamp: window.F.serverTimestamp()
+    });
+
+    // Reduce inventory: fetch latest count for this brand and subtract cartons
+    const countSnap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'tobaccoCounts'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(10)
+    ));
+    // Find the most recent count that has this brand
+    const latestWithBrand = countSnap.docs.map(d=>d.data()).find(d=>d.counts&&d.counts[brandId]!==undefined);
+    if(latestWithBrand){
+      const currentCartons = latestWithBrand.counts[brandId] || 0;
+      const newCartons = Math.max(0, currentCartons - qty);
+      // Save an adjustment count doc
+      await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
+        counts: { [brandId]: newCartons },
+        type: 'carton_open_adjustment',
+        employee: CU.name,
+        date: localDate(),
+        timestamp: window.F.serverTimestamp(),
+        note: `Carton open: ${qty} carton${qty!==1?'s':''} of ${brand.name} opened`
+      });
+    }
+
+    toast(`✓ ${qty} carton${qty!==1?'s':''} of ${brand.name} logged — inventory updated`);
+    document.getElementById('openCartonForm').style.display = 'none';
+    loadOpenCartonLog();
+    loadTobInventory();
+  }catch(e){ toast('Error saving'); console.error(e); }
+}
+
+async function loadOpenCartonLog(){
+  const el = document.getElementById('openCartonLog');
+  if(!el) return;
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'tobaccoCartonOpens'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(30)
+    ));
+    if(snap.empty){ el.innerHTML='<div class="empty" style="padding:12px"><div class="ei">📦</div>No cartons logged yet</div>'; return; }
+    // Group by date
+    const today = localDate();
+    const todayDocs = snap.docs.filter(d=>d.data().date===today);
+    const olderDocs = snap.docs.filter(d=>d.data().date!==today);
+    let html = '';
+    if(todayDocs.length){
+      html += `<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:8px 0 4px">Today</div>`;
+      html += todayDocs.map(d=>{
+        const x = d.data();
+        const time = x.timestamp?.toDate?.()?.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})||'';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:600">${x.brandName}</div>
+            <div style="font-size:11px;color:var(--text3)">${x.employee} · ${time}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;font-weight:700;color:var(--amber)">${x.cartonsOpened} carton${x.cartonsOpened!==1?'s':''}</div>
+            <div style="font-size:11px;color:var(--text3)">${x.packsAdded} packs</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    if(olderDocs.length){
+      html += `<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:8px 0 4px;margin-top:4px">Earlier</div>`;
+      html += olderDocs.slice(0,10).map(d=>{
+        const x = d.data();
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:12px;font-weight:600">${x.brandName}</div>
+            <div style="font-size:11px;color:var(--text3)">${x.employee} · ${x.date}</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--amber)">${x.cartonsOpened} carton${x.cartonsOpened!==1?'s':''}</div>
+        </div>`;
+      }).join('');
+    }
+    el.innerHTML = html;
+  }catch(e){ el.innerHTML='<div style="padding:12px;color:var(--text3)">Error loading log</div>'; }
+}
+
+// ---- TOBACCO DELIVERIES ----
+
+let _deliveryBrandRowCount = 0;
+
+function togDeliveryForm(){
+  const f = document.getElementById('tobDeliveryForm');
+  if(!f) return;
+  const opening = f.style.display === 'none';
+  f.style.display = opening ? 'block' : 'none';
+  if(opening){
+    // Set default date to today
+    const di = document.getElementById('td-date');
+    if(di && !di.value) di.value = localDate();
+    // Clear fields
+    ['td-vendor','td-invoice','td-cost'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    _deliveryBrandRowCount = 0;
+    document.getElementById('td-brand-rows').innerHTML = '';
+    document.getElementById('td-total-line').style.display = 'none';
+    // Add one brand row to start
+    addDeliveryBrandRow();
+  }
+}
+
+function addDeliveryBrandRow(){
+  _deliveryBrandRowCount++;
+  const rowId = 'dr-'+_deliveryBrandRowCount;
+  const brandOptions = tobBrands.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  const row = document.createElement('div');
+  row.id = rowId;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 28px;gap:8px;align-items:end;margin-bottom:8px';
+  row.innerHTML = `
+    <div>
+      ${_deliveryBrandRowCount===1 ? '<label>Brand</label>' : ''}
+      <select id="dr-brand-${_deliveryBrandRowCount}" onchange="updDeliveryTotal()">
+        <option value="">— select brand —</option>
+        ${brandOptions}
+      </select>
+    </div>
+    <div>
+      ${_deliveryBrandRowCount===1 ? '<label>Cartons</label>' : ''}
+      <input type="number" id="dr-qty-${_deliveryBrandRowCount}" placeholder="0" min="0" oninput="updDeliveryTotal()" style="text-align:center" />
+    </div>
+    <button class="bsm" style="background:var(--red-light);color:var(--red);border-color:#f7c1c1;padding:8px 6px;margin-bottom:1px" onclick="removeDeliveryRow('${rowId}')">✕</button>
+  `;
+  document.getElementById('td-brand-rows').appendChild(row);
+}
+
+function removeDeliveryRow(rowId){
+  document.getElementById(rowId)?.remove();
+  updDeliveryTotal();
+}
+
+function updDeliveryTotal(){
+  let totalCartons = 0;
+  for(let i=1;i<=_deliveryBrandRowCount;i++){
+    const qty = parseInt(document.getElementById('dr-qty-'+i)?.value)||0;
+    totalCartons += qty;
+  }
+  const tl = document.getElementById('td-total-line');
+  if(tl){
+    if(totalCartons > 0){
+      tl.style.display = 'block';
+      tl.textContent = `Total: ${totalCartons} carton${totalCartons!==1?'s':''} received`;
+    } else {
+      tl.style.display = 'none';
+    }
+  }
+}
+
+async function saveTobDelivery(){
+  const vendor  = document.getElementById('td-vendor')?.value.trim()||'';
+  const invoice = document.getElementById('td-invoice')?.value.trim()||'';
+  const cost    = parseFloat(document.getElementById('td-cost')?.value)||0;
+  const date    = document.getElementById('td-date')?.value || localDate();
+
+  // Collect brand rows
+  const items = [];
+  for(let i=1;i<=_deliveryBrandRowCount;i++){
+    const brandId = document.getElementById('dr-brand-'+i)?.value;
+    const qty     = parseInt(document.getElementById('dr-qty-'+i)?.value)||0;
+    if(brandId && qty > 0){
+      const brand = tobBrands.find(b=>b.id===brandId);
+      items.push({ brandId, brandName: brand?.name||brandId, cartons: qty });
+    }
+  }
+  if(!items.length){ toast('Add at least one brand with a carton count'); return; }
+
+  try{
+    const totalCartons = items.reduce((s,x)=>s+x.cartons,0);
+
+    // Save delivery doc
+    await window.F.addDoc(window.F.collection(window.db,'tobaccoDeliveries'),{
+      vendor, invoice, cost, date,
+      items,
+      totalCartons,
+      employee: CU.name,
+      timestamp: window.F.serverTimestamp()
+    });
+
+    // Update inventory: for each brand, fetch current count and add cartons
+    for(const item of items){
+      const countSnap = await window.F.getDocs(window.F.query(
+        window.F.collection(window.db,'tobaccoCounts'),
+        window.F.orderBy('timestamp','desc'),
+        window.F.limit(10)
+      ));
+      const latestWithBrand = countSnap.docs.map(d=>d.data()).find(d=>d.counts&&d.counts[item.brandId]!==undefined);
+      const currentCartons = latestWithBrand?.counts?.[item.brandId] || 0;
+      await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
+        counts: { [item.brandId]: currentCartons + item.cartons },
+        type: 'delivery_adjustment',
+        employee: CU.name,
+        date,
+        timestamp: window.F.serverTimestamp(),
+        note: `Delivery: +${item.cartons} cartons of ${item.brandName} from ${vendor||'unknown vendor'}`
+      });
+    }
+
+    const costLine = cost > 0 ? ` · Invoice $${cost.toLocaleString()}` : '';
+    toast(`✓ Delivery saved — ${totalCartons} cartons added${costLine}`);
+    document.getElementById('tobDeliveryForm').style.display = 'none';
+    loadTobDeliveryLog();
+    loadTobInventory();
+  }catch(e){ toast('Error saving delivery'); console.error(e); }
+}
+
+async function loadTobDeliveryLog(){
+  const el = document.getElementById('tobDeliveryLog');
+  if(!el) return;
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'tobaccoDeliveries'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(20)
+    ));
+    if(snap.empty){ el.innerHTML='<div class="empty" style="padding:12px"><div class="ei">🚚</div>No deliveries logged yet</div>'; return; }
+    el.innerHTML = snap.docs.map(d=>{
+      const x = d.data();
+      const costLine = x.cost > 0 ? `<span style="color:var(--green);font-weight:600">$${x.cost.toLocaleString()}</span> · ` : '';
+      const invoiceLine = x.invoice ? `Invoice #${x.invoice} · ` : '';
+      const brandSummary = (x.items||[]).map(i=>`${i.brandName}: ${i.cartons}`).join(', ');
+      const canDel = CU.role==='operator';
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${x.vendor||'Delivery'} · ${x.date}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${costLine}${invoiceLine}${x.employee}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:3px">${brandSummary}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <div style="font-size:14px;font-weight:700;color:var(--green)">+${x.totalCartons} ctns</div>
+            ${canDel?`<button class="bsm" style="background:var(--red-light);color:var(--red);border-color:#f7c1c1" onclick="delTobDelivery('${d.id}')">Del</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div style="padding:12px;color:var(--text3)">Error loading deliveries</div>'; }
+}
+
+async function delTobDelivery(id){
+  if(!confirm('Delete this delivery record?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'tobaccoDeliveries',id));
+    toast('Deleted');
+    loadTobDeliveryLog();
+  }catch(e){ toast('Error deleting'); }
 }
 
 // ---- INVENTORY ----
