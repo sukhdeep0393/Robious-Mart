@@ -4101,6 +4101,66 @@ function weekOfMonthFromRanges(dateStr, weekRanges){
   return null;
 }
 
+// ---- PAYROLL PAY TRACKING ----
+// payKey format: "YYYY-MM-W{n}-{employeeName}"
+async function loadPayrollStatus(month){
+  // Returns map: payKey -> {paid, amount, paidAt, paidBy}
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'payrollRecords'),
+      window.F.where('month','==',month)
+    ));
+    const map = {};
+    snap.docs.forEach(d=>{ map[d.data().payKey] = {...d.data(), docId: d.id}; });
+    return map;
+  }catch(e){
+    // where+no-index fallback: fetch all and filter client-side
+    try{
+      const snap2 = await window.F.getDocs(window.F.query(
+        window.F.collection(window.db,'payrollRecords'),
+        window.F.orderBy('timestamp','desc'),
+        window.F.limit(200)
+      ));
+      const map = {};
+      snap2.docs.forEach(d=>{ 
+        const data = d.data();
+        if(data.month===month) map[data.payKey] = {...data, docId: d.id}; 
+      });
+      return map;
+    }catch(e2){ return {}; }
+  }
+}
+
+async function markWeekPaid(payKey, empName, weekLabel, month){
+  const existing = window._payrollCache?.[payKey];
+  if(existing){
+    // Already paid — offer to undo
+    if(!confirm(`Unmark payment for ${empName} ${weekLabel}?`)) return;
+    try{
+      await window.F.deleteDoc(window.F.doc(window.db,'payrollRecords',existing.docId));
+      toast('Payment unmarked');
+      loadEmployees();
+    }catch(e){ toast('Error'); }
+    return;
+  }
+  // Prompt for amount
+  const amtStr = prompt(`Amount paid to ${empName} for ${weekLabel}:\n(Leave blank to save without amount)`);
+  if(amtStr === null) return; // cancelled
+  const amount = parseFloat(amtStr) || null;
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'payrollRecords'),{
+      payKey, empName, weekLabel, month,
+      amount: amount,
+      paid: true,
+      paidBy: CU.name,
+      paidAt: new Date().toISOString(),
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Marked as paid' + (amount ? ` — $${amount.toFixed(2)}` : ''));
+    loadEmployees();
+  }catch(e){ toast('Error saving'); console.error(e); }
+}
+
 async function loadEmployees(){
   const el=document.getElementById('empContent');
   if(!el)return;
@@ -4111,9 +4171,15 @@ async function loadEmployees(){
   const mtdEnd=month+'-31';
   const filterEmp=document.getElementById('empFilter')?.value||'all';
   const weekRanges=getWeekRanges(month);
+  const isOp = CU?.role==='operator';
 
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('timestamp','desc'),window.F.limit(500)));
+    const [snap, payroll] = await Promise.all([
+      window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('timestamp','desc'),window.F.limit(500))),
+      isOp ? loadPayrollStatus(month) : Promise.resolve({})
+    ]);
+    window._payrollCache = payroll;
+
     const all=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
 
     const empMap={};
@@ -4138,18 +4204,27 @@ async function loadEmployees(){
 
     el.innerHTML=filtered.map(e=>{
       const shifts=e.shifts.sort((a,b)=>b.date.localeCompare(a.date));
-      // Build week summaries
       const weekSummary = weekRanges.map(wk=>{
         const hrs = e.weekHours[wk.week]||0;
         const wkShifts = shifts.filter(r=>weekOfMonthFromRanges(r.date,weekRanges)===wk.week);
         return {wk, hrs, wkShifts};
       }).filter(w=>w.hrs>0||w.wkShifts.length>0);
 
+      // Count paid weeks
+      const paidCount = weekSummary.filter(({wk})=>payroll[`${month}-W${wk.week}-${e.name}`]?.paid).length;
+      const paidBadge = isOp && paidCount > 0
+        ? `<div style="font-size:11px;color:var(--green);background:var(--green-light);border-radius:20px;padding:2px 8px;display:inline-block;margin-top:2px">${paidCount}/${weekSummary.length} weeks paid</div>`
+        : '';
+
       return`<div class="emp-card">
         <div class="emp-header">
           <div style="display:flex;align-items:center;gap:10px">
             <div class="emp-avatar">${e.name.charAt(0).toUpperCase()}</div>
-            <div><div style="font-size:15px;font-weight:600">${e.name}</div><div style="font-size:12px;color:var(--text3)">${e.shifts.length} shift${e.shifts.length!==1?'s':''} · ${new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div></div>
+            <div>
+              <div style="font-size:15px;font-weight:600">${e.name}</div>
+              <div style="font-size:12px;color:var(--text3)">${e.shifts.length} shift${e.shifts.length!==1?'s':''} · ${new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
+              ${paidBadge}
+            </div>
           </div>
           <div style="text-align:right">
             <div style="font-size:18px;font-weight:700;color:var(--blue)">${fmtHours(e.totalHours)}</div>
@@ -4159,23 +4234,34 @@ async function loadEmployees(){
 
         <!-- Weekly breakdown -->
         <div style="border-top:1px solid var(--border);margin-bottom:0">
-          ${weekSummary.map(({wk,hrs,wkShifts})=>`
+          ${weekSummary.map(({wk,hrs,wkShifts})=>{
+            const payKey = `${month}-W${wk.week}-${e.name}`;
+            const pr = payroll[payKey];
+            const isPaid = pr?.paid;
+            const paidBadgeHtml = isPaid
+              ? `<span style="background:var(--green-light);color:var(--green);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600">✓ Paid${pr.amount?' $'+pr.amount.toFixed(2):''}</span>`
+              : '';
+            const payBtnHtml = isOp
+              ? isPaid
+                ? `<button onclick="markWeekPaid('${payKey}','${e.name.replace(/'/g,"\\'")}','${wk.label.replace(/'/g,"\\'")}','${month}')" style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--green-light);color:var(--green);border:1px solid var(--green);cursor:pointer;font-weight:600">✓ Paid — Undo</button>`
+                : `<button onclick="markWeekPaid('${payKey}','${e.name.replace(/'/g,"\\'")}','${wk.label.replace(/'/g,"\\'")}','${month}')" style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);cursor:pointer">Mark paid</button>`
+              : '';
+            return`
           <div style="border-bottom:1px solid var(--border)">
-            <!-- Week header — tappable to expand -->
             <div onclick="toggleWeek('${e.name.replace(/'/g,'')}',${wk.week})" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;cursor:pointer;user-select:none">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:28px;height:28px;border-radius:8px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--blue)">W${wk.week}</div>
+                <div style="width:28px;height:28px;border-radius:8px;background:${isPaid?'var(--green-light)':'var(--blue-light)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${isPaid?'var(--green)':'var(--blue)'}">W${wk.week}</div>
                 <div>
                   <div style="font-size:13px;font-weight:600">${wk.label}</div>
                   <div style="font-size:11px;color:var(--text3)">${wkShifts.length} shift${wkShifts.length!==1?'s':''}</div>
                 </div>
               </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:14px;font-weight:700;color:var(--blue)">${fmtHours(hrs)}</span>
+              <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
+                ${payBtnHtml}
+                <span style="font-size:14px;font-weight:700;color:${isPaid?'var(--green)':'var(--blue)'}">${fmtHours(hrs)}</span>
                 <span style="font-size:11px;color:var(--text3)" id="wk-chev-${e.name.replace(/[^a-z]/gi,'')}-${wk.week}">▼</span>
               </div>
             </div>
-            <!-- Shift rows (collapsible) -->
             <div id="wk-rows-${e.name.replace(/[^a-z]/gi,'')}-${wk.week}" style="display:none;padding-bottom:4px">
               ${wkShifts.map(r=>`<div class="hours-row" style="padding-left:36px">
                 <div>
@@ -4185,8 +4271,8 @@ async function loadEmployees(){
                 <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?fmtHours(r.hoursWorked):'—'}</div>
               </div>`).join('')}
             </div>
-          </div>`).join('')}
-          <!-- Monthly total row -->
+          </div>`;
+          }).join('')}
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px;font-size:13px">
             <span style="font-weight:600;color:var(--text2)">Monthly total</span>
             <span style="font-size:16px;font-weight:800;color:var(--blue)">${fmtHours(e.totalHours)}</span>
@@ -4194,7 +4280,7 @@ async function loadEmployees(){
         </div>
       </div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div class="empty">Error loading employee data</div>';}
+  }catch(e){el.innerHTML='<div class="empty">Error loading employee data</div>';console.error(e);}
 }
 
 function toggleWeek(empNameRaw, weekNum){
