@@ -2796,8 +2796,8 @@ function previewFuelMargin(){
     + (total ? `<div style="display:flex;justify-content:space-between;font-weight:800;border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span>Total fuel profit</span><span style="color:var(--green)">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '');
 }
 
-
-  // Used by dashboard and fuel tab to show banners
+// Used by dashboard and fuel tab to show banners
+function checkFuelAlerts(){
   const el = document.getElementById('fuelAlertBanner');
   const el2 = document.getElementById('fuelAlertBannerDash');
   if(!window._latestFuelReport) { if(el) el.style.display='none'; if(el2) el2.style.display='none'; return; }
