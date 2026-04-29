@@ -230,6 +230,14 @@
   .filter-bar{display:flex;gap:8px;margin-bottom:12px;}
   .filter-bar input,.filter-bar select{flex:1;}
 
+  /* OVERHEAD & EXPENSES TAB */
+  .oh-cat-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .15s;}
+  .oh-cat-pill.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .oh-donut-wrap{position:relative;display:flex;justify-content:center;align-items:center;margin:16px 0 8px;}
+  .oh-donut-center{position:absolute;text-align:center;pointer-events:none;}
+  .oh-legend-row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);}
+  .oh-legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+  .oh-entry-row{padding:10px 0;border-bottom:1px solid var(--border);}
   /* MARGINS TAB */
   .cat-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:12px;overflow:hidden;}
   .cat-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none;gap:8px;}
@@ -1160,6 +1168,86 @@
     </div>
   </div>
 
+  <!-- OVERHEAD & EXPENSES PAGE (operator only) -->
+  <div class="page" id="page-overhead">
+
+    <!-- Log a new expense -->
+    <div class="card">
+      <div class="ct">Log Overhead / Business Expense</div>
+
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Date</label><input type="date" id="oh-date" /></div>
+        <div><label>Amount ($)</label><input type="number" id="oh-amount" placeholder="0.00" step="0.01" /></div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label>Category</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="oh-cat-pills">
+          <button class="oh-cat-pill active" data-cat="Overhead" onclick="selectOhCat(this)">🏠 Overhead</button>
+          <button class="oh-cat-pill" data-cat="Utilities" onclick="selectOhCat(this)">💡 Utilities</button>
+          <button class="oh-cat-pill" data-cat="Insurance" onclick="selectOhCat(this)">🛡 Insurance</button>
+          <button class="oh-cat-pill" data-cat="Payroll / Labor" onclick="selectOhCat(this)">👷 Payroll / Labor</button>
+          <button class="oh-cat-pill" data-cat="Regulatory / Licensing" onclick="selectOhCat(this)">📋 Regulatory / Licensing</button>
+          <button class="oh-cat-pill" data-cat="Unforeseen" onclick="selectOhCat(this)">⚠️ Unforeseen</button>
+          <button class="oh-cat-pill" data-cat="Other" onclick="selectOhCat(this)">📝 Other</button>
+          <button class="oh-cat-pill" id="oh-custom-pill" onclick="addCustomOhCategory()" style="border-style:dashed;color:var(--blue);border-color:var(--blue)">＋ Custom</button>
+        </div>
+        <input type="hidden" id="oh-category" value="Overhead" />
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label>Description</label>
+        <input id="oh-desc" placeholder="e.g. Monthly rent, Dominion Energy bill, Business license renewal…" />
+      </div>
+
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Vendor / Payee</label><input id="oh-vendor" placeholder="e.g. Dominion Energy" /></div>
+        <div><label>Payment Method</label>
+          <select id="oh-method">
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Check">Check</option>
+            <option value="Cash">Cash</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Auto-Pay">Auto-Pay</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label>Notes (optional)</label>
+        <textarea id="oh-notes" rows="2" placeholder="Any additional details…"></textarea>
+      </div>
+
+      <button class="btn bprimary" id="oh-submit-btn" style="padding:13px" onclick="submitOverhead()">Save Expense</button>
+    </div>
+
+    <!-- Chart + breakdown -->
+    <div class="card" id="oh-chart-card">
+      <div class="sh2" style="margin-bottom:12px">
+        <div class="ct" style="margin:0">Expense Breakdown</div>
+        <input type="month" id="oh-month" onchange="loadOverhead()" style="font-size:12px;padding:5px 8px;width:auto" />
+      </div>
+
+      <!-- Donut chart (pure SVG/CSS, no library) -->
+      <div class="oh-donut-wrap" id="oh-donut-wrap">
+        <svg id="oh-donut-svg" width="200" height="200" viewBox="0 0 200 200"></svg>
+        <div class="oh-donut-center" id="oh-donut-center">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Total</div>
+          <div style="font-size:20px;font-weight:800;color:var(--text)" id="oh-donut-total">$0</div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div id="oh-legend" style="margin-bottom:4px"></div>
+    </div>
+
+    <!-- Entry log -->
+    <div class="card">
+      <div class="ct" style="margin-bottom:12px">All Entries</div>
+      <div id="oh-list"><div class="empty"><div class="ei">🏢</div>No entries this month</div></div>
+    </div>
+  </div>
+
   <!-- PRICE HISTORY (operator only) -->
   <!-- MARGINS (operator only) -->
   <div class="page" id="page-margins">
@@ -1526,7 +1614,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'margins',l:'📊 Margins'},{id:'logs',l:'📋 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'margins',l:'📊 Margins'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'expenses',l:'💸 Expenses'},{id:'myhours',l:'⏱ My Hours'}]
 };
@@ -1545,6 +1633,8 @@ function loginOK(u){
   document.getElementById('f-emp').value=u.name;
   const delDate=document.getElementById('del-date');if(delDate)delDate.value=localDate();
   try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
+  try{const ohD=document.getElementById('oh-date');if(ohD)ohD.value=localDate();}catch(ex){}
+  try{const ohM=document.getElementById('oh-month');if(ohM)ohM.value=localDate().slice(0,7);}catch(ex){}
   // Set default month filters
   const ym=new Date().toISOString().slice(0,7);
   const em=document.getElementById('empMonth');if(em)em.value=ym;
@@ -1638,6 +1728,7 @@ function showTab(id){
   if(id==='compliance')loadLics();
   if(id==='employees')loadEmployees();
   if(id==='expenses')loadExpenses();
+  if(id==='overhead')loadOverhead();
   if(id==='deliveries')initDeliveries();
   if(id==='myhours')loadMyHours();
   if(id==='margins')loadMargins();
@@ -5992,7 +6083,255 @@ async function deleteExpense(id){
   }catch(e){ toast('Error deleting'); }
 }
 
-// ---- OTHER REVENUE ----
+// ---- OVERHEAD & EXPENSES ----
+
+// Custom categories stored locally per session (also persisted to Firestore settings)
+let ohCustomCategories = [];
+
+function selectOhCat(el){
+  document.querySelectorAll('#oh-cat-pills .oh-cat-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('oh-category').value = el.dataset.cat;
+}
+
+async function addCustomOhCategory(){
+  const name = prompt('Enter custom category name:');
+  if(!name || !name.trim()) return;
+  const cat = name.trim();
+  if(ohCustomCategories.includes(cat)) return;
+  ohCustomCategories.push(cat);
+  // Save to Firestore so it persists
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'ohCategories'),{name:cat,createdAt:new Date().toISOString()});
+  }catch(e){ /* non-fatal */ }
+  renderOhCategoryPills(cat);
+}
+
+function renderOhCategoryPills(selectCat){
+  const wrap = document.getElementById('oh-cat-pills');
+  if(!wrap) return;
+  const defaults = ['Overhead','Utilities','Insurance','Payroll / Labor','Regulatory / Licensing','Unforeseen','Other'];
+  const all = [...defaults, ...ohCustomCategories];
+  const catIcons = {'Overhead':'🏠','Utilities':'💡','Insurance':'🛡','Payroll / Labor':'👷','Regulatory / Licensing':'📋','Unforeseen':'⚠️','Other':'📝'};
+  wrap.innerHTML = all.map(c=>`
+    <button class="oh-cat-pill${c===selectCat?' active':''}" data-cat="${c}" onclick="selectOhCat(this)">
+      ${catIcons[c]||'🏷'} ${c}
+    </button>`).join('') +
+    `<button class="oh-cat-pill" id="oh-custom-pill" onclick="addCustomOhCategory()" style="border-style:dashed;color:var(--blue);border-color:var(--blue)">＋ Custom</button>`;
+  const cur = document.getElementById('oh-category');
+  if(selectCat && cur) cur.value = selectCat;
+}
+
+async function loadOhCategories(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'ohCategories'),
+      window.F.orderBy('createdAt','asc')
+    ));
+    ohCustomCategories = snap.docs.map(d=>d.data().name).filter(Boolean);
+    const cur = document.getElementById('oh-category')?.value || 'Overhead';
+    renderOhCategoryPills(cur);
+  }catch(e){ /* ignore */ }
+}
+
+async function submitOverhead(){
+  const amount = parseFloat(document.getElementById('oh-amount').value);
+  const desc   = document.getElementById('oh-desc').value.trim();
+  const cat    = document.getElementById('oh-category').value;
+  if(!amount || amount <= 0){ toast('Enter an amount'); return; }
+  if(!desc){ toast('Enter a description'); return; }
+
+  const btn = document.getElementById('oh-submit-btn');
+  if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
+
+  try{
+    await window.F.addDoc(window.F.collection(window.db,'overheadExpenses'),{
+      date:     document.getElementById('oh-date')?.value || localDate(),
+      amount,
+      category: cat,
+      description: desc,
+      vendor:   document.getElementById('oh-vendor').value.trim(),
+      method:   document.getElementById('oh-method').value,
+      notes:    document.getElementById('oh-notes').value.trim(),
+      employee: CU.name,
+      timestamp: window.F.serverTimestamp()
+    });
+    toast('✓ Expense saved!');
+    // Reset form
+    document.getElementById('oh-amount').value='';
+    document.getElementById('oh-desc').value='';
+    document.getElementById('oh-vendor').value='';
+    document.getElementById('oh-notes').value='';
+    renderOhCategoryPills('Overhead');
+    if(btn){btn.innerHTML='✓ Saved!';btn.style.background='var(--green)';}
+    setTimeout(()=>{if(btn){btn.innerHTML='Save Expense';btn.disabled=false;btn.style.background='';}},2500);
+    loadOverhead();
+  }catch(e){
+    toast('Error saving expense');
+    if(btn){btn.innerHTML='Save Expense';btn.disabled=false;}
+  }
+}
+
+async function loadOverhead(){
+  await loadOhCategories();
+  const listEl = document.getElementById('oh-list');
+  if(!listEl) return;
+
+  const month    = document.getElementById('oh-month')?.value || localDate().slice(0,7);
+  const mtdStart = month+'-01';
+  const mtdEnd   = month+'-31';
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'overheadExpenses'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(300)
+    ));
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const filtered = all.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
+
+    // Build chart data
+    const byCategory={};
+    filtered.forEach(x=>{ byCategory[x.category]=(byCategory[x.category]||0)+(x.amount||0); });
+    const total = filtered.reduce((s,x)=>s+(x.amount||0),0);
+
+    // Update donut total label
+    const totEl = document.getElementById('oh-donut-total');
+    if(totEl) totEl.textContent = '$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // Draw donut
+    drawOhDonut(byCategory, total);
+
+    // Draw legend
+    drawOhLegend(byCategory, total);
+
+    // Entry list
+    if(!filtered.length){
+      listEl.innerHTML='<div class="empty"><div class="ei">🏢</div>No entries this month</div>';
+      return;
+    }
+
+    const catIcons = {'Overhead':'🏠','Utilities':'💡','Insurance':'🛡','Payroll / Labor':'👷','Regulatory / Licensing':'📋','Unforeseen':'⚠️','Other':'📝'};
+    const colors = ohDonutColors();
+
+    listEl.innerHTML = filtered.map(x=>{
+      const color = colors[x.category] || '#aaa';
+      const methodBadge = x.method==='Cash'?'bgrn':x.method==='Check'?'bblu':'bamb';
+      return `<div class="oh-entry-row">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:14px;font-weight:700">${x.description}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text2)">${catIcons[x.category]||'🏷'} ${x.category} · ${x.date}</div>
+            ${x.vendor?`<div style="font-size:12px;color:var(--text2)">📌 ${x.vendor}</div>`:''}
+            ${x.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${x.notes}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:800;color:var(--red)">$${(x.amount||0).toFixed(2)}</div>
+            <span class="badge ${methodBadge}" style="margin-top:4px">${x.method}</span>
+            <div style="margin-top:4px"><button onclick="deleteOverhead('${x.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">Delete</button></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    listEl.innerHTML='<div class="empty">Error loading expenses</div>';
+    console.error('loadOverhead',e);
+  }
+}
+
+function ohDonutColors(){
+  return {
+    'Overhead':             '#4A90D9',
+    'Utilities':            '#F5A623',
+    'Insurance':            '#7ED321',
+    'Payroll / Labor':      '#9B59B6',
+    'Regulatory / Licensing':'#E74C3C',
+    'Unforeseen':           '#E67E22',
+    'Other':                '#95A5A6',
+    // extras cycle through
+    '_extra0':              '#1ABC9C',
+    '_extra1':              '#2ECC71',
+    '_extra2':              '#3498DB',
+    '_extra3':              '#F39C12',
+    '_extra4':              '#D35400',
+  };
+}
+
+function drawOhDonut(byCategory, total){
+  const svg = document.getElementById('oh-donut-svg');
+  if(!svg) return;
+  const cx=100, cy=100, r=80, ir=52;
+  const colors = ohDonutColors();
+  const entries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+
+  if(!entries.length || total===0){
+    svg.innerHTML=`<circle cx="100" cy="100" r="80" fill="none" stroke="var(--border)" stroke-width="28"/>`;
+    return;
+  }
+
+  // Assign colors — custom cats get _extra colors
+  const defaultCats = Object.keys(ohDonutColors()).filter(k=>!k.startsWith('_extra'));
+  let extraIdx=0;
+  const assignedColors={};
+  entries.forEach(([cat])=>{
+    if(colors[cat]) assignedColors[cat]=colors[cat];
+    else{ assignedColors[cat]=colors[`_extra${extraIdx%5}`]; extraIdx++; }
+  });
+
+  let startAngle = -Math.PI/2;
+  const paths = entries.map(([cat, amt])=>{
+    const frac = amt/total;
+    const angle = frac * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const x1=cx+r*Math.cos(startAngle), y1=cy+r*Math.sin(startAngle);
+    const x2=cx+r*Math.cos(endAngle),   y2=cy+r*Math.sin(endAngle);
+    const xi1=cx+ir*Math.cos(startAngle),yi1=cy+ir*Math.sin(startAngle);
+    const xi2=cx+ir*Math.cos(endAngle),  yi2=cy+ir*Math.sin(endAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    const d = entries.length===1
+      ? `M ${cx} ${cy-r} A ${r} ${r} 0 1 1 ${cx-0.01} ${cy-r} Z M ${cx} ${cy-ir} A ${ir} ${ir} 0 1 0 ${cx-0.01} ${cy-ir} Z`
+      : `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${ir} ${ir} 0 ${large} 0 ${xi1} ${yi1} Z`;
+    startAngle = endAngle;
+    return `<path d="${d}" fill="${assignedColors[cat]}" opacity="0.9" />`;
+  });
+  svg.innerHTML = paths.join('');
+}
+
+function drawOhLegend(byCategory, total){
+  const el = document.getElementById('oh-legend');
+  if(!el) return;
+  const colors = ohDonutColors();
+  const defaultCats = Object.keys(ohDonutColors()).filter(k=>!k.startsWith('_extra'));
+  let extraIdx=0;
+  const entries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){ el.innerHTML=''; return; }
+
+  el.innerHTML = entries.map(([cat, amt])=>{
+    let color = colors[cat];
+    if(!color){ color = colors[`_extra${extraIdx%5}`]; extraIdx++; }
+    const pct = total>0 ? ((amt/total)*100).toFixed(1) : '0.0';
+    return `<div class="oh-legend-row">
+      <div class="oh-legend-dot" style="background:${color}"></div>
+      <div style="flex:1;font-weight:600">${cat}</div>
+      <div style="font-size:12px;color:var(--text2);margin-right:10px">${pct}%</div>
+      <div style="font-size:13px;font-weight:700">$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteOverhead(id){
+  if(!confirm('Delete this entry?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'overheadExpenses',id));
+    toast('Entry deleted');
+    loadOverhead();
+  }catch(e){ toast('Error deleting'); }
+}
+
+
 function orSourceSelectChange(){
   const sel = document.getElementById('or-source-select');
   const custom = document.getElementById('or-source-custom');
