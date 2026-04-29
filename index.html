@@ -2353,7 +2353,7 @@ async function loadFuelThresholds(){
       window.F.collection(window.db,'settings'),
       window.F.limit(20)
     ));
-    const doc = snap.docs.find(d=>d.id==='fuelThresholds');
+    const doc = snap.docs.find(d=>d.id==='fuelThresholds' || d.data()._type==='fuelThresholds');
     if(doc){
       const data = doc.data();
       window.fuelThresholds = {
@@ -2371,12 +2371,12 @@ async function saveFuelThresholds(){
   const dies = parseInt(document.getElementById('ft-dies').value) || 1500;
   try{
     const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(20)));
-    const existing = snap.docs.find(d=>d.id==='fuelThresholds');
+    const existing = snap.docs.find(d=>d.id==='fuelThresholds' || d.data()._type==='fuelThresholds');
     const data = { regular: reg, premium: prem, diesel: dies, updatedAt: new Date().toISOString() };
     if(existing){
-      await window.F.updateDoc(window.F.doc(window.db,'settings','fuelThresholds'), data);
+      await window.F.updateDoc(window.F.doc(window.db,'settings', existing.id), data);
     } else {
-      await window.F.setDoc(window.F.doc(window.db,'settings','fuelThresholds'), data);
+      await window.F.addDoc(window.F.collection(window.db,'settings'), { ...data, _type: 'fuelThresholds' });
     }
     window.fuelThresholds = { regular: reg, premium: prem, diesel: dies };
     toast('✓ Fuel alert thresholds saved!');
