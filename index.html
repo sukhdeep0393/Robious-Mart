@@ -1818,9 +1818,15 @@ async function loadDashboard(){
       </div>
 
       <!-- Cash Discrepancies -->
-      <div class="dash-section-hdr">
-        <span class="dash-section-title">💵 Cash discrepancies — ${monthName}</span>
+      <div class="dash-section-hdr" onclick="toggleDashSection('cashdisc')" style="cursor:pointer;user-select:none">
+        <span class="dash-section-title">💵 Cash discrepancies — ${monthName}
+          <span style="font-size:11px;font-weight:600;margin-left:6px;color:${mtdTotalShort>0?'var(--red)':'var(--green)'}">
+            ${mtdTotalShort>0?'–$'+mtdTotalShort.toFixed(2)+' short':'✓ All clear'}
+          </span>
+        </span>
+        <span id="dash-chev-cashdisc" style="font-size:12px;color:var(--blue);font-weight:500">▼ show</span>
       </div>
+      <div id="dash-body-cashdisc" style="display:none">
       <div class="card" style="padding:0;overflow:hidden">
         ${(()=>{
           if(!mtdR.length) return '<div style="padding:14px;font-size:13px;color:var(--text3)">No shift reports yet</div>';
@@ -1848,7 +1854,6 @@ async function loadDashboard(){
           if(cashDiscReports.length===0){
             html += '<div style="padding:12px 14px;font-size:13px;color:var(--green)">✓ All shifts balanced this month</div>';
           } else {
-            html += '<div>';
             const sorted = cashDiscReports.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
             sorted.forEach(r=>{
               const isShort = r.cashDifference<0;
@@ -1862,18 +1867,18 @@ async function loadDashboard(){
                 + '<div style="font-size:14px;font-weight:700;color:'+(isShort?'var(--red)':'var(--green)')+';flex-shrink:0">'+(isShort?'⚑ −$':'+ $')+amt+'</div>'
                 + '</div>';
             });
-            html += '</div>';
           }
           return html;
         })()}
       </div>
+      </div>
 
       <!-- Expenses -->
-      <div class="dash-section-hdr">
+      <div class="dash-section-hdr" onclick="toggleDashSection('expenses')" style="cursor:pointer;user-select:none">
         <span class="dash-section-title">💸 Expenses — ${monthName}</span>
-        <span class="dash-section-link" onclick="showTab('expenses')" style="cursor:pointer">View all →</span>
+        <span id="dash-chev-expenses" style="font-size:12px;color:var(--blue);font-weight:500">▼ show details</span>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
+      <div id="dash-body-expenses" style="display:none"><div class="card" style="padding:0;overflow:hidden">
         <div style="display:grid;grid-template-columns:1fr 1fr">
           <div style="padding:14px 16px;border-right:1px solid var(--border)">
             <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total expenses</div>
@@ -1884,14 +1889,14 @@ async function loadDashboard(){
             <div style="font-size:22px;font-weight:800;color:${mtdSales-mtdExpTotal>=0?'var(--green)':'var(--red)'}">$${(mtdSales-mtdExpTotal).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
           </div>
         </div>
-      </div>
+      </div></div>
 
       <!-- Other Revenue -->
-      <div class="dash-section-hdr">
+      <div class="dash-section-hdr" onclick="toggleDashSection('otherrev')" style="cursor:pointer;user-select:none">
         <span class="dash-section-title">💰 Other revenue — ${monthName}</span>
-        <span class="dash-section-link" onclick="showTab('otherrev')" style="cursor:pointer">View all →</span>
+        <span id="dash-chev-otherrev" style="font-size:12px;color:var(--blue);font-weight:500">▼ show details</span>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
+      <div id="dash-body-otherrev" style="display:none"><div class="card" style="padding:0;overflow:hidden">
         <div style="display:grid;grid-template-columns:1fr 1fr;${mtdORTotal>0?'':''}">
           <div style="padding:14px 16px;border-right:1px solid var(--border)">
             <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total other revenue</div>
@@ -1903,13 +1908,17 @@ async function loadDashboard(){
             ${Object.keys(orBySource).length?Object.entries(orBySource).sort((a,b)=>b[1]-a[1]).map(([src,amt])=>`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text2)">${src}</span><span style="font-weight:600;color:var(--green)">$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`).join(''):'<div style="font-size:12px;color:var(--text3)">No entries this month</div>'}
           </div>
         </div>
-      </div>
+      </div></div>
 
       <!-- Deliveries -->
       <div class="dash-section-hdr">
-        <span class="dash-section-title">🚚 Deliveries — ${monthName}</span>
+        <span class="dash-section-title" onclick="toggleDashSection('deliveries')" style="cursor:pointer;user-select:none">🚚 Deliveries — ${monthName}
+          <span style="font-size:11px;font-weight:600;margin-left:6px;color:var(--text2)">$${mtdDlTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})} · ${mtdDl.length} logs</span>
+          <span id="dash-chev-deliveries" style="font-size:12px;color:var(--blue);font-weight:500;margin-left:4px">▼ show</span>
+        </span>
         <span class="dash-section-link" onclick="showTab('deliveries')" style="cursor:pointer">View all →</span>
       </div>
+      <div id="dash-body-deliveries" style="display:none">
       <div class="card" style="padding:0;overflow:hidden">
         <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
           <div style="padding:14px 16px;border-right:1px solid var(--border)">
@@ -1933,12 +1942,14 @@ async function loadDashboard(){
           </div>`).join('')
         : `<div class="empty" style="padding:14px">No deliveries logged in ${monthName}</div>`}
       </div>
+      </div>
 
       <!-- Fuel breakdown -->
-      <div class="dash-section-hdr">
+      <div class="dash-section-hdr" onclick="toggleDashSection('fuel')" style="cursor:pointer;user-select:none">
         <span class="dash-section-title">⛽ Fuel — ${monthName}</span>
+        <span id="dash-chev-fuel" style="font-size:12px;color:var(--blue);font-weight:500">▼ show details</span>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
+      <div id="dash-body-fuel" style="display:none"><div class="card" style="padding:0;overflow:hidden">
         ${[
           {label:'Regular',val:mtdRegGal,cap:10000,color:'#1a5ca8'},
           {label:'Premium',val:mtdPremGal,cap:8000,color:'#854F0B'},
@@ -1953,14 +1964,14 @@ async function loadDashboard(){
             <div style="font-size:12px;font-weight:700;text-align:right">${f.val.toFixed(0)}<span style="font-size:10px;font-weight:400;color:var(--text3)"> gal</span></div>
           </div>`;
         }).join('')}
-      </div>
+      </div></div>
 
       <!-- Fuel Deliveries on Dashboard -->
       <div class="dash-section-hdr">
-        <span class="dash-section-title">🚛 Fuel deliveries — ${monthName}</span>
+        <span class="dash-section-title" onclick="toggleDashSection('fueldeliveries')" style="cursor:pointer;user-select:none">🚛 Fuel deliveries — ${monthName} <span id="dash-chev-fueldeliveries" style="font-size:12px;color:var(--blue);font-weight:500">▼ show details</span></span>
         <span class="dash-section-link" onclick="showTab('fuel')" style="cursor:pointer">Go to tab →</span>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
+      <div id="dash-body-fueldeliveries" style="display:none"><div class="card" style="padding:0;overflow:hidden">
         ${(()=>{
           if(!mtdFuelDl.length) return '<div class="empty" style="padding:14px">No fuel deliveries in ' + monthName + '</div>';
           // Summary row
@@ -1997,7 +2008,7 @@ async function loadDashboard(){
           }).join('');
           return summaryHtml + rowsHtml;
         })()}
-      </div>
+      </div></div>
 
       <!-- Scratch-off dashboard — tappable to expand -->
       <div class="dash-section-hdr">
@@ -2141,6 +2152,18 @@ function toggleScrDash(){
     if(hint)    hint.style.display    = 'block';
     if(chevron) chevron.textContent   = '▼ expand';
   }
+}
+
+// Generic dashboard section toggle
+window._dashOpen = {};
+function toggleDashSection(id){
+  window._dashOpen[id] = !window._dashOpen[id];
+  const body    = document.getElementById('dash-body-'+id);
+  const chevron = document.getElementById('dash-chev-'+id);
+  if(!body) return;
+  const open = window._dashOpen[id];
+  body.style.display    = open ? 'block' : 'none';
+  if(chevron) chevron.textContent = open ? '▲ collapse' : '▼ show';
 }
 
 // ---- DAILY ----
