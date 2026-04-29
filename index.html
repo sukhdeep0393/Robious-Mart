@@ -2468,11 +2468,12 @@ function renderScrRows(){
         </label>`:''}
         <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
       </div>
-      <div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
         <input type="number" min="0" max="999" placeholder="000"
           id="sc-slot-${s.slotIdx}"
           oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
           style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
+        ${type==='closing' && s.totalTickets ? `<button onclick="markSoldOut(${s.slotIdx},${s.totalTickets})" style="font-size:10px;font-weight:700;color:var(--red);background:var(--red-light);border:1px solid #f7c1c1;border-radius:6px;padding:3px 7px;cursor:pointer;white-space:nowrap">Sold out</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2483,7 +2484,15 @@ function toggleNewBook(slotIdx, checked){
   scrNewBook[slotIdx] = checked;
   updScrTot();
 }
-
+function markSoldOut(slotIdx, totalTickets){
+  const inp = document.getElementById('sc-slot-'+slotIdx);
+  if(!inp) return;
+  const lastTicket = totalTickets - 1;
+  inp.value = lastTicket;
+  const row = document.getElementById('scr-row-'+slotIdx);
+  if(row) row.style.opacity = '0.6';
+  updScrTot();
+}
 function updScrTot(){
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
   const type = document.getElementById('s-type')?.value || 'opening';
