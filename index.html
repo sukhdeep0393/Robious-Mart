@@ -1805,10 +1805,12 @@ async function loadDashboard(){
     const yestSales=sum(yestR,'totalSales');
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
-    // Expenses for selected month
-    const expSnap=await getDocs(query(collection(window.db,'expenses'),orderBy('timestamp','desc'),limit(200)));
+    // Overhead expenses for selected month
+    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('timestamp','desc'),limit(300)));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
+    const mtdExpByCategory={};
+    mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
     // Other revenue for selected month
     const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('timestamp','desc'),limit(200)));
@@ -1886,49 +1888,6 @@ async function loadDashboard(){
       openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
     }catch(e2){}
 
-    // ---- PAYROLL DASHBOARD DATA ----
-    let dashPayroll={}, dashWages={}, dashPayrollShifts=[];
-    try{
-      const weekRangesDash = getWeekRanges(selMonth);
-      // Get payroll records for the month
-      const prSnap = await getDocs(query(collection(window.db,'payrollRecords'),orderBy('timestamp','desc'),limit(200)));
-      prSnap.docs.forEach(d=>{
-        const data=d.data();
-        if(data.month===selMonth) dashPayroll[data.payKey]={...data,docId:d.id};
-      });
-      // Get hourly wage rates
-      const wgSnap = await getDocs(query(collection(window.db,'employeeWages')));
-      wgSnap.docs.forEach(d=>{ dashWages[d.id]={...d.data()}; });
-      // Compute per-employee hours for the month
-      const empHoursMap={};
-      mtdR.forEach(r=>{
-        if(!r.employee) return;
-        if(!empHoursMap[r.employee]) empHoursMap[r.employee]={name:r.employee, totalHours:0, weekHours:{}, shifts:0};
-        empHoursMap[r.employee].totalHours += parseFloat(r.hoursWorked)||0;
-        empHoursMap[r.employee].shifts++;
-        const wk = weekOfMonthFromRanges(r.date, weekRangesDash);
-        if(wk) empHoursMap[r.employee].weekHours[wk]=(empHoursMap[r.employee].weekHours[wk]||0)+(parseFloat(r.hoursWorked)||0);
-      });
-      // Build per-employee payroll summary
-      dashPayrollShifts = Object.values(empHoursMap).map(emp=>{
-        const rate = dashWages[emp.name]?.rate || 0;
-        const weekSummary = weekRangesDash.map(wk=>{
-          const hrs = emp.weekHours[wk.week]||0;
-          if(!hrs) return null;
-          const payKey = `${selMonth}-W${wk.week}-${emp.name}`;
-          const pr = dashPayroll[payKey];
-          const isPaid = pr?.paid||false;
-          const estPay = rate > 0 ? hrs * rate : (pr?.amount||0);
-          return {wk, hrs, payKey, isPaid, amount: pr?.amount||null, estPay};
-        }).filter(Boolean);
-        const paidWeeks = weekSummary.filter(w=>w.isPaid);
-        const unpaidWeeks = weekSummary.filter(w=>!w.isPaid);
-        const totalPaidAmt = paidWeeks.reduce((s,w)=>s+(w.amount||0),0);
-        const totalEstUnpaid = rate>0 ? unpaidWeeks.reduce((s,w)=>s+(w.estPay||0),0) : null;
-        return {name:emp.name, rate, totalHours:emp.totalHours, shifts:emp.shifts, weekSummary, paidWeeks, unpaidWeeks, totalPaidAmt, totalEstUnpaid};
-      }).sort((a,b)=>a.name.localeCompare(b.name));
-    }catch(pe){ console.log('payroll dash error',pe); }
-
     // Tobacco low stock + discrepancies
     let lowTobacco=[], tobDiscrepancies=[];
     try{
@@ -1948,7 +1907,6 @@ async function loadDashboard(){
     const urgLics=lics.filter(l=>!l.ack&&du(l.due)<=30);
     const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!=''&&r.date>=mtdStart&&r.date<=mtdEnd).slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    const catIcons={delivery:'🚚',repair:'🔧',utilities:'💡',supplies:'📦',labor:'👷',other:'📝'};
 
     el.innerHTML=`
       <!-- Greeting row — only show if current month -->
@@ -2204,119 +2162,76 @@ async function loadDashboard(){
         })()}
       </div></div>
 
-      <!-- ===== PAYROLL DASHBOARD SECTION ===== -->
+      <!-- ===== OVERHEAD & EXPENSES DASHBOARD SECTION ===== -->
+      <div class="dash-section-hdr" onclick="toggleDashSection('overhead')" style="cursor:pointer;user-select:none">
+        <span class="dash-section-title">🏢 Overhead & Expenses — ${monthName}
+          <span id="dash-chev-overhead" style="font-size:12px;color:var(--blue);font-weight:500;margin-left:6px">▼ show</span>
+        </span>
+        <span class="dash-section-link" onclick="event.stopPropagation();showTab('overhead')" style="cursor:pointer">Go to tab →</span>
+      </div>
+      <div id="dash-body-overhead" style="display:none">
+        <div class="card" style="padding:0;overflow:hidden">
+          ${(()=>{
+            if(!mtdExp.length) return `<div style="padding:14px;font-size:13px;color:var(--text3)">No overhead expenses logged for ${monthName}. <span style="color:var(--blue);cursor:pointer" onclick="showTab('overhead')">Go to tab →</span></div>`;
+            const catColors={'Overhead':'#4A90D9','Utilities':'#F5A623','Insurance':'#7ED321','Payroll / Labor':'#9B59B6','Regulatory / Licensing':'#E74C3C','Unforeseen':'#E67E22','Other':'#95A5A6'};
+            const catIcons2={'Overhead':'🏠','Utilities':'💡','Insurance':'🛡','Payroll / Labor':'👷','Regulatory / Licensing':'📋','Unforeseen':'⚠️','Other':'📝'};
+            const sortedCats = Object.entries(mtdExpByCategory).sort((a,b)=>b[1]-a[1]);
+            let extraIdx=0;
+            const extraColors=['#1ABC9C','#2ECC71','#3498DB','#F39C12','#D35400'];
+            const topLine = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)">'
+              + '<div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Total overhead — '+monthName+'</div>'
+              + '<div style="font-size:24px;font-weight:800;color:var(--red)">$'+mtdExpTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div></div>'
+              + '<div style="font-size:12px;color:var(--text3)">'+mtdExp.length+' entr'+(mtdExp.length!==1?'ies':'y')+'</div>'
+              + '</div>';
+            const catRows = sortedCats.map(([cat,amt])=>{
+              const color = catColors[cat] || extraColors[extraIdx++%5];
+              const pct = mtdExpTotal>0 ? ((amt/mtdExpTotal)*100).toFixed(1) : '0.0';
+              const icon = catIcons2[cat]||'🏷';
+              const barW = mtdExpTotal>0 ? Math.max(3,Math.round(amt/mtdExpTotal*100)) : 3;
+              return '<div style="padding:9px 14px;border-bottom:1px solid var(--border)">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+                + '<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+color+';display:inline-block"></span><span style="font-size:13px;font-weight:600">'+icon+' '+cat+'</span></div>'
+                + '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;color:var(--text3)">'+pct+'%</span><span style="font-size:14px;font-weight:700">$'+amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div>'
+                + '</div>'
+                + '<div style="background:var(--border);border-radius:4px;height:5px;overflow:hidden"><div style="height:100%;width:'+barW+'%;background:'+color+';border-radius:4px"></div></div>'
+                + '</div>';
+            }).join('');
+            return topLine + catRows;
+          })()}
+        </div>
+      </div>
+      <!-- ===== END OVERHEAD SECTION ===== -->
+
+      <!-- ===== NET PROFIT CARD ===== -->
       ${(()=>{
-        if(!dashPayrollShifts.length) return `
-          <div class="dash-section-hdr">
-            <span class="dash-section-title" onclick="toggleDashSection('payroll')" style="cursor:pointer;user-select:none">
-              💵 Payroll — ${monthName}
-              <span id="dash-chev-payroll" style="font-size:12px;color:var(--blue);font-weight:500;margin-left:4px">▼ show</span>
-            </span>
-            <span class="dash-section-link" onclick="showTab('employees')" style="cursor:pointer">Go to tab →</span>
-          </div>
-          <div id="dash-body-payroll" style="display:none">
-            <div class="card"><div style="font-size:13px;color:var(--text3);padding:4px 0">No shift data for ${monthName}. <span style="color:var(--blue);cursor:pointer" onclick="showTab('employees')">Go to Employees →</span></div></div>
-          </div>`;
-        const totalPaidMTD = dashPayrollShifts.reduce((s,e)=>s+(e.totalPaidAmt||0),0);
-        const totalUnpaidEst = dashPayrollShifts.every(e=>e.rate>0) ? dashPayrollShifts.reduce((s,e)=>s+(e.totalEstUnpaid||0),0) : null;
-        const anyUnpaid = dashPayrollShifts.some(e=>e.unpaidWeeks.length>0);
+        const netProfit = mtdSales - mtdExpTotal;
+        const netColor = netProfit >= 0 ? 'var(--green)' : 'var(--red)';
+        const netLabel = netProfit >= 0 ? 'Net Profit' : 'Net Loss';
+        const netIcon  = netProfit >= 0 ? '📈' : '📉';
+        const margin   = mtdSales > 0 ? ((netProfit / mtdSales) * 100).toFixed(1) : '—';
         return `
-          <div class="dash-section-hdr">
-            <span class="dash-section-title" onclick="toggleDashSection('payroll')" style="cursor:pointer;user-select:none">
-              💵 Payroll — ${monthName}
-              ${anyUnpaid ? `<span style="background:var(--amber-light);color:var(--amber);border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:6px">Pending</span>` : `<span style="background:var(--green-light);color:var(--green);border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:6px">All paid</span>`}
-              <span id="dash-chev-payroll" style="font-size:12px;color:var(--blue);font-weight:500;margin-left:6px">▼ show</span>
-            </span>
-            <span class="dash-section-link" onclick="showTab('employees')" style="cursor:pointer">Go to tab →</span>
+        <div class="card" style="border:2px solid ${netColor};padding:0;overflow:hidden;margin-bottom:4px">
+          <div style="padding:14px 16px;background:${netProfit>=0?'var(--green-light)':'var(--red-light)'}">
+            <div style="font-size:11px;font-weight:700;color:${netColor};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${netIcon} ${netLabel} — ${monthName}</div>
+            <div style="font-size:30px;font-weight:800;color:${netColor};line-height:1">${netProfit>=0?'+':'-'}$${Math.abs(netProfit).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="font-size:12px;color:${netColor};opacity:.8;margin-top:4px">Profit margin: ${margin !== '—' ? margin+'%' : '—'}</div>
           </div>
-          <!-- Collapsed summary row (always visible) -->
-          <div class="card" style="padding:0;overflow:hidden;margin-bottom:2px" onclick="toggleDashSection('payroll')" id="dash-payroll-summary-card" style="cursor:pointer">
-            <div style="display:grid;grid-template-columns:1fr 1fr${totalUnpaidEst!==null?' 1fr':''};border-bottom:0">
-              <div style="padding:12px 14px${totalUnpaidEst!==null?';border-right:1px solid var(--border)':''}">
-                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Paid ${monthName}</div>
-                <div style="font-size:20px;font-weight:800;color:var(--green)">${totalPaidMTD>0?'$'+totalPaidMTD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</div>
-                <div style="font-size:10px;color:var(--text3)">${dashPayrollShifts.reduce((s,e)=>s+e.paidWeeks.length,0)} week${dashPayrollShifts.reduce((s,e)=>s+e.paidWeeks.length,0)!==1?'s':''} paid</div>
-              </div>
-              <div style="padding:12px 14px${totalUnpaidEst!==null?';border-right:1px solid var(--border)':''}">
-                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Employees</div>
-                <div style="font-size:20px;font-weight:800">${dashPayrollShifts.length}</div>
-                <div style="font-size:10px;color:var(--text3)">${dashPayrollShifts.reduce((s,e)=>s+e.unpaidWeeks.length,0)} unpaid week${dashPayrollShifts.reduce((s,e)=>s+e.unpaidWeeks.length,0)!==1?'s':''}</div>
-              </div>
-              ${totalUnpaidEst!==null?`<div style="padding:12px 14px">
-                <div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Est. Owed</div>
-                <div style="font-size:20px;font-weight:800;color:var(--amber)">$${totalUnpaidEst.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-                <div style="font-size:10px;color:var(--text3)">based on hourly rates</div>
-              </div>`:''}
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-top:2px solid ${netColor}">
+            <div style="padding:12px 14px;border-right:1px solid var(--border)">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Total Sales</div>
+              <div style="font-size:18px;font-weight:800;color:var(--green)">$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+              <div style="font-size:11px;color:var(--text3)">${mtdR.length} shift${mtdR.length!==1?'s':''}</div>
             </div>
-            <div style="padding:5px 14px 8px;font-size:11px;color:var(--text3);text-align:center">▼ tap to see breakdown</div>
+            <div style="padding:12px 14px">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Total Overhead</div>
+              <div style="font-size:18px;font-weight:800;color:var(--red)">$${mtdExpTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+              <div style="font-size:11px;color:var(--text3)">${mtdExp.length} entr${mtdExp.length!==1?'ies':'y'}</div>
+            </div>
           </div>
-          <!-- Expanded per-employee breakdown -->
-          <div id="dash-body-payroll" style="display:none">
-            <div class="card" style="padding:0;overflow:hidden">
-              <!-- Wage rate settings row -->
-              <div style="padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Hourly wage rates</span>
-                ${dashPayrollShifts.map(emp=>`
-                  <span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:12px">
-                    <span style="font-weight:600">${emp.name}</span>
-                    <span style="color:var(--text3)">$</span>
-                    <input type="number" step="0.25" min="0" placeholder="—"
-                      value="${emp.rate||''}"
-                      onchange="saveDashWageRate('${emp.name.replace(/'/g,"\\'")}',this.value)"
-                      onclick="event.stopPropagation()"
-                      style="width:52px;border:none;background:transparent;font-size:12px;font-weight:600;color:var(--blue);padding:0;outline:none"
-                    /><span style="font-size:10px;color:var(--text3)">/hr</span>
-                  </span>`).join('')}
-              </div>
-              <!-- Per-employee rows -->
-              ${dashPayrollShifts.map(emp=>{
-                const rate = emp.rate||0;
-                const allPaid = emp.unpaidWeeks.length===0 && emp.weekSummary.length>0;
-                return `<div style="border-bottom:1px solid var(--border)">
-                  <!-- Employee header -->
-                  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px">
-                    <div style="display:flex;align-items:center;gap:8px">
-                      <div style="width:30px;height:30px;border-radius:50%;background:${allPaid?'var(--green-light)':'var(--blue-light)'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:${allPaid?'var(--green)':'var(--blue)'}">${emp.name.charAt(0).toUpperCase()}</div>
-                      <div>
-                        <div style="font-size:14px;font-weight:700">${emp.name}</div>
-                        <div style="font-size:11px;color:var(--text3)">${emp.shifts} shift${emp.shifts!==1?'s':''} · ${fmtHours(emp.totalHours)} total</div>
-                      </div>
-                    </div>
-                    <div style="text-align:right">
-                      ${allPaid
-                        ? `<div style="font-size:12px;font-weight:700;color:var(--green)">✓ All paid</div><div style="font-size:11px;color:var(--text3)">$${emp.totalPaidAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
-                        : `<div style="font-size:12px;font-weight:700;color:var(--amber)">${emp.unpaidWeeks.length} unpaid</div>${rate>0?`<div style="font-size:11px;color:var(--amber)">est. $${emp.totalEstUnpaid.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} owed</div>`:'<div style="font-size:10px;color:var(--text3)">set rate to calc</div>'}`
-                      }
-                    </div>
-                  </div>
-                  <!-- Per-week rows -->
-                  ${emp.weekSummary.map(w=>{
-                    const estAmt = rate>0 ? w.hrs*rate : null;
-                    const displayAmt = w.isPaid && w.amount ? '$'+w.amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : (estAmt ? '$'+estAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '');
-                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 8px 52px;border-top:1px solid var(--border)">
-                      <div>
-                        <div style="font-size:12px;font-weight:600">${w.wk.label}</div>
-                        <div style="font-size:11px;color:var(--text3)">${fmtHours(w.hrs)}${!w.isPaid&&estAmt?' · est. '+displayAmt:''}</div>
-                      </div>
-                      <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
-                        ${w.isPaid
-                          ? `<span style="font-size:12px;font-weight:700;color:var(--green)">✓ ${w.amount?'$'+w.amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'Paid'}</span>`
-                          : `<button onclick="markWeekPaidFromDash('${w.payKey}','${emp.name.replace(/'/g,"\\'")}','${w.wk.label.replace(/'/g,"\\'")}','${selMonth}',${estAmt||0})" style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--blue);color:#fff;border:none;cursor:pointer;font-weight:600">Mark paid</button>`
-                        }
-                      </div>
-                    </div>`;
-                  }).join('')}
-                </div>`;
-              }).join('')}
-              <!-- MTD total footer -->
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--bg2)">
-                <span style="font-size:12px;font-weight:700;color:var(--text2)">Total paid — ${monthName}</span>
-                <span style="font-size:16px;font-weight:800;color:var(--green)">${totalPaidMTD>0?'$'+totalPaidMTD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'$0.00'}</span>
-              </div>
-            </div>
-          </div>`;
+        </div>`;
       })()}
-      <!-- ===== END PAYROLL SECTION ===== -->
+      <!-- ===== END NET PROFIT CARD ===== -->
+
 
       <!-- Scratch-off dashboard — tappable to expand -->
       <div class="dash-section-hdr">
