@@ -320,6 +320,8 @@
 
   <!-- DASHBOARD (operator only) -->
   <div class="page" id="page-dashboard">
+    <!-- Fuel alert banner for dashboard -->
+    <div id="fuelAlertBannerDash" style="display:none"></div>
     <!-- Month selector bar (static, always shown) -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="flex:1">
@@ -521,9 +523,24 @@
 
   <!-- FUEL -->
   <div class="page" id="page-fuel">
+    <!-- Fuel alert banner (shown when any grade is low) -->
+    <div id="fuelAlertBanner" style="display:none"></div>
+
     <div class="card" id="latestFuelCard" style="display:none">
       <div class="ct">Latest fuel reading</div>
       <div id="latestFuelContent"></div>
+    </div>
+
+    <!-- Fuel alert thresholds (operator only) -->
+    <div class="card" id="fuelThresholdCard" style="display:none">
+      <div class="ct">⚙️ Fuel Low-Level Alerts</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Set the gallon level at which you want to be alerted to order fuel. Adjust based on how much your store sells.</div>
+      <div class="g3" style="margin-bottom:12px">
+        <div><label>Regular (gal)</label><input type="number" id="ft-reg" placeholder="e.g. 3000" /></div>
+        <div><label>Premium (gal)</label><input type="number" id="ft-prem" placeholder="e.g. 1500" /></div>
+        <div><label>Diesel (gal)</label><input type="number" id="ft-dies" placeholder="e.g. 1500" /></div>
+      </div>
+      <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="saveFuelThresholds()">Save thresholds</button>
     </div>
     <div class="card"><div class="ct">Upload fuel printout</div>
       <div class="uzone" onclick="document.getElementById('fuelPic').click()">
@@ -1464,6 +1481,7 @@ function loginOK(u){
   buildTabs();
   if(u.role==='operator'||u.role==='lead') document.getElementById('mgmtCard').style.display='block';
   loadGames();loadInvFlags();
+  loadFuelThresholds();
   if(u.role==='operator'){loadLics();showTab('dashboard');}
   else showTab('daily');
   // Show price field only to operator
@@ -1494,7 +1512,21 @@ function showTab(id){
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.id===id)t.classList.add('active');});
   if(id==='dashboard')loadDashboard();
-  if(id==='fuel'){if(CU&&CU.role==='operator')loadLatestFuel();loadFuelPhotos();loadFuelDeliveries();const fdDate=document.getElementById('fd-date');if(fdDate&&!fdDate.value)fdDate.value=localDate();}
+  if(id==='fuel'){
+    if(CU&&CU.role==='operator'){
+      loadLatestFuel();
+      // Show threshold settings card and populate current values
+      const tc=document.getElementById('fuelThresholdCard');
+      if(tc){ tc.style.display='block';
+        const thr=window.fuelThresholds||{regular:3000,premium:1500,diesel:1500};
+        document.getElementById('ft-reg').value=thr.regular;
+        document.getElementById('ft-prem').value=thr.premium;
+        document.getElementById('ft-dies').value=thr.diesel;
+      }
+    }
+    loadFuelPhotos();loadFuelDeliveries();
+    const fdDate=document.getElementById('fd-date');if(fdDate&&!fdDate.value)fdDate.value=localDate();
+  }
   if(id==='logs')loadLogs();
   if(id==='inventory')loadInvFlags();
   if(id==='tobacco')loadTobaccoTab();
@@ -1608,6 +1640,17 @@ async function loadDashboard(){
     const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
+    // Check fuel alerts using most recent fuel report
+    if(!window._latestFuelReport){
+      try{
+        const frSnap=await getDocs(query(collection(window.db,'fuelReports'),orderBy('timestamp','desc'),limit(1)));
+        if(!frSnap.empty){
+          const fr=frSnap.docs[0].data();
+          window._latestFuelReport={regularGal:fr.regularGal||0,premiumGal:fr.premiumGal||0,dieselGal:fr.dieselGal||0,date:fr.date,employee:fr.employee};
+        }
+      }catch(fe){console.log('fuel report fetch skipped',fe);}
+    }
+    checkFuelAlerts();
     const dlByVendor={};
     const today=localDate();
     mtdDl.forEach(x=>{
@@ -2231,8 +2274,18 @@ async function subDaily(){
 // ---- FUEL ----
 function prvFuel(i){if(!i.files[0])return;const url=URL.createObjectURL(i.files[0]);document.getElementById('fuelPrev').innerHTML=`<img src="${url}" style="max-width:100%;border-radius:8px;max-height:200px;object-fit:contain" />`;}
 function updFBars(){
-  const T=[{n:'Regular',v:parseFloat(document.getElementById('f-reg').value)||0,c:10000},{n:'Premium',v:parseFloat(document.getElementById('f-prem').value)||0,c:8000},{n:'Diesel',v:parseFloat(document.getElementById('f-dies').value)||0,c:6000}];
-  document.getElementById('fuelBars').innerHTML=T.filter(t=>t.v>0).map(t=>{const p=Math.min(100,t.v/t.c*100),col=p<20?'var(--red)':p<40?'var(--amber)':'var(--blue)';return`<div class="fbar"><div class="fbar-h"><span>${t.n}</span><span style="color:${col}">${t.v.toLocaleString()} gal${p<20?' ⚑ Low':''}</span></div><div class="fbar-t"><div class="fbar-f" style="width:${p}%;background:${col}"></div></div></div>`;}).join('');
+  const thr=window.fuelThresholds||{regular:3000,premium:1500,diesel:1500};
+  const T=[
+    {n:'Regular',v:parseFloat(document.getElementById('f-reg').value)||0,low:thr.regular},
+    {n:'Premium',v:parseFloat(document.getElementById('f-prem').value)||0,low:thr.premium},
+    {n:'Diesel', v:parseFloat(document.getElementById('f-dies').value)||0,low:thr.diesel}
+  ];
+  document.getElementById('fuelBars').innerHTML=T.filter(t=>t.v>0).map(t=>{
+    const isLow=t.v<=t.low;
+    const col=isLow?'var(--red)':t.v<=t.low*1.5?'var(--amber)':'var(--blue)';
+    const pct=Math.min(100,t.low>0?(t.v/(t.low*3)*100):20);
+    return`<div class="fbar"><div class="fbar-h"><span>${t.n}</span><span style="color:${col}">${t.v.toLocaleString()} gal${isLow?' 🚨 Low':''}</span></div><div class="fbar-t"><div class="fbar-f" style="width:${pct}%;background:${col}"></div></div></div>`;
+  }).join('');
 }
 function resizeImage(file,maxW){
   return new Promise((res,rej)=>{
@@ -2273,13 +2326,88 @@ async function subFuel(){
       date:document.getElementById('f-date')?.value||localDate(),
       timestamp:window.F.serverTimestamp()
     });
+    // Update latest fuel report for alert checking
+    window._latestFuelReport = {
+      regularGal: parseFloat(document.getElementById('f-reg').value)||0,
+      premiumGal: parseFloat(document.getElementById('f-prem').value)||0,
+      dieselGal:  parseFloat(document.getElementById('f-dies').value)||0,
+      date: document.getElementById('f-date')?.value||localDate(),
+      employee: document.getElementById('f-emp').value||CU.name
+    };
     toast('✓ Fuel report saved!');
+    checkFuelAlerts();
     ['f-reg','f-prem','f-dies'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('fuelBars').innerHTML='';
     document.getElementById('fuelPrev').innerHTML='<div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div>';
     document.getElementById('fuelPic').value='';
     document.getElementById('f-date').value=localDate();
   }catch(e){toast('Error saving fuel report');}
+}
+
+// ---- FUEL ALERT THRESHOLDS (loaded from Firestore settings) ----
+window.fuelThresholds = { regular: 3000, premium: 1500, diesel: 1500 }; // defaults
+
+async function loadFuelThresholds(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'settings'),
+      window.F.limit(20)
+    ));
+    const doc = snap.docs.find(d=>d.id==='fuelThresholds');
+    if(doc){
+      const data = doc.data();
+      window.fuelThresholds = {
+        regular: data.regular || 3000,
+        premium: data.premium || 1500,
+        diesel:  data.diesel  || 1500
+      };
+    }
+  }catch(e){ console.log('Could not load fuel thresholds', e); }
+}
+
+async function saveFuelThresholds(){
+  const reg = parseInt(document.getElementById('ft-reg').value) || 3000;
+  const prem = parseInt(document.getElementById('ft-prem').value) || 1500;
+  const dies = parseInt(document.getElementById('ft-dies').value) || 1500;
+  try{
+    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(20)));
+    const existing = snap.docs.find(d=>d.id==='fuelThresholds');
+    const data = { regular: reg, premium: prem, diesel: dies, updatedAt: new Date().toISOString() };
+    if(existing){
+      await window.F.updateDoc(window.F.doc(window.db,'settings','fuelThresholds'), data);
+    } else {
+      await window.F.setDoc(window.F.doc(window.db,'settings','fuelThresholds'), data);
+    }
+    window.fuelThresholds = { regular: reg, premium: prem, diesel: dies };
+    toast('✓ Fuel alert thresholds saved!');
+    // Re-render latest fuel to apply new thresholds
+    loadLatestFuel();
+    checkFuelAlerts();
+  }catch(e){ toast('Error saving thresholds'); console.error(e); }
+}
+
+function checkFuelAlerts(){
+  // Used by dashboard and fuel tab to show banners
+  const el = document.getElementById('fuelAlertBanner');
+  const el2 = document.getElementById('fuelAlertBannerDash');
+  if(!window._latestFuelReport) { if(el) el.style.display='none'; if(el2) el2.style.display='none'; return; }
+  const r = window._latestFuelReport;
+  const alerts = [];
+  if(r.regularGal > 0 && r.regularGal <= window.fuelThresholds.regular)
+    alerts.push(`⛽ Regular low: ${r.regularGal.toLocaleString()} gal (threshold: ${window.fuelThresholds.regular.toLocaleString()} gal)`);
+  if(r.premiumGal > 0 && r.premiumGal <= window.fuelThresholds.premium)
+    alerts.push(`⛽ Premium low: ${r.premiumGal.toLocaleString()} gal (threshold: ${window.fuelThresholds.premium.toLocaleString()} gal)`);
+  if(r.dieselGal > 0 && r.dieselGal <= window.fuelThresholds.diesel)
+    alerts.push(`⛽ Diesel low: ${r.dieselGal.toLocaleString()} gal (threshold: ${window.fuelThresholds.diesel.toLocaleString()} gal)`);
+  const html = alerts.length
+    ? `<div style="background:var(--red-light);border:1.5px solid var(--red);border-radius:var(--r);padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px">🚨 Fuel Low — Order Required</div>
+        ${alerts.map(a=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">${a}</div>`).join('')}
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">Last report: ${r.date} by ${r.employee||'Unknown'}</div>
+       </div>`
+    : '';
+  if(el){ el.innerHTML=html; el.style.display=alerts.length?'block':'none'; }
+  if(el2){ el2.innerHTML=html; el2.style.display=alerts.length?'block':'none'; }
 }
 
 // ---- SCRATCH-OFFS ----
@@ -2468,12 +2596,11 @@ function renderScrRows(){
         </label>`:''}
         <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div>
         <input type="number" min="0" max="999" placeholder="000"
           id="sc-slot-${s.slotIdx}"
           oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
           style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
-        ${type==='closing' && s.totalTickets ? `<button onclick="markSoldOut(${s.slotIdx},${s.totalTickets})" style="font-size:10px;font-weight:700;color:var(--red);background:var(--red-light);border:1px solid #f7c1c1;border-radius:6px;padding:3px 7px;cursor:pointer;white-space:nowrap">Sold out</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2484,15 +2611,7 @@ function toggleNewBook(slotIdx, checked){
   scrNewBook[slotIdx] = checked;
   updScrTot();
 }
-function markSoldOut(slotIdx, totalTickets){
-  const inp = document.getElementById('sc-slot-'+slotIdx);
-  if(!inp) return;
-  const lastTicket = totalTickets - 1;
-  inp.value = lastTicket;
-  const row = document.getElementById('scr-row-'+slotIdx);
-  if(row) row.style.opacity = '0.6';
-  updScrTot();
-}
+
 function updScrTot(){
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
   const type = document.getElementById('s-type')?.value || 'opening';
@@ -4381,16 +4500,32 @@ async function loadLatestFuel(){
     const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(5)));
     if(snap.empty){card.style.display='none';return;}
     card.style.display='block';
+    // Store most recent for alert checking
+    const latestData = snap.docs[0].data();
+    window._latestFuelReport = {
+      regularGal: latestData.regularGal||0,
+      premiumGal: latestData.premiumGal||0,
+      dieselGal:  latestData.dieselGal||0,
+      date: latestData.date,
+      employee: latestData.employee
+    };
+    checkFuelAlerts();
     // Store data for edit modal
     snap.docs.forEach(d=>{logDataStore[d.id]={id:d.id,col:'fuelReports',...d.data()};});
     el.innerHTML=snap.docs.map(d=>{
       const x=d.data();
       const id=d.id;
-      const tanks=[{n:'Regular',v:x.regularGal||0,c:10000},{n:'Premium',v:x.premiumGal||0,c:8000},{n:'Diesel',v:x.dieselGal||0,c:6000}];
+      const thr=window.fuelThresholds;
+      const tanks=[
+        {n:'Regular',v:x.regularGal||0,low:thr.regular},
+        {n:'Premium',v:x.premiumGal||0,low:thr.premium},
+        {n:'Diesel', v:x.dieselGal||0, low:thr.diesel}
+      ];
       const barsHtml=tanks.map(t=>{
-        const p=Math.min(100,t.v/t.c*100);
-        const col=p<20?'var(--red)':p<40?'var(--amber)':'var(--blue)';
-        return`<div class="fbar"><div class="fbar-h"><span>${t.n}</span><span style="color:${col}">${t.v.toLocaleString()} gal${p<20?' ⚑ Low':''}</span></div><div class="fbar-t"><div class="fbar-f" style="width:${p}%;background:${col}"></div></div></div>`;
+        const isLow = t.v>0 && t.v<=t.low;
+        const col=isLow?'var(--red)':t.v<=t.low*1.5?'var(--amber)':'var(--blue)';
+        const pct=Math.min(100,t.low>0?(t.v/(t.low*3)*100):20);
+        return`<div class="fbar"><div class="fbar-h"><span>${t.n}</span><span style="color:${col}">${t.v.toLocaleString()} gal${isLow?' 🚨 Low':''}</span></div><div class="fbar-t"><div class="fbar-f" style="width:${pct}%;background:${col}"></div></div></div>`;
       }).join('');
       const photoHtml=x.photoUrl?`<img src="${x.photoUrl}" style="width:100%;border-radius:8px;max-height:160px;object-fit:cover;margin-top:10px;cursor:pointer" onclick="showPhotoModal('${x.photoUrl}','${x.date}')" />`:'';
       return`<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
