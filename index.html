@@ -621,6 +621,28 @@
       </div>
       <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="saveFuelThresholds()">Save thresholds</button>
     </div>
+
+    <!-- Fuel margin settings (operator only) -->
+    <div class="card" id="fuelMarginCard" style="display:none">
+      <div class="ct">⛽ Fuel Profit Margins</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Enter your margin per gallon for each grade. The dashboard will auto-calculate fuel profit from your MTD gallons sold.</div>
+      <div class="g3" style="margin-bottom:8px">
+        <div>
+          <label>Regular ($/gal)</label>
+          <input type="number" step="0.001" id="fm-reg" placeholder="e.g. 0.200" oninput="previewFuelMargin()" />
+        </div>
+        <div>
+          <label>Premium ($/gal)</label>
+          <input type="number" step="0.001" id="fm-prem" placeholder="e.g. 0.200" oninput="previewFuelMargin()" />
+        </div>
+        <div>
+          <label>Diesel ($/gal)</label>
+          <input type="number" step="0.001" id="fm-dies" placeholder="e.g. 0.200" oninput="previewFuelMargin()" />
+        </div>
+      </div>
+      <div id="fm-preview" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--text2)"></div>
+      <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="saveFuelMargins()">Save margins</button>
+    </div>
     <div class="card"><div class="ct">Upload fuel printout</div>
       <div class="uzone" onclick="document.getElementById('fuelPic').click()">
         <div id="fuelPrev"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div></div>
@@ -1644,6 +1666,7 @@ function loginOK(u){
   if(u.role==='operator'||u.role==='lead') document.getElementById('mgmtCard').style.display='block';
   loadGames();loadInvFlags();
   loadFuelThresholds();
+  loadFuelMargins();
   if(u.role==='operator'){loadLics();showTab('dashboard');}
   else showTab('daily');
   // Show price field only to operator
@@ -1711,6 +1734,14 @@ function showTab(id){
         document.getElementById('ft-reg').value=thr.regular;
         document.getElementById('ft-prem').value=thr.premium;
         document.getElementById('ft-dies').value=thr.diesel;
+      }
+      // Show margin settings card and populate current values
+      const mc=document.getElementById('fuelMarginCard');
+      if(mc){ mc.style.display='block';
+        const mgn=window.fuelMargins||{regular:0,premium:0,diesel:0};
+        document.getElementById('fm-reg').value=mgn.regular||'';
+        document.getElementById('fm-prem').value=mgn.premium||'';
+        document.getElementById('fm-dies').value=mgn.diesel||'';
       }
     }
     loadFuelPhotos();loadFuelDeliveries();
@@ -1791,6 +1822,8 @@ async function loadDashboard(){
     const mtdPremGal=sum(mtdR,'premiumGal');
     const mtdDiesGal=sum(mtdR,'dieselGal');
     const mtdTotalGal=mtdRegGal+mtdPremGal+mtdDiesGal;
+    // Cache for fuel margin preview widget on Fuel tab
+    window._dashMtdRegGal=mtdRegGal; window._dashMtdPremGal=mtdPremGal; window._dashMtdDiesGal=mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
 
     // Cash discrepancy summary
@@ -1811,6 +1844,14 @@ async function loadDashboard(){
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
+
+    // Fuel profit — margin per gallon × MTD gallons sold
+    const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
+    const fuelProfitReg  = mtdRegGal  * (mgn.regular||0);
+    const fuelProfitPrem = mtdPremGal * (mgn.premium||0);
+    const fuelProfitDies = mtdDiesGal * (mgn.diesel ||0);
+    const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
+    const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
 
     // Other revenue for selected month
     const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('timestamp','desc'),limit(200)));
@@ -2204,27 +2245,48 @@ async function loadDashboard(){
 
       <!-- ===== NET PROFIT CARD ===== -->
       ${(()=>{
-        const netProfit = mtdSales - mtdExpTotal;
-        const netColor = netProfit >= 0 ? 'var(--green)' : 'var(--red)';
-        const netLabel = netProfit >= 0 ? 'Net Profit' : 'Net Loss';
-        const netIcon  = netProfit >= 0 ? '📈' : '📉';
-        const margin   = mtdSales > 0 ? ((netProfit / mtdSales) * 100).toFixed(1) : '—';
+        const totalRevenue = mtdSales + mtdORTotal + mtdFuelProfit;
+        const netProfit    = totalRevenue - mtdExpTotal;
+        const netColor     = netProfit >= 0 ? 'var(--green)' : 'var(--red)';
+        const netLabel     = netProfit >= 0 ? 'Net Profit' : 'Net Loss';
+        const netIcon      = netProfit >= 0 ? '📈' : '📉';
+        const margin       = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '—';
         return `
         <div class="card" style="border:2px solid ${netColor};padding:0;overflow:hidden;margin-bottom:4px">
           <div style="padding:14px 16px;background:${netProfit>=0?'var(--green-light)':'var(--red-light)'}">
             <div style="font-size:11px;font-weight:700;color:${netColor};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${netIcon} ${netLabel} — ${monthName}</div>
             <div style="font-size:30px;font-weight:800;color:${netColor};line-height:1">${netProfit>=0?'+':'-'}$${Math.abs(netProfit).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            <div style="font-size:12px;color:${netColor};opacity:.8;margin-top:4px">Profit margin: ${margin !== '—' ? margin+'%' : '—'}</div>
+            <div style="font-size:12px;color:${netColor};opacity:.8;margin-top:4px">Profit margin: ${margin !== '—' ? margin+'%' : '—'} &nbsp;·&nbsp; Total revenue: $${totalRevenue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;border-top:2px solid ${netColor}">
-            <div style="padding:12px 14px;border-right:1px solid var(--border)">
-              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Total Sales</div>
-              <div style="font-size:18px;font-weight:800;color:var(--green)">$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-              <div style="font-size:11px;color:var(--text3)">${mtdR.length} shift${mtdR.length!==1?'s':''}</div>
+          <div style="border-top:2px solid ${netColor}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
+              <div style="padding:11px 14px;border-right:1px solid var(--border)">
+                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Store Sales</div>
+                <div style="font-size:17px;font-weight:800;color:var(--green)">$${mtdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+                <div style="font-size:11px;color:var(--text3)">${mtdR.length} shift${mtdR.length!==1?'s':''}</div>
+              </div>
+              <div style="padding:11px 14px">
+                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Other Revenue</div>
+                <div style="font-size:17px;font-weight:800;color:var(--green)">$${mtdORTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+                <div style="font-size:11px;color:var(--text3)">${mtdOR.length} entr${mtdOR.length!==1?'ies':'y'}</div>
+              </div>
             </div>
-            <div style="padding:12px 14px">
-              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Total Overhead</div>
-              <div style="font-size:18px;font-weight:800;color:var(--red)">$${mtdExpTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div style="padding:11px 14px">
+                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">⛽ Fuel Profit${!hasFuelMargins?' <span style="font-size:10px;font-weight:500;color:var(--amber)">(set margins on Fuel tab)</span>':''}</div>
+                <div style="font-size:17px;font-weight:800;color:${hasFuelMargins?'var(--green)':'var(--text3)'}">
+                  ${hasFuelMargins ? '$'+mtdFuelProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}
+                </div>
+                ${hasFuelMargins ? `<div style="font-size:11px;color:var(--text3)">`
+                  + (fuelProfitReg>0  ? `Reg ${mtdRegGal.toLocaleString()}g × $${mgn.regular.toFixed(3)} ` : '')
+                  + (fuelProfitPrem>0 ? `· Prem ${mtdPremGal.toLocaleString()}g × $${mgn.premium.toFixed(3)} ` : '')
+                  + (fuelProfitDies>0 ? `· Diesel ${mtdDiesGal.toLocaleString()}g × $${mgn.diesel.toFixed(3)}` : '')
+                  + `</div>` : `<div style="font-size:11px;color:var(--amber)">Go to ⛽ Fuel tab → set margins</div>`}
+              </div>
+            </div>
+            <div style="padding:11px 14px">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Total Overhead & Expenses</div>
+              <div style="font-size:17px;font-weight:800;color:var(--red)">$${mtdExpTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
               <div style="font-size:11px;color:var(--text3)">${mtdExp.length} entr${mtdExp.length!==1?'ies':'y'}</div>
             </div>
           </div>
@@ -2631,6 +2693,7 @@ async function subFuel(){
 
 // ---- FUEL ALERT THRESHOLDS (loaded from Firestore settings) ----
 window.fuelThresholds = { regular: 3000, premium: 1500, diesel: 1500 }; // defaults
+window.fuelMargins    = { regular: 0, premium: 0, diesel: 0 };           // defaults
 
 async function loadFuelThresholds(){
   try{
@@ -2671,7 +2734,69 @@ async function saveFuelThresholds(){
   }catch(e){ toast('Error saving thresholds'); console.error(e); }
 }
 
-function checkFuelAlerts(){
+async function loadFuelMargins(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'settings'),
+      window.F.limit(30)
+    ));
+    const doc = snap.docs.find(d=>d.data()._type==='fuelMargins');
+    if(doc){
+      const data = doc.data();
+      window.fuelMargins = {
+        regular: parseFloat(data.regular)||0,
+        premium: parseFloat(data.premium)||0,
+        diesel:  parseFloat(data.diesel) ||0
+      };
+    }
+  }catch(e){ console.log('Could not load fuel margins', e); }
+}
+
+async function saveFuelMargins(){
+  const reg  = parseFloat(document.getElementById('fm-reg').value)  || 0;
+  const prem = parseFloat(document.getElementById('fm-prem').value) || 0;
+  const dies = parseFloat(document.getElementById('fm-dies').value) || 0;
+  try{
+    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(30)));
+    const existing = snap.docs.find(d=>d.data()._type==='fuelMargins');
+    const data = { regular: reg, premium: prem, diesel: dies, updatedAt: new Date().toISOString(), _type: 'fuelMargins' };
+    if(existing){
+      await window.F.updateDoc(window.F.doc(window.db,'settings', existing.id), data);
+    } else {
+      await window.F.addDoc(window.F.collection(window.db,'settings'), data);
+    }
+    window.fuelMargins = { regular: reg, premium: prem, diesel: dies };
+    toast('✓ Fuel margins saved!');
+    previewFuelMargin();
+  }catch(e){ toast('Error saving margins'); console.error(e); }
+}
+
+function previewFuelMargin(){
+  const el = document.getElementById('fm-preview');
+  if(!el) return;
+  const reg  = parseFloat(document.getElementById('fm-reg')?.value)  || 0;
+  const prem = parseFloat(document.getElementById('fm-prem')?.value) || 0;
+  const dies = parseFloat(document.getElementById('fm-dies')?.value) || 0;
+  if(!reg && !prem && !dies){ el.style.display='none'; return; }
+  // Use dashboard MTD gals if available, otherwise show placeholder
+  const regGal  = window._dashMtdRegGal  || 0;
+  const premGal = window._dashMtdPremGal || 0;
+  const diesGal = window._dashMtdDiesGal || 0;
+  const month   = window._dashMonthLabel || 'this month';
+  const regProfit  = regGal  * reg;
+  const premProfit = premGal * prem;
+  const diesProfit = diesGal * dies;
+  const total = regProfit + premProfit + diesProfit;
+  el.style.display = 'block';
+  el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Est. fuel profit — ${month}</div>`
+    + (regGal  ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>⛽ Regular (${regGal.toLocaleString()} gal × $${reg.toFixed(3)})</span><span style="font-weight:700;color:var(--green)">$${regProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '')
+    + (premGal ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>⛽ Premium (${premGal.toLocaleString()} gal × $${prem.toFixed(3)})</span><span style="font-weight:700;color:var(--green)">$${premProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '')
+    + (diesGal ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>⛽ Diesel (${diesGal.toLocaleString()} gal × $${dies.toFixed(3)})</span><span style="font-weight:700;color:var(--green)">$${diesProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '')
+    + (!regGal && !premGal && !diesGal ? `<div style="color:var(--text3)">Go to Dashboard to see monthly gallons, then return here for the live preview.</div>` : '')
+    + (total ? `<div style="display:flex;justify-content:space-between;font-weight:800;border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span>Total fuel profit</span><span style="color:var(--green)">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '');
+}
+
+
   // Used by dashboard and fuel tab to show banners
   const el = document.getElementById('fuelAlertBanner');
   const el2 = document.getElementById('fuelAlertBannerDash');
