@@ -1502,6 +1502,22 @@
         <textarea id="lc-notes" rows="2" placeholder="e.g. New packs activated, unusual cashes, etc."></textarea>
       </div>
 
+      <!-- Mandatory receipt photo -->
+      <div style="margin-bottom:14px">
+        <label>📄 Receipt photo <span style="color:var(--red);font-weight:700">*</span> <span style="font-size:11px;color:var(--text3);font-weight:400">(required)</span></label>
+        <div id="lc-photo-zone" onclick="document.getElementById('lc-photo-input').click()"
+          style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:var(--bg2);transition:border-color .15s">
+          <div style="font-size:28px;margin-bottom:6px">📷</div>
+          <div style="font-size:13px;color:var(--text2)" id="lc-photo-label">Tap to take or upload receipt photo</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">Virginia Lottery weekly settlement report</div>
+        </div>
+        <input type="file" id="lc-photo-input" accept="image/*" capture="environment" style="display:none" onchange="lcHandlePhoto(this)" />
+        <div id="lc-photo-preview" style="display:none;margin-top:10px">
+          <img id="lc-photo-img" style="width:100%;border-radius:8px;max-height:220px;object-fit:cover;cursor:pointer" onclick="showPhotoModal(document.getElementById('lc-photo-img').src,'Lottery receipt')" />
+          <button onclick="lcClearPhoto()" style="margin-top:6px;background:none;border:none;color:var(--red);font-size:12px;cursor:pointer">✕ Remove photo</button>
+        </div>
+      </div>
+
       <button class="btn bprimary" style="padding:13px" onclick="submitLotteryReport()">Save lottery report</button>
     </div>
 
@@ -6557,6 +6573,38 @@ async function deleteOtherRev(id){
 
 // ---- LOTTERY COMMISSIONS ----
 
+let lcPhotoData = null; // base64 data URL for the receipt photo
+
+function lcHandlePhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  const zone  = document.getElementById('lc-photo-zone');
+  const label = document.getElementById('lc-photo-label');
+  label.textContent = 'Processing…';
+  resizeImage(file, 1200).then(dataUrl=>{
+    lcPhotoData = dataUrl;
+    document.getElementById('lc-photo-img').src = dataUrl;
+    document.getElementById('lc-photo-preview').style.display = 'block';
+    zone.style.borderColor = 'var(--green)';
+    zone.style.borderStyle = 'solid';
+    label.textContent = '✓ Photo attached';
+    label.style.color = 'var(--green)';
+  }).catch(()=>{ label.textContent = 'Error reading photo — try again'; label.style.color='var(--red)'; });
+}
+
+function lcClearPhoto(){
+  lcPhotoData = null;
+  document.getElementById('lc-photo-input').value = '';
+  document.getElementById('lc-photo-preview').style.display = 'none';
+  document.getElementById('lc-photo-img').src = '';
+  const zone  = document.getElementById('lc-photo-zone');
+  zone.style.borderColor = '';
+  zone.style.borderStyle = '';
+  const label = document.getElementById('lc-photo-label');
+  label.textContent = 'Tap to take or upload receipt photo';
+  label.style.color = '';
+}
+
 function lcCalcTotal(){
   const scr  = parseFloat(document.getElementById('lc-scr-comm').value)||0;
   const dg   = parseFloat(document.getElementById('lc-dg-comm').value)||0;
@@ -6605,6 +6653,11 @@ async function submitLotteryReport(){
   if(!eft && !scrComm && !dgComm && !cashBonus){
     toast('Please enter at least one amount'); return;
   }
+  if(!lcPhotoData){
+    toast('Please attach a photo of the receipt'); 
+    document.getElementById('lc-photo-zone').style.borderColor='var(--red)';
+    return;
+  }
 
   const totalComm = scrComm + dgComm + cashBonus;
   const net       = totalComm - eft;
@@ -6615,6 +6668,7 @@ async function submitLotteryReport(){
     await window.F.addDoc(window.F.collection(window.db,'lotteryReports'),{
       weekEnd, scrComm, dgComm, cashBonus, activations, eft, sweepDate,
       totalComm, net, notes,
+      photoData: lcPhotoData,
       employee: CU.name,
       timestamp: window.F.serverTimestamp()
     });
@@ -6625,6 +6679,7 @@ async function submitLotteryReport(){
     document.getElementById('lc-notes').value='';
     document.getElementById('lc-comm-total-wrap').style.display='none';
     document.getElementById('lc-net-wrap').style.display='none';
+    lcClearPhoto();
     loadLotteryReports();
   }catch(e){ toast('Error saving report'); console.error(e); }
   finally{ btn.disabled=false; btn.textContent='Save lottery report'; }
@@ -6692,6 +6747,9 @@ async function loadLotteryReports(){
       if(x.dgComm)     commParts.push(`🖥 DG $${parseFloat(x.dgComm).toFixed(2)}`);
       if(x.cashBonus)  commParts.push(`💵 Cash $${parseFloat(x.cashBonus).toFixed(2)}`);
       if(x.activations)commParts.push(`📦 Act $${parseFloat(x.activations).toFixed(2)}`);
+      const photoHtml = x.photoData
+        ? `<img src="${x.photoData}" style="width:100%;border-radius:6px;max-height:140px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','Week ending ${x.weekEnd}')" />`
+        : `<div style="margin-top:6px;font-size:11px;color:var(--text3)">No photo attached</div>`;
       return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="flex:1">
@@ -6700,6 +6758,7 @@ async function loadLotteryReports(){
             ${x.sweepDate?`<div style="font-size:11px;color:var(--text3);margin-top:2px">EFT sweep: ${x.sweepDate}</div>`:''}
             ${x.notes?`<div style="font-size:12px;color:var(--text2);margin-top:3px">${x.notes}</div>`:''}
             <div style="font-size:11px;color:var(--text3);margin-top:2px">By ${x.employee||'—'}</div>
+            ${photoHtml}
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:16px;font-weight:800;color:${netColor}">${netSign}$${Math.abs(net).toFixed(2)}</div>
