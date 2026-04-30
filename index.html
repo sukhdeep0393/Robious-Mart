@@ -2232,9 +2232,10 @@ async function loadDashboard(){
       const chevron = isExpanded ? '▲' : '▼';
       const titleText = hasUrgentTodo ? 'Tasks need attention' : 'To-Do';
       const subText = urgentTodos.length+' open task'+(urgentTodos.length!==1?'s':'')+(hasUrgentTodo?' · tap to view':'');
+      const toggleFn = "this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'";
       todoDashHtml =
         '<div style="background:'+headerBg+';border:'+headerBorder+';border-radius:var(--rl);margin-bottom:12px;overflow:hidden">'
-          +'<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer">'
+          +'<div onclick="'+toggleFn+'" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer">'
             +'<div style="display:flex;align-items:center;gap:8px">'
               +'<span style="font-size:16px">✅</span>'
               +'<div>'
@@ -2243,7 +2244,7 @@ async function loadDashboard(){
               +'</div>'
             +'</div>'
             +'<div style="display:flex;align-items:center;gap:10px">'
-              +'<span onclick="event.stopPropagation();showTab('todo')" style="font-size:12px;color:var(--blue);font-weight:600">Manage →</span>'
+              +'<span onclick="event.stopPropagation();showTab(&quot;todo&quot;)" style="font-size:12px;color:var(--blue);font-weight:600">Manage →</span>'
               +'<span style="font-size:12px;color:var(--text3)">'+chevron+'</span>'
             +'</div>'
           +'</div>'
