@@ -1033,6 +1033,91 @@
     <div id="myHoursContent"><div class="empty"><div class="ei">⏱</div>Loading...</div></div>
   </div>
 
+  <!-- SCHEDULE (operator only) -->
+  <div class="page" id="page-schedule">
+    <div class="card">
+      <div class="sh2" style="margin-bottom:12px">
+        <div class="ct" style="margin:0">📅 Employee Schedule</div>
+        <button class="bsm" onclick="openAddShift()" style="background:var(--blue);color:#fff;border-color:var(--blue)">+ Add shift</button>
+      </div>
+      <!-- Week navigation -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <button class="btn bsecondary" style="padding:7px 14px;font-size:13px" onclick="schedWeekNav(-1)">← Prev</button>
+        <div id="schedWeekLabel" style="font-size:13px;font-weight:700;color:var(--text);text-align:center"></div>
+        <button class="btn bsecondary" style="padding:7px 14px;font-size:13px" onclick="schedWeekNav(1)">Next →</button>
+      </div>
+      <!-- Employee filter -->
+      <div style="margin-bottom:12px">
+        <select id="schedEmpFilter" onchange="renderSchedule()" style="font-size:13px">
+          <option value="all">All employees</option>
+        </select>
+      </div>
+    </div>
+    <!-- Week grid -->
+    <div id="schedWeekGrid"></div>
+  </div>
+
+  <!-- MY SCHEDULE (employee/lead) -->
+  <div class="page" id="page-myschedule">
+    <div class="card">
+      <div class="ct" style="margin-bottom:4px">📅 My Upcoming Shifts</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:0">Showing your next 14 days</div>
+    </div>
+    <div id="mySchedContent"><div class="empty"><div class="ei">📅</div>Loading...</div></div>
+  </div>
+
+  <!-- ADD/EDIT SHIFT MODAL -->
+  <div id="shiftModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeShiftModal()">
+    <div style="background:var(--bg);border-radius:var(--rl) var(--rl) 0 0;padding:20px 20px 32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700" id="shiftModalTitle">Add Shift</div>
+        <button onclick="closeShiftModal()" style="background:none;border:none;font-size:20px;color:var(--text3);padding:4px">✕</button>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div>
+          <label>Employee</label>
+          <input id="sm-emp" placeholder="Employee name" />
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="date" id="sm-date" />
+        </div>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div>
+          <label>Start time</label>
+          <input type="time" id="sm-start" />
+        </div>
+        <div>
+          <label>End time</label>
+          <input type="time" id="sm-end" />
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label>Role / shift type</label>
+        <select id="sm-role">
+          <option value="Morning">Morning</option>
+          <option value="Afternoon">Afternoon</option>
+          <option value="Evening">Evening</option>
+          <option value="Night">Night</option>
+          <option value="Split">Split</option>
+          <option value="Custom">Custom</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px">
+        <label>Note (optional)</label>
+        <input id="sm-note" placeholder="e.g. Cover for Tilak, lottery audit" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bprimary" style="flex:1;padding:11px" onclick="saveShift()">Save shift</button>
+        <button class="btn bsecondary" style="padding:11px" onclick="closeShiftModal()">Cancel</button>
+      </div>
+      <div id="sm-delete-wrap" style="display:none;margin-top:10px;text-align:center">
+        <button onclick="deleteShift()" style="background:none;border:none;color:var(--red);font-size:13px;text-decoration:underline;cursor:pointer">Delete this shift</button>
+      </div>
+    </div>
+  </div>
+
   <!-- DELIVERY LOG (all roles) -->
   <div class="page" id="page-deliveries">
 
@@ -1374,6 +1459,67 @@
 
     <!-- Category blocks rendered here -->
     <div id="mg-categories"><div class="empty"><div class="ei">⏳</div>Loading...</div></div>
+  </div>
+
+  <!-- TO-DO (operator only) -->
+  <div class="page" id="page-todo">
+    <div class="card">
+      <div class="sh2" style="margin-bottom:0">
+        <div class="ct" style="margin:0">✅ To-Do</div>
+        <button onclick="openAddTodo()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">+ Add task</button>
+      </div>
+    </div>
+    <div id="todoList"><div class="empty"><div class="ei">✅</div>Loading...</div></div>
+    <!-- Completed section -->
+    <div id="todoDoneSection" style="display:none">
+      <div style="padding:10px 4px 6px;font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center">
+        <span>Completed</span>
+        <button onclick="clearDoneTodos()" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;text-decoration:underline">Clear all</button>
+      </div>
+      <div id="todoDoneList"></div>
+    </div>
+  </div>
+
+  <!-- ADD/EDIT TODO MODAL -->
+  <div id="todoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1001;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeTodoModal()">
+    <div style="background:var(--bg);border-radius:var(--rl) var(--rl) 0 0;padding:20px 20px 36px;width:100%;max-width:480px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700" id="todoModalTitle">Add Task</div>
+        <button onclick="closeTodoModal()" style="background:none;border:none;font-size:20px;color:var(--text3);padding:4px;cursor:pointer">✕</button>
+      </div>
+      <!-- Title -->
+      <div style="margin-bottom:12px">
+        <label>Task</label>
+        <input id="tm-title" placeholder="e.g. Pay BGE electric bill" />
+      </div>
+      <!-- Due date + Priority row -->
+      <div class="g2" style="margin-bottom:12px">
+        <div>
+          <label>Due date (optional)</label>
+          <input type="date" id="tm-due" />
+        </div>
+        <div>
+          <label>Priority</label>
+          <select id="tm-priority">
+            <option value="P1">🔴 P1 — Urgent</option>
+            <option value="P2" selected>🟡 P2 — Normal</option>
+            <option value="P3">🟢 P3 — Low</option>
+          </select>
+        </div>
+      </div>
+      <!-- Note -->
+      <div style="margin-bottom:18px">
+        <label>Note (optional)</label>
+        <input id="tm-note" placeholder="Any extra details" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="saveTodo()" class="btn bprimary" style="flex:1;padding:12px;font-size:14px;font-weight:600">Save</button>
+        <button onclick="closeTodoModal()" class="btn bsecondary" style="padding:12px">Cancel</button>
+      </div>
+      <div id="tm-delete-wrap" style="display:none;margin-top:12px;text-align:center">
+        <button onclick="deleteTodo()" style="background:none;border:none;color:var(--red);font-size:13px;text-decoration:underline;cursor:pointer">Delete this task</button>
+      </div>
+    </div>
   </div>
 
   <!-- LOGS (operator only) -->
@@ -1738,9 +1884,9 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'margins',l:'📊 Margins'},{id:'logs',l:'📋 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'}]
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
 // ---- LOGIN ----
@@ -1865,9 +2011,12 @@ function showTab(id){
   if(id==='overhead')loadOverhead();
   if(id==='deliveries')initDeliveries();
   if(id==='myhours')loadMyHours();
+  if(id==='schedule'){if(!schedWeekStart)schedWeekStart=getMonday(new Date());loadSchedule();}
+  if(id==='myschedule')loadMySchedule();
   if(id==='margins')loadMargins();
   if(id==='otherrev'){const om=document.getElementById('orMonth');if(om&&!om.value)om.value=new Date().toISOString().slice(0,7);loadOtherRev();}
   if(id==='lotterycomm'){const lm=document.getElementById('lc-filter-month');if(lm&&!lm.value)lm.value=new Date().toISOString().slice(0,7);loadLotteryReports();}
+  if(id==='todo')loadTodos();
 }
 
 // ---- TOAST ----
@@ -2053,6 +2202,14 @@ async function loadDashboard(){
     const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!=''&&r.date>=mtdStart&&r.date<=mtdEnd).slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 
+    // Load todos for dashboard
+    const dashTodos = CU.role==='operator' ? await loadTodosForDash() : [];
+    const urgentTodos = dashTodos.sort((a,b)=>todoSortScore(a)-todoSortScore(b));
+    const hasUrgentTodo = urgentTodos.some(t=>{
+      const dl=todoDaysLeft(t.due);
+      return t.priority==='P1'||(dl!==null&&dl<=1);
+    });
+
     el.innerHTML=`
       <!-- Greeting row — only show if current month -->
       ${isCurrentMonth?`<div style="margin-bottom:14px">
@@ -2063,7 +2220,46 @@ async function loadDashboard(){
         <div style="font-size:12px;color:var(--text3);margin-top:2px">${mtdR.length} shift reports in this period</div>
       </div>`}
 
-      ${(isCurrentMonth&&(urgLics.length||openFlags||lowTobacco.length||tobDiscrepancies.length))?`
+      <!-- TO-DO CARD — auto-expands when urgent -->
+      \${CU.role==='operator' ? (()=>{
+        if(!urgentTodos.length) return '';
+        const isExpanded = hasUrgentTodo;
+        const todoRows = urgentTodos.slice(0,5).map(item=>{
+          const color = todoUrgencyColor(item);
+          const dueLabel = todoDueLabel(item);
+          const dl = todoDaysLeft(item.due);
+          return \`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div style="width:10px;height:10px;min-width:10px;border-radius:50%;background:\${color}"></div>
+            <div style="flex:1;font-size:13px;font-weight:500;color:var(--text)">\${item.title||''}</div>
+            \${dueLabel?'<div style="font-size:11px;font-weight:700;color:'+color+';white-space:nowrap">'+dueLabel+'</div>':''}
+          </div>\`;
+        }).join('');
+        const remaining = urgentTodos.length > 5 ? \`<div style="font-size:11px;color:var(--text3);padding-top:6px">+\${urgentTodos.length-5} more tasks</div>\` : '';
+        const headerColor = hasUrgentTodo ? 'var(--red)' : 'var(--text)';
+        const headerBg = hasUrgentTodo ? 'var(--red-light)' : 'var(--bg)';
+        const headerBorder = hasUrgentTodo ? '1px solid #f7c1c1' : '1px solid var(--border)';
+        return \`<div style="background:\${headerBg};border:\${headerBorder};border-radius:var(--rl);margin-bottom:12px;overflow:hidden">
+          <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px">✅</span>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:\${headerColor}">\${hasUrgentTodo?'Tasks need attention':'To-Do'}</div>
+                <div style="font-size:11px;color:var(--text3)">\${urgentTodos.length} open task\${urgentTodos.length!==1?'s':''}\${hasUrgentTodo?' · tap to view':''}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span onclick="event.stopPropagation();showTab('todo')" style="font-size:12px;color:var(--blue);font-weight:600">Manage →</span>
+              <span style="font-size:12px;color:var(--text3)">\${isExpanded?'▲':'▼'}</span>
+            </div>
+          </div>
+          <div style="display:\${isExpanded?'block':'none'};padding:0 14px 12px">
+            \${todoRows}
+            \${remaining}
+          </div>
+        </div>\`;
+      })() : ''}
+
+      \${(isCurrentMonth&&(urgLics.length||openFlags||lowTobacco.length||tobDiscrepancies.length))?`
       <div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:13px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:18px;margin-top:1px">⚑</div>
         <div>
@@ -2657,12 +2853,6 @@ async function subDaily(){
       cashSales:parseFloat(document.getElementById('d-cash').value)||0,
       creditSales:parseFloat(document.getElementById('d-cred').value)||0,
       grossSales:(parseFloat(document.getElementById('d-tot-nrs').value)||0)+(parseFloat(document.getElementById('d-tot-vfn').value)||0),
-      totalNrs:parseFloat(document.getElementById('d-tot-nrs').value)||0,
-      totalVfn:parseFloat(document.getElementById('d-tot-vfn').value)||0,
-      cashNrs:parseFloat(document.getElementById('d-cash-nrs').value)||0,
-      cashVfn:parseFloat(document.getElementById('d-cash-vfn').value)||0,
-      creditNrs:parseFloat(document.getElementById('d-cred-nrs').value)||0,
-      creditVfn:parseFloat(document.getElementById('d-cred-vfn').value)||0,
       deductLottery:parseFloat(document.getElementById('d-deduct-lottery').value)||0,
       deductOther:parseFloat(document.getElementById('d-deduct-other').value)||0,
       deductOtherNote:document.getElementById('d-deduct-other-note').value,
@@ -4186,6 +4376,511 @@ async function loadInvFlags(){
   }catch(e){console.error('loadInvFlags error',e);}
 }
 
+// ---- TO-DO ----
+let todoItems = [];
+let editingTodoId = null;
+
+function todoDaysLeft(due){
+  if(!due) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(due + 'T00:00:00');
+  return Math.round((d - today) / 86400000);
+}
+
+function todoUrgencyColor(item){
+  const dl = todoDaysLeft(item.due);
+  if(item.priority === 'P1') return 'var(--red)';
+  if(dl === null) return 'var(--text3)';
+  if(dl < 0)  return 'var(--red)';
+  if(dl <= 1) return 'var(--red)';
+  if(dl <= 3) return 'var(--amber)';
+  return 'var(--green)';
+}
+
+function todoUrgencyBg(item){
+  const dl = todoDaysLeft(item.due);
+  if(item.priority === 'P1') return 'var(--red-light)';
+  if(dl === null) return 'var(--bg2)';
+  if(dl < 0)  return 'var(--red-light)';
+  if(dl <= 1) return 'var(--red-light)';
+  if(dl <= 3) return 'var(--amber-light)';
+  return 'var(--green-light)';
+}
+
+function todoDueLabel(item){
+  const dl = todoDaysLeft(item.due);
+  if(!item.due) return '';
+  if(dl < 0)  return `Overdue ${Math.abs(dl)}d`;
+  if(dl === 0) return 'Due today';
+  if(dl === 1) return 'Due tomorrow';
+  return `${dl}d left`;
+}
+
+function todoPriorityDot(p){
+  if(p==='P1') return '<span style="font-size:10px;font-weight:700;background:var(--red);color:#fff;border-radius:4px;padding:1px 5px;margin-right:5px">P1</span>';
+  if(p==='P2') return '<span style="font-size:10px;font-weight:700;background:var(--amber);color:#fff;border-radius:4px;padding:1px 5px;margin-right:5px">P2</span>';
+  return '<span style="font-size:10px;font-weight:700;background:var(--green);color:#fff;border-radius:4px;padding:1px 5px;margin-right:5px">P3</span>';
+}
+
+function todoSortScore(item){
+  // Lower = more urgent (sorts to top)
+  const dl = todoDaysLeft(item.due);
+  const pScore = item.priority==='P1'?0:item.priority==='P2'?1:2;
+  if(dl === null) return 100 + pScore;
+  if(dl < 0)  return -1000 + dl + pScore * 10;  // overdue: most urgent
+  return dl * 10 + pScore;
+}
+
+async function loadTodos(){
+  const el = document.getElementById('todoList');
+  const doneEl = document.getElementById('todoDoneList');
+  const doneSec = document.getElementById('todoDoneSection');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'todos'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(200)
+    ));
+    todoItems = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTodos();
+  }catch(e){ el.innerHTML='<div class="empty">Error loading.</div>'; console.error(e); }
+}
+
+function renderTodos(){
+  const el = document.getElementById('todoList');
+  const doneEl = document.getElementById('todoDoneList');
+  const doneSec = document.getElementById('todoDoneSection');
+  if(!el) return;
+
+  const open = todoItems.filter(t=>!t.done).sort((a,b)=>todoSortScore(a)-todoSortScore(b));
+  const done = todoItems.filter(t=>t.done).sort((a,b)=>(b.doneAt||'').localeCompare(a.doneAt||''));
+
+  if(!open.length){
+    el.innerHTML = '<div class="empty" style="padding:24px 0"><div class="ei">✅</div>All clear — no open tasks</div>';
+  } else {
+    el.innerHTML = open.map(item => {
+      const color = todoUrgencyColor(item);
+      const bg    = todoUrgencyBg(item);
+      const dueLabel = todoDueLabel(item);
+      return `<div style="background:${bg};border-left:4px solid ${color};border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">
+        <!-- Checkbox -->
+        <button onclick="toggleTodoDone('${item.id}')" style="background:none;border:2px solid ${color};border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;margin-top:1px;display:flex;align-items:center;justify-content:center;padding:0"></button>
+        <!-- Content -->
+        <div style="flex:1;min-width:0" onclick="openEditTodo('${item.id}')" style="cursor:pointer">
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;cursor:pointer">${item.title||'Untitled'}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            ${todoPriorityDot(item.priority||'P2')}
+            ${dueLabel ? `<span style="font-size:11px;font-weight:700;color:${color}">${dueLabel}</span>` : ''}
+            ${item.note ? `<span style="font-size:11px;color:var(--text3)">· ${item.note}</span>` : ''}
+          </div>
+        </div>
+        <!-- Edit btn -->
+        <button onclick="openEditTodo('${item.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:0;line-height:1">⋯</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Done section
+  if(done.length && doneEl && doneSec){
+    doneSec.style.display = 'block';
+    doneEl.innerHTML = done.map(item => `
+      <div style="background:var(--bg2);border-radius:var(--r);padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;opacity:.6">
+        <button onclick="toggleTodoDone('${item.id}')" style="background:var(--green);border:2px solid var(--green);border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">✓</button>
+        <div style="flex:1">
+          <div style="font-size:13px;color:var(--text2);text-decoration:line-through">${item.title||'Untitled'}</div>
+          ${item.doneAt ? `<div style="font-size:11px;color:var(--text3)">Completed ${new Date(item.doneAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>` : ''}
+        </div>
+      </div>`).join('');
+  } else if(doneSec){
+    doneSec.style.display = 'none';
+  }
+}
+
+function openAddTodo(){
+  editingTodoId = null;
+  document.getElementById('todoModalTitle').textContent = 'Add Task';
+  document.getElementById('tm-title').value = '';
+  document.getElementById('tm-due').value = '';
+  document.getElementById('tm-priority').value = 'P2';
+  document.getElementById('tm-note').value = '';
+  document.getElementById('tm-delete-wrap').style.display = 'none';
+  document.getElementById('todoModal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('tm-title').focus(), 100);
+}
+
+function openEditTodo(id){
+  const item = todoItems.find(t=>t.id===id);
+  if(!item) return;
+  editingTodoId = id;
+  document.getElementById('todoModalTitle').textContent = 'Edit Task';
+  document.getElementById('tm-title').value = item.title||'';
+  document.getElementById('tm-due').value = item.due||'';
+  document.getElementById('tm-priority').value = item.priority||'P2';
+  document.getElementById('tm-note').value = item.note||'';
+  document.getElementById('tm-delete-wrap').style.display = 'block';
+  document.getElementById('todoModal').style.display = 'flex';
+}
+
+function closeTodoModal(){
+  document.getElementById('todoModal').style.display = 'none';
+  editingTodoId = null;
+}
+
+async function saveTodo(){
+  const title = document.getElementById('tm-title').value.trim();
+  if(!title){ toast('Enter a task title'); return; }
+  const data = {
+    title,
+    due: document.getElementById('tm-due').value || null,
+    priority: document.getElementById('tm-priority').value,
+    note: document.getElementById('tm-note').value.trim(),
+    done: false,
+    updatedAt: new Date().toISOString()
+  };
+  try{
+    if(editingTodoId){
+      await window.F.updateDoc(window.F.doc(window.db,'todos',editingTodoId), data);
+      toast('✓ Task updated');
+    } else {
+      data.createdAt = new Date().toISOString();
+      data.timestamp = window.F.serverTimestamp();
+      await window.F.addDoc(window.F.collection(window.db,'todos'), data);
+      toast('✓ Task added');
+    }
+    closeTodoModal();
+    loadTodos();
+  }catch(e){ toast('Error saving task'); console.error(e); }
+}
+
+async function toggleTodoDone(id){
+  const item = todoItems.find(t=>t.id===id);
+  if(!item) return;
+  const nowDone = !item.done;
+  try{
+    await window.F.updateDoc(window.F.doc(window.db,'todos',id),{
+      done: nowDone,
+      doneAt: nowDone ? new Date().toISOString() : null
+    });
+    item.done = nowDone;
+    item.doneAt = nowDone ? new Date().toISOString() : null;
+    renderTodos();
+    if(nowDone) toast('✓ Task marked complete');
+  }catch(e){ toast('Error updating task'); }
+}
+
+async function deleteTodo(){
+  if(!editingTodoId) return;
+  if(!confirm('Delete this task?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'todos',editingTodoId));
+    toast('Task deleted');
+    closeTodoModal();
+    loadTodos();
+  }catch(e){ toast('Error deleting task'); }
+}
+
+async function clearDoneTodos(){
+  if(!confirm('Remove all completed tasks?')) return;
+  const done = todoItems.filter(t=>t.done);
+  try{
+    await Promise.all(done.map(t=>window.F.deleteDoc(window.F.doc(window.db,'todos',t.id))));
+    toast('Cleared completed tasks');
+    loadTodos();
+  }catch(e){ toast('Error clearing tasks'); }
+}
+
+// Used by dashboard to get open urgent todos without a full page load
+async function loadTodosForDash(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'todos'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(100)
+    ));
+    return snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>!t.done);
+  }catch(e){ return []; }
+}
+
+// ---- SCHEDULE ----
+let schedWeekStart = null; // Monday of displayed week (Date obj)
+let schedShifts = [];      // all loaded shifts
+let editingShiftId = null;
+
+function getMonday(d){
+  const dt = new Date(d);
+  const day = dt.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  dt.setDate(dt.getDate() + diff);
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+
+function schedWeekNav(dir){
+  schedWeekStart.setDate(schedWeekStart.getDate() + dir * 7);
+  loadSchedule();
+}
+
+function fmtTime(t){
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hr = h % 12 || 12;
+  return `${hr}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function fmtShortDate(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function getDayLabel(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+
+async function loadSchedule(){
+  if(!schedWeekStart) schedWeekStart = getMonday(new Date());
+
+  // Compute week range
+  const start = new Date(schedWeekStart);
+  const end   = new Date(schedWeekStart);
+  end.setDate(end.getDate() + 6);
+
+  const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const startStr = fmt(start);
+  const endStr   = fmt(end);
+
+  // Update label
+  const label = document.getElementById('schedWeekLabel');
+  if(label) label.textContent = `${fmtShortDate(startStr)} — ${fmtShortDate(endStr)}`;
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'schedules'),
+      window.F.orderBy('date','asc'),
+      window.F.limit(200)
+    ));
+    schedShifts = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Populate employee filter
+    const empFilter = document.getElementById('schedEmpFilter');
+    if(empFilter){
+      const names = [...new Set(schedShifts.map(s=>s.employee).filter(Boolean))].sort();
+      const cur = empFilter.value;
+      empFilter.innerHTML = '<option value="all">All employees</option>' +
+        names.map(n=>`<option value="${n}"${n===cur?' selected':''}>${n}</option>`).join('');
+    }
+
+    renderSchedule(startStr, endStr);
+  }catch(e){ console.error('loadSchedule', e); }
+}
+
+function renderSchedule(startStr, endStr){
+  const grid = document.getElementById('schedWeekGrid');
+  if(!grid) return;
+
+  // Recompute range from current week if not passed
+  if(!startStr){
+    const start = new Date(schedWeekStart);
+    const end   = new Date(schedWeekStart); end.setDate(end.getDate()+6);
+    const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    startStr = fmt(start); endStr = fmt(end);
+  }
+
+  const empFilter = document.getElementById('schedEmpFilter')?.value || 'all';
+  const today = localDate();
+
+  // Build 7 days
+  const days = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(schedWeekStart);
+    d.setDate(d.getDate()+i);
+    const fmt = d2 => d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0')+'-'+String(d2.getDate()).padStart(2,'0');
+    days.push(fmt(d));
+  }
+
+  const filtered = schedShifts.filter(s =>
+    s.date >= startStr && s.date <= endStr &&
+    (empFilter === 'all' || s.employee === empFilter)
+  );
+
+  const shiftsByDay = {};
+  days.forEach(d => shiftsByDay[d] = []);
+  filtered.forEach(s => { if(shiftsByDay[s.date]) shiftsByDay[s.date].push(s); });
+
+  const empColors = {};
+  const palette = ['var(--blue)','var(--green)','var(--amber)','#7c3aed','#0891b2','#be185d','#059669'];
+  let colorIdx = 0;
+  function empColor(name){
+    if(!empColors[name]) empColors[name] = palette[colorIdx++ % palette.length];
+    return empColors[name];
+  }
+
+  grid.innerHTML = days.map(day => {
+    const shifts = shiftsByDay[day];
+    const isToday = day === today;
+    const isPast  = day < today;
+    const dayLabel = getDayLabel(day);
+    const dayBg = isToday ? 'background:var(--blue-light);border:1.5px solid var(--blue)' : 'background:var(--bg);border:1px solid var(--border)';
+    const dayLabelColor = isToday ? 'color:var(--blue);font-weight:800' : isPast ? 'color:var(--text3)' : 'color:var(--text);font-weight:700';
+
+    const shiftCards = shifts.length
+      ? shifts.map(s => {
+          const c = empColor(s.employee||'?');
+          const timeStr = s.startTime && s.endTime ? `${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}` : s.startTime ? `From ${fmtTime(s.startTime)}` : '';
+          return `<div onclick="openEditShift('${s.id}')" style="background:${c}18;border-left:3px solid ${c};border-radius:6px;padding:7px 9px;margin-bottom:6px;cursor:pointer">
+            <div style="font-size:13px;font-weight:700;color:${c}">${s.employee||'Unknown'}</div>
+            ${timeStr ? `<div style="font-size:11px;color:var(--text2);margin-top:1px">${timeStr}</div>` : ''}
+            ${s.role ? `<div style="font-size:11px;color:var(--text3)">${s.role}</div>` : ''}
+            ${s.note ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;font-style:italic">${s.note}</div>` : ''}
+          </div>`;
+        }).join('')
+      : `<div style="font-size:12px;color:var(--text3);padding:6px 0;font-style:italic">No shifts</div>`;
+
+    return `<div style="${dayBg};border-radius:var(--r);padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;${dayLabelColor}">${dayLabel}${isToday?' <span style="font-size:10px;background:var(--blue);color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px">TODAY</span>':''}</div>
+        <button onclick="openAddShiftOnDay('${day}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--text2)">+ Add</button>
+      </div>
+      ${shiftCards}
+    </div>`;
+  }).join('');
+}
+
+function openAddShift(){
+  editingShiftId = null;
+  document.getElementById('shiftModalTitle').textContent = 'Add Shift';
+  document.getElementById('sm-emp').value = '';
+  document.getElementById('sm-date').value = localDate();
+  document.getElementById('sm-start').value = '';
+  document.getElementById('sm-end').value = '';
+  document.getElementById('sm-role').value = 'Morning';
+  document.getElementById('sm-note').value = '';
+  document.getElementById('sm-delete-wrap').style.display = 'none';
+  document.getElementById('shiftModal').style.display = 'flex';
+}
+
+function openAddShiftOnDay(date){
+  openAddShift();
+  document.getElementById('sm-date').value = date;
+}
+
+function openEditShift(id){
+  const s = schedShifts.find(x=>x.id===id);
+  if(!s) return;
+  editingShiftId = id;
+  document.getElementById('shiftModalTitle').textContent = 'Edit Shift';
+  document.getElementById('sm-emp').value = s.employee||'';
+  document.getElementById('sm-date').value = s.date||'';
+  document.getElementById('sm-start').value = s.startTime||'';
+  document.getElementById('sm-end').value = s.endTime||'';
+  document.getElementById('sm-role').value = s.role||'Morning';
+  document.getElementById('sm-note').value = s.note||'';
+  document.getElementById('sm-delete-wrap').style.display = 'block';
+  document.getElementById('shiftModal').style.display = 'flex';
+}
+
+function closeShiftModal(){
+  document.getElementById('shiftModal').style.display = 'none';
+  editingShiftId = null;
+}
+
+async function saveShift(){
+  const emp   = document.getElementById('sm-emp').value.trim();
+  const date  = document.getElementById('sm-date').value;
+  const start = document.getElementById('sm-start').value;
+  const end   = document.getElementById('sm-end').value;
+  const role  = document.getElementById('sm-role').value;
+  const note  = document.getElementById('sm-note').value.trim();
+
+  if(!emp){ toast('Enter employee name'); return; }
+  if(!date){ toast('Select a date'); return; }
+
+  const data = { employee:emp, date, startTime:start, endTime:end, role, note, updatedBy:CU.name, updatedAt:new Date().toISOString() };
+
+  try{
+    if(editingShiftId){
+      await window.F.updateDoc(window.F.doc(window.db,'schedules',editingShiftId), data);
+      toast('✓ Shift updated');
+    } else {
+      data.createdBy = CU.name;
+      data.timestamp = window.F.serverTimestamp();
+      await window.F.addDoc(window.F.collection(window.db,'schedules'), data);
+      toast('✓ Shift added');
+    }
+    closeShiftModal();
+    loadSchedule();
+  }catch(e){ toast('Error saving shift'); console.error(e); }
+}
+
+async function deleteShift(){
+  if(!editingShiftId) return;
+  if(!confirm('Delete this shift?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'schedules',editingShiftId));
+    toast('Shift deleted');
+    closeShiftModal();
+    loadSchedule();
+  }catch(e){ toast('Error deleting shift'); }
+}
+
+// ---- MY SCHEDULE (employee view) ----
+async function loadMySchedule(){
+  const el = document.getElementById('mySchedContent');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
+
+  const today = localDate();
+  const future = new Date(); future.setDate(future.getDate()+14);
+  const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const endStr = fmt(future);
+
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'schedules'),
+      window.F.orderBy('date','asc'),
+      window.F.limit(200)
+    ));
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const mine = all.filter(s => s.employee === CU.name && s.date >= today && s.date <= endStr);
+
+    if(!mine.length){
+      el.innerHTML = '<div class="empty"><div class="ei">📅</div>No upcoming shifts scheduled</div>';
+      return;
+    }
+
+    el.innerHTML = mine.map(s => {
+      const isToday = s.date === today;
+      const timeStr = s.startTime && s.endTime ? `${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}` : s.startTime ? `From ${fmtTime(s.startTime)}` : 'Time TBD';
+      return `<div class="card" style="${isToday?'border:2px solid var(--blue);background:var(--blue-light)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:${isToday?'var(--blue)':'var(--text)'}">${getDayLabel(s.date)}${isToday?' <span style="font-size:11px;background:var(--blue);color:#fff;border-radius:4px;padding:2px 6px;margin-left:4px">TODAY</span>':''}</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-top:4px">🕐 ${timeStr}</div>
+            ${s.role ? `<div style="font-size:12px;color:var(--text2);margin-top:3px">${s.role} shift</div>` : ''}
+            ${s.note ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;font-style:italic">📝 ${s.note}</div>` : ''}
+          </div>
+          <div style="text-align:right">
+            ${s.startTime && s.endTime ? `<div style="font-size:12px;color:var(--text3)">${calcShiftHrs(s.startTime,s.endTime)}</div>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML = '<div class="empty">Error loading schedule.</div>'; console.error(e); }
+}
+
+function calcShiftHrs(start, end){
+  if(!start||!end) return '';
+  const [sh,sm]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  let mins=(eh*60+em)-(sh*60+sm);
+  if(mins<0) mins+=24*60;
+  const h=Math.floor(mins/60), m=mins%60;
+  return h+'h'+(m>0?' '+m+'m':'');
+}
+
 // ---- LOGS ----
 async function loadLogs(){
   const filt=document.getElementById('logFilt')?.value||'all',df=document.getElementById('logDate')?.value||'';
@@ -4207,12 +4902,7 @@ async function loadLogs(){
       let t='',det='',b='',extraDetail='';
       if(d.col==='dailyReports'){
         const cs=d.cashStatus==='short'?` · <span style="color:var(--red)">Short $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:d.cashStatus==='over'?` · <span style="color:var(--green)">Over $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:'';
-        t=`${d.shift} shift — ${d.employee}`;
-        const hasPosBreakdown = (d.creditNrs||d.creditVfn||d.cashNrs||d.cashVfn);
-        const posBreakdown = hasPosBreakdown
-          ? ` · <span style="font-size:11px;color:var(--text3)">NRS 💳$${(d.creditNrs||0).toFixed(2)} · Vfn 💳$${(d.creditVfn||0).toFixed(2)}</span>`
-          : '';
-        det=`Sales: $${(d.totalSales||0).toFixed(2)} · 💳 Credit: $${(d.creditSales||0).toFixed(2)}${posBreakdown} · Fuel: ${((d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0)).toFixed(0)} gal${cs}`;b='<span class="badge bblu">Daily</span>';
+        t=`${d.shift} shift — ${d.employee}`;det=`Sales: $${(d.totalSales||0).toFixed(2)} · Fuel: ${((d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0)).toFixed(0)} gal${cs}`;b='<span class="badge bblu">Daily</span>';
       }
       else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
       else if(d.col==='scratchCounts'){
