@@ -2861,6 +2861,12 @@ async function subDaily(){
       cashSales:parseFloat(document.getElementById('d-cash').value)||0,
       creditSales:parseFloat(document.getElementById('d-cred').value)||0,
       grossSales:(parseFloat(document.getElementById('d-tot-nrs').value)||0)+(parseFloat(document.getElementById('d-tot-vfn').value)||0),
+      totalNrs:parseFloat(document.getElementById('d-tot-nrs').value)||0,
+      totalVfn:parseFloat(document.getElementById('d-tot-vfn').value)||0,
+      cashNrs:parseFloat(document.getElementById('d-cash-nrs').value)||0,
+      cashVfn:parseFloat(document.getElementById('d-cash-vfn').value)||0,
+      creditNrs:parseFloat(document.getElementById('d-cred-nrs').value)||0,
+      creditVfn:parseFloat(document.getElementById('d-cred-vfn').value)||0,
       deductLottery:parseFloat(document.getElementById('d-deduct-lottery').value)||0,
       deductOther:parseFloat(document.getElementById('d-deduct-other').value)||0,
       deductOtherNote:document.getElementById('d-deduct-other-note').value,
@@ -4910,7 +4916,14 @@ async function loadLogs(){
       let t='',det='',b='',extraDetail='';
       if(d.col==='dailyReports'){
         const cs=d.cashStatus==='short'?` · <span style="color:var(--red)">Short $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:d.cashStatus==='over'?` · <span style="color:var(--green)">Over $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:'';
-        t=`${d.shift} shift — ${d.employee}`;det=`Sales: $${(d.totalSales||0).toFixed(2)} · Fuel: ${((d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0)).toFixed(0)} gal${cs}`;b='<span class="badge bblu">Daily</span>';
+        t=`${d.shift} shift — ${d.employee}`;
+        {
+          const nrsCredit = d.creditNrs!=null ? ` <span style="font-size:11px;color:var(--blue);font-weight:600">NRS $${(d.creditNrs).toFixed(2)}</span>` : '';
+          const vfnCredit = d.creditVfn!=null ? ` <span style="font-size:11px;color:var(--amber);font-weight:600">Vfn $${(d.creditVfn).toFixed(2)}</span>` : '';
+          const credBreakdown = (d.creditNrs!=null||d.creditVfn!=null) ? `<span style="font-size:11px;color:var(--text3)"> (💳${nrsCredit}${vfnCredit})</span>` : '';
+          det=`Sales: $${(d.totalSales||0).toFixed(2)} · Credit: $${(d.creditSales||0).toFixed(2)}${credBreakdown} · Fuel: ${((d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0)).toFixed(0)} gal${cs}`;
+        }
+        b='<span class="badge bblu">Daily</span>';
       }
       else if(d.col==='fuelReports'){t=`Fuel — ${d.employee}`;det=`Reg: ${d.regularGal||0} · Prem: ${d.premiumGal||0} · Diesel: ${d.dieselGal||0} gal`;b='<span class="badge bgrn">Fuel</span>';}
       else if(d.col==='scratchCounts'){
