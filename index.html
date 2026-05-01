@@ -1530,6 +1530,14 @@
         <div><label>Date</label><input type="date" id="logDate" onchange="loadLogs()" /></div>
       </div>
     </div>
+    <div class="card">
+      <div class="ct">Backup / Export</div>
+      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--blue);line-height:1.5">
+        Downloads a full JSON snapshot of all store data from Firestore — scratch counts, fuel deliveries, lottery reports, expenses, payroll, and more. Run this weekly or monthly as a local backup.
+      </div>
+      <button onclick="exportAllData()" id="exportAllBtn" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;width:100%">⬇ Export All Data (JSON)</button>
+      <div id="exportStatus" style="margin-top:10px;font-size:12px;color:var(--muted);display:none"></div>
+    </div>
     <div class="card"><div class="ct">Entries</div><div id="logsList"><div class="empty"><div class="ei">📊</div>Loading...</div></div></div>
   </div>
 
@@ -4893,6 +4901,93 @@ function calcShiftHrs(start, end){
   if(mins<0) mins+=24*60;
   const h=Math.floor(mins/60), m=mins%60;
   return h+'h'+(m>0?' '+m+'m':'');
+}
+
+// ---- EXPORT ALL DATA ----
+async function exportAllData(){
+  const btn = document.getElementById('exportAllBtn');
+  const status = document.getElementById('exportStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Exporting...';
+  status.style.display = 'block';
+  status.textContent = 'Connecting to Firestore...';
+
+  const collections = [
+    'scratchCounts',
+    'scratchSlots',
+    'fuelDeliveries',
+    'lotteryReports',
+    'overheadExpenses',
+    'otherRevenue',
+    'payrollRecords',
+    'employeeWages',
+    'settings',
+    'dailyReports',
+    'fuelReports',
+  ];
+
+  const snapshot = {};
+  let totalDocs = 0;
+
+  try {
+    for (const col of collections) {
+      status.textContent = `Fetching ${col}...`;
+      try {
+        const snap = await window.F.getDocs(
+          window.F.query(window.F.collection(window.db, col), window.F.limit(2000))
+        );
+        snapshot[col] = snap.docs.map(d => {
+          const data = d.data();
+          // Strip large base64 photo fields to keep file size manageable
+          // but note their presence so data isn't silently lost
+          const cleaned = {};
+          for (const [k, v] of Object.entries(data)) {
+            if (typeof v === 'string' && v.length > 50000 && v.startsWith('data:')) {
+              cleaned[k] = '[base64 image omitted — ' + Math.round(v.length / 1024) + 'KB]';
+            } else {
+              cleaned[k] = v;
+            }
+          }
+          return { _id: d.id, ...cleaned };
+        });
+        totalDocs += snapshot[col].length;
+      } catch(colErr) {
+        // Collection may not exist yet — skip silently
+        snapshot[col] = [];
+      }
+    }
+
+    const exportObj = {
+      exportedAt: new Date().toISOString(),
+      exportedBy: window.CU?.name || CU?.name || 'unknown',
+      storeId: 'robious-mart',
+      totalDocuments: totalDocs,
+      collections: snapshot,
+    };
+
+    const json = JSON.stringify(exportObj, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `robious-mart-backup-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Exported ${totalDocs} records across ${collections.length} collections.`;
+    toast('Backup downloaded ✓');
+  } catch(err) {
+    status.style.color = 'var(--red)';
+    status.textContent = 'Export failed: ' + err.message;
+    toast('Export failed');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇ Export All Data (JSON)';
+  }
 }
 
 // ---- LOGS ----
