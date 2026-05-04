@@ -1530,14 +1530,6 @@
         <div><label>Date</label><input type="date" id="logDate" onchange="loadLogs()" /></div>
       </div>
     </div>
-    <div class="card">
-      <div class="ct">Backup / Export</div>
-      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--blue);line-height:1.5">
-        Downloads a full JSON snapshot of all store data from Firestore — scratch counts, fuel deliveries, lottery reports, expenses, payroll, and more. Run this weekly or monthly as a local backup.
-      </div>
-      <button onclick="exportAllData()" id="exportAllBtn" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;width:100%">⬇ Export All Data (JSON)</button>
-      <div id="exportStatus" style="margin-top:10px;font-size:12px;color:var(--muted);display:none"></div>
-    </div>
     <div class="card"><div class="ct">Entries</div><div id="logsList"><div class="empty"><div class="ei">📊</div>Loading...</div></div></div>
   </div>
 
@@ -2079,6 +2071,8 @@ async function loadDashboard(){
     const mtdSales=sum(mtdR,'totalSales');
     const mtdCash=sum(mtdR,'cashSales');
     const mtdCredit=sum(mtdR,'creditSales');
+    const mtdCreditNrs=sum(mtdR,'creditNrs');
+    const mtdCreditVfn=sum(mtdR,'creditVfn');
     const mtdRegGal=sum(mtdR,'regularGal');
     const mtdPremGal=sum(mtdR,'premiumGal');
     const mtdDiesGal=sum(mtdR,'dieselGal');
@@ -2293,7 +2287,7 @@ async function loadDashboard(){
         <div class="dash-hero-sub">${mtdR.length} shift report${mtdR.length!==1?'s':''} · <span style="opacity:.7;font-size:11px">Tap for daily breakdown →</span></div>
         <div class="dash-hero-chips">
           <div class="dash-chip">💵 Cash $${mtdCash.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
-          <div class="dash-chip">💳 Credit $${mtdCredit.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          <div class="dash-chip" style="flex-direction:column;align-items:flex-start;gap:2px"><span>💳 Credit $${mtdCredit.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</span>${(mtdCreditNrs>0||mtdCreditVfn>0)?`<span style="font-size:10px;opacity:.85;display:flex;gap:8px;padding-left:2px"><span style="color:var(--blue);font-weight:700">NRS $${mtdCreditNrs.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</span><span style="color:var(--amber);font-weight:700">Vfn $${mtdCreditVfn.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</span></span>`:''}</div>
           ${mtdLotNet>=0?`<div class="dash-chip good">🎟 Lottery +$${mtdLotNet.toFixed(0)}</div>`:`<div class="dash-chip bad">🎟 Lottery -$${Math.abs(mtdLotNet).toFixed(0)}</div>`}
           ${salesVsYest!==null?`<div class="dash-chip ${salesVsYest>=0?'good':'bad'}">${salesVsYest>=0?'▲':'▼'} ${Math.abs(salesVsYest).toFixed(1)}% vs yesterday</div>`:''}
         </div>
@@ -4903,93 +4897,6 @@ function calcShiftHrs(start, end){
   return h+'h'+(m>0?' '+m+'m':'');
 }
 
-// ---- EXPORT ALL DATA ----
-async function exportAllData(){
-  const btn = document.getElementById('exportAllBtn');
-  const status = document.getElementById('exportStatus');
-  btn.disabled = true;
-  btn.textContent = '⏳ Exporting...';
-  status.style.display = 'block';
-  status.textContent = 'Connecting to Firestore...';
-
-  const collections = [
-    'scratchCounts',
-    'scratchSlots',
-    'fuelDeliveries',
-    'lotteryReports',
-    'overheadExpenses',
-    'otherRevenue',
-    'payrollRecords',
-    'employeeWages',
-    'settings',
-    'dailyReports',
-    'fuelReports',
-  ];
-
-  const snapshot = {};
-  let totalDocs = 0;
-
-  try {
-    for (const col of collections) {
-      status.textContent = `Fetching ${col}...`;
-      try {
-        const snap = await window.F.getDocs(
-          window.F.query(window.F.collection(window.db, col), window.F.limit(2000))
-        );
-        snapshot[col] = snap.docs.map(d => {
-          const data = d.data();
-          // Strip large base64 photo fields to keep file size manageable
-          // but note their presence so data isn't silently lost
-          const cleaned = {};
-          for (const [k, v] of Object.entries(data)) {
-            if (typeof v === 'string' && v.length > 50000 && v.startsWith('data:')) {
-              cleaned[k] = '[base64 image omitted — ' + Math.round(v.length / 1024) + 'KB]';
-            } else {
-              cleaned[k] = v;
-            }
-          }
-          return { _id: d.id, ...cleaned };
-        });
-        totalDocs += snapshot[col].length;
-      } catch(colErr) {
-        // Collection may not exist yet — skip silently
-        snapshot[col] = [];
-      }
-    }
-
-    const exportObj = {
-      exportedAt: new Date().toISOString(),
-      exportedBy: window.CU?.name || CU?.name || 'unknown',
-      storeId: 'robious-mart',
-      totalDocuments: totalDocs,
-      collections: snapshot,
-    };
-
-    const json = JSON.stringify(exportObj, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const dateStr = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `robious-mart-backup-${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    status.style.color = 'var(--green)';
-    status.textContent = `✓ Exported ${totalDocs} records across ${collections.length} collections.`;
-    toast('Backup downloaded ✓');
-  } catch(err) {
-    status.style.color = 'var(--red)';
-    status.textContent = 'Export failed: ' + err.message;
-    toast('Export failed');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '⬇ Export All Data (JSON)';
-  }
-}
-
 // ---- LOGS ----
 async function loadLogs(){
   const filt=document.getElementById('logFilt')?.value||'all',df=document.getElementById('logDate')?.value||'';
@@ -5082,10 +4989,12 @@ function openDailyBreakdown(){
   const byDate = {};
   reports.forEach(r => {
     const d = r.date || '';
-    if(!byDate[d]) byDate[d] = {sales:0,cash:0,credit:0,lotSales:0,lotPayout:0,gal:0,shifts:[]};
+    if(!byDate[d]) byDate[d] = {sales:0,cash:0,credit:0,creditNrs:0,creditVfn:0,lotSales:0,lotPayout:0,gal:0,shifts:[]};
     byDate[d].sales     += r.totalSales    || 0;
     byDate[d].cash      += r.cashSales     || 0;
     byDate[d].credit    += r.creditSales   || 0;
+    byDate[d].creditNrs += r.creditNrs     || 0;
+    byDate[d].creditVfn += r.creditVfn     || 0;
     byDate[d].lotSales  += r.lotteryTotal  || 0;
     byDate[d].lotPayout += r.lotteryPayout || 0;
     byDate[d].gal       += (r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0);
@@ -5115,7 +5024,9 @@ function openDailyBreakdown(){
         +'<div style="font-size:10px;color:var(--text3)">'+row.shifts.length+' shift'+(row.shifts.length!==1?'s':'')+'</div></div>'
         +'<div style="text-align:right"><div style="font-size:13px;font-weight:700">$'+row.sales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">Cash $'+Math.round(row.cash).toLocaleString()+'</div>'
-        +'<div style="font-size:10px;color:var(--text3)">Cr $'+Math.round(row.credit).toLocaleString()+'</div></div>'
+        +'<div style="font-size:10px;color:var(--text3)">Cr $'+Math.round(row.credit).toLocaleString()+'</div>'
+        +((row.creditNrs>0||row.creditVfn>0)?'<div style="font-size:9px;display:flex;gap:5px;margin-top:1px"><span style="color:var(--blue);font-weight:700">NRS $'+Math.round(row.creditNrs).toLocaleString()+'</span><span style="color:var(--amber);font-weight:700">Vfn $'+Math.round(row.creditVfn).toLocaleString()+'</span></div>':'')
+        +'</div>'
         +'<div style="text-align:right;padding-top:2px;font-size:13px;font-weight:600;color:var(--text2)">'+(row.gal>0?row.gal.toFixed(0)+' gal':'&mdash;')+'</div>'
         +'<div style="text-align:right">'+lotCell+'</div>'
         +'</div>';
