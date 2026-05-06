@@ -2059,7 +2059,35 @@ async function loadDashboard(){
   try{
     const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('timestamp','desc'),limit(300)));
+    // ---- FIRE ALL INDEPENDENT QUERIES IN PARALLEL ----
+    const needFuelReport = !window._latestFuelReport;
+    const isOperator = CU.role==='operator';
+
+    const [
+      snap, expSnap, orSnap, dlSnap, fdSnap,
+      scrSnap, actSnapAll, invSnap,
+      tobBrandSnap, tobCountSnap,
+      frSnap, todosSnap
+    ] = await Promise.all([
+      getDocs(query(collection(window.db,'dailyReports'),    orderBy('timestamp','desc'),limit(300))),
+      getDocs(query(collection(window.db,'overheadExpenses'),orderBy('timestamp','desc'),limit(300))),
+      getDocs(query(collection(window.db,'otherRevenue'),    orderBy('timestamp','desc'),limit(200))),
+      getDocs(query(collection(window.db,'deliveries'),      orderBy('timestamp','desc'),limit(200))),
+      getDocs(query(collection(window.db,'fuelDeliveries'),  orderBy('timestamp','desc'),limit(200))),
+      getDocs(query(collection(window.db,'scratchCounts'),   orderBy('timestamp','desc'),limit(200))),
+      getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(200))),
+      getDocs(query(collection(window.db,'inventoryFlags'),  orderBy('timestamp','desc'),limit(100))).catch(()=>({docs:[]})),
+      getDocs(query(collection(window.db,'tobaccoBrands'),   orderBy('name','asc'))).catch(()=>({docs:[]})),
+      getDocs(query(collection(window.db,'tobaccoCounts'),   orderBy('timestamp','desc'),limit(1))).catch(()=>({docs:[]})),
+      needFuelReport
+        ? getDocs(query(collection(window.db,'fuelReports'), orderBy('timestamp','desc'),limit(1))).catch(()=>({docs:[]}))
+        : Promise.resolve(null),
+      isOperator
+        ? getDocs(query(collection(window.db,'todos'),       orderBy('timestamp','desc'),limit(100))).catch(()=>({docs:[]}))
+        : Promise.resolve({docs:[]}),
+    ]);
+
+    // ---- DAILY REPORTS ----
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdR=allReports.filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
     window._dashMtdR = mtdR;
@@ -2077,11 +2105,9 @@ async function loadDashboard(){
     const mtdPremGal=sum(mtdR,'premiumGal');
     const mtdDiesGal=sum(mtdR,'dieselGal');
     const mtdTotalGal=mtdRegGal+mtdPremGal+mtdDiesGal;
-    // Cache for fuel margin preview widget on Fuel tab
     window._dashMtdRegGal=mtdRegGal; window._dashMtdPremGal=mtdPremGal; window._dashMtdDiesGal=mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
 
-    // Cash discrepancy summary
     const cashDiscReports=mtdR.filter(r=>r.cashStatus&&r.cashStatus!=='exact'&&r.cashDifference!=null);
     const mtdShortReports=cashDiscReports.filter(r=>r.cashDifference<0);
     const mtdOverReports=cashDiscReports.filter(r=>r.cashDifference>0);
@@ -2093,14 +2119,13 @@ async function loadDashboard(){
     const yestSales=sum(yestR,'totalSales');
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
-    // Overhead expenses for selected month
-    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('timestamp','desc'),limit(300)));
+    // ---- OVERHEAD EXPENSES ----
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // Fuel profit — margin per gallon × MTD gallons sold
+    // ---- FUEL PROFIT ----
     const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
     const fuelProfitReg  = mtdRegGal  * (mgn.regular||0);
     const fuelProfitPrem = mtdPremGal * (mgn.premium||0);
@@ -2108,37 +2133,30 @@ async function loadDashboard(){
     const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
     const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
 
-    // Other revenue for selected month
-    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('timestamp','desc'),limit(200)));
+    // ---- OTHER REVENUE ----
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
-    // Group by source for dashboard breakdown
     const orBySource={};
     mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
-    // Deliveries for selected month
-    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('timestamp','desc'),limit(200)));
+    // ---- DELIVERIES ----
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
-    // Fuel deliveries
-    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('timestamp','desc'),limit(200)));
+    // ---- FUEL DELIVERIES ----
     const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
-    const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
+    const recentFuelDl=allFuelDeliveries.slice(0,5);
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
-    // Check fuel alerts using most recent fuel report
-    if(!window._latestFuelReport){
-      try{
-        const frSnap=await getDocs(query(collection(window.db,'fuelReports'),orderBy('timestamp','desc'),limit(1)));
-        if(!frSnap.empty){
-          const fr=frSnap.docs[0].data();
-          window._latestFuelReport={regularGal:fr.regularGal||0,premiumGal:fr.premiumGal||0,dieselGal:fr.dieselGal||0,date:fr.date,employee:fr.employee};
-        }
-      }catch(fe){console.log('fuel report fetch skipped',fe);}
+
+    // ---- FUEL REPORT (for alerts) ----
+    if(!window._latestFuelReport && frSnap && !frSnap.empty){
+      const fr=frSnap.docs[0].data();
+      window._latestFuelReport={regularGal:fr.regularGal||0,premiumGal:fr.premiumGal||0,dieselGal:fr.dieselGal||0,date:fr.date,employee:fr.employee};
     }
     checkFuelAlerts();
+
     const dlByVendor={};
     const today=localDate();
     mtdDl.forEach(x=>{
@@ -2154,49 +2172,32 @@ async function loadDashboard(){
     const totalPending=Object.values(dlByVendor).reduce((s,v)=>s+v.pending,0);
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
-    // ---- SCRATCH-OFF DASHBOARD DATA (new model) ----
-    // Counts use type:'opening'|'closing'. Revenue per closing = totalRevenue (already correct per-shift).
-    // Value on hand = most recent count's totalValue (the board value at that moment).
-    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(500)));
+    // ---- SCRATCH-OFFS ----
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
-
-    // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
     const latestCountDoc = scrAll.length ? scrAll[0] : null;
     const scrVal = latestCountDoc?.totalValue || 0;
-    const latestCount = latestCountDoc; // used in sub-line display
+    const latestCount = latestCountDoc;
 
-    // Activations
-    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+(a.bookValue||0),0);
 
-    // MTD sold revenue — simple sum of all closing count revenues for the month
-    // Each closing count stores its own per-shift totalRevenue (not cumulative), so just sum them.
     const scrMTD = scrAll.filter(d=>d.type==='closing'&&d.date>=mtdStart&&d.date<=mtdEnd);
     const scrRevenue = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // Inventory flags
-    let openFlags=0;
-    try{
-      const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
-      openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
-    }catch(e2){}
+    // ---- INVENTORY FLAGS ----
+    let openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
 
-    // Tobacco low stock + discrepancies
+    // ---- TOBACCO ----
     let lowTobacco=[], tobDiscrepancies=[];
     try{
-      const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
       const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
-      if(tobBrandsAll.length){
-        const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
-        if(tobCountSnap.docs.length){
-          const latestTob=tobCountSnap.docs[0].data();
-          const latestCounts=latestTob.counts||{};
-          lowTobacco=tobBrandsAll.filter(b=>latestCounts[b.id]!==undefined&&latestCounts[b.id]<=(b.threshold||3));
-          tobDiscrepancies=latestTob.discrepancies||[];
-        }
+      if(tobBrandsAll.length && tobCountSnap.docs.length){
+        const latestTob=tobCountSnap.docs[0].data();
+        const latestCounts=latestTob.counts||{};
+        lowTobacco=tobBrandsAll.filter(b=>latestCounts[b.id]!==undefined&&latestCounts[b.id]<=(b.threshold||3));
+        tobDiscrepancies=latestTob.discrepancies||[];
       }
     }catch(e3){}
 
@@ -2204,8 +2205,8 @@ async function loadDashboard(){
     const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!=''&&r.date>=mtdStart&&r.date<=mtdEnd).slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 
-    // Load todos for dashboard
-    const dashTodos = CU.role==='operator' ? await loadTodosForDash() : [];
+    // ---- TODOS (already fetched above) ----
+    const dashTodos = isOperator ? todosSnap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>!t.done) : [];
     const urgentTodos = dashTodos.sort((a,b)=>todoSortScore(a)-todoSortScore(b));
     const hasUrgentTodo = urgentTodos.some(t=>{
       const dl=todoDaysLeft(t.due);
@@ -2214,7 +2215,7 @@ async function loadDashboard(){
 
     // Build todo card HTML outside template literal to avoid escaping issues
     let todoDashHtml = '';
-    if(CU.role==='operator' && urgentTodos.length){
+    if(isOperator && urgentTodos.length){
       const isExpanded = hasUrgentTodo;
       const headerColor = hasUrgentTodo ? 'var(--red)' : 'var(--text)';
       const headerBg    = hasUrgentTodo ? 'var(--red-light)' : 'var(--bg)';
@@ -5944,7 +5945,7 @@ function renderMgCategories(filterText){
       if(!valid.length) return 0;
       return valid.reduce((s,p)=>{ const cpu=(p.units&&p.units>0)?p.cost/p.units:(p.costPerUnit||p.cost); return s+(calcMg(cpu,p.sell)||0); },0)/valid.length;
     })() : 0;
-    const isOpen = mgOpenCats[cat.id] !== false; // default open
+    const isOpen = mgOpenCats[cat.id] === true; // default collapsed
 
     const bgColors = {
       '🍺':'#fef3c7','🚬':'#f5f3ff','🥤':'#e0f2fe','🍬':'#fce7f3','🥛':'#f0fdf4',
