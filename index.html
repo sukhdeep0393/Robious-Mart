@@ -155,7 +155,6 @@
   .short-box{background:var(--red-light);color:var(--red);}
   .over-box{background:var(--green-light);color:var(--green);}
   .even-box{background:var(--blue-light);color:var(--blue);}
-  .auto-scanning{background:var(--amber-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--amber);margin-top:10px;display:flex;align-items:center;gap:8px;}
   /* DASHBOARD */
   .dash-greeting{font-size:20px;font-weight:700;margin-bottom:2px;}
   .dash-date{font-size:13px;color:var(--text3);margin-bottom:16px;}
@@ -291,12 +290,29 @@
   .upc-btn{height:44px;border-radius:22px;padding:0 20px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
 
   /* CAMERA SCANNER */
-  #scannerModal{position:fixed;inset:0;background:#000;z-index:500;display:none;flex-direction:column;}
-  #scannerModal.open{display:flex;}
   #scannerVideo{width:100%;flex:1;object-fit:cover;display:block;}
-  .scanner-overlay{position:absolute;inset:0;pointer-events:none;}
   /* Dark vignette around edges */
-  .scanner-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 75% 65% at 50% 48%, transparent 55%, rgba(0,0,0,0.72) 100%);}
+  /* Corner bracket guides */
+  /* UPC BARCODE SCANNER */
+  #upcScannerModal{position:fixed;inset:0;background:#000;z-index:600;display:none;flex-direction:column;}
+  #upcScannerModal.open{display:flex;}
+  #upcVideo{width:100%;flex:1;object-fit:cover;display:block;}
+  .upc-overlay{position:absolute;inset:0;pointer-events:none;}
+  .upc-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 80% 35% at 50% 50%, transparent 50%, rgba(0,0,0,0.75) 100%);}
+  .upc-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88%;max-width:360px;height:100px;border:2px solid rgba(255,255,255,0.6);border-radius:10px;}
+  .upc-laser{position:absolute;top:50%;left:6px;right:6px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,80,80,.9),rgba(255,160,160,1),rgba(255,80,80,.9),transparent);border-radius:1px;box-shadow:0 0 8px 2px rgba(255,100,100,.6);animation:upcLaser 1.5s ease-in-out infinite;}
+  @keyframes upcLaser{0%,100%{opacity:1}50%{opacity:.4}}
+  .upc-bar{background:rgba(0,0,0,.85);backdrop-filter:blur(12px);padding:16px 20px 36px;flex-shrink:0;text-align:center;}
+  .upc-status{color:rgba(255,255,255,.8);font-size:13px;margin-bottom:14px;min-height:20px;line-height:1.4;}
+  .upc-result{background:rgba(255,255,255,.1);border-radius:10px;padding:14px;margin-bottom:14px;display:none;}
+  .upc-result-name{color:#fff;font-size:16px;font-weight:700;margin-bottom:4px;}
+  .upc-result-upc{color:rgba(255,255,255,.5);font-size:11px;}
+  .upc-actions{display:flex;gap:10px;justify-content:center;}
+  .upc-btn{height:44px;border-radius:22px;padding:0 20px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
+
+  /* CAMERA SCANNER */
+  #scannerVideo{width:100%;flex:1;object-fit:cover;display:block;}
+  /* Dark vignette around edges */
   /* Corner bracket guides */
   .scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);width:82%;max-width:340px;aspect-ratio:3/4;}
   .scan-corner{position:absolute;width:26px;height:26px;border-color:#fff;border-style:solid;}
@@ -556,49 +572,6 @@
     <div class="card"><div class="ct">Incidents & notes</div>
       <div style="margin-bottom:10px"><label>Incidents / issues</label><textarea id="d-inc" rows="3" placeholder="Problems, equipment issues, complaints..."></textarea></div>
       <div><label>Notes for next shift</label><textarea id="d-notes" rows="2" placeholder="Pass-along notes..."></textarea></div>
-    </div>
-    <div class="card">
-      <div class="ct">End-of-shift photos</div>
-      <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue);line-height:1.5">
-        📐 Use the scanner for crisp, full-res captures — Claude reads register tapes and cash drawer amounts automatically.
-      </div>
-
-      <!-- Mode tabs -->
-      <div class="inv-mode-tabs" style="margin-bottom:12px">
-        <div class="inv-mode-tab active" id="shift-tab-scan"   onclick="setShiftMode('scan')">📷 Scan</div>
-        <div class="inv-mode-tab"        id="shift-tab-upload" onclick="setShiftMode('upload')">🗂 Upload</div>
-      </div>
-
-      <!-- SCAN MODE -->
-      <div id="shift-scan-mode">
-        <div id="shift-captures-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:8px" id="shift-captures-label">0 photos scanned</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap" id="shift-captures-thumbs"></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bsecondary" style="flex:1;padding:13px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openScanner('shift')">
-            <span style="font-size:20px">📷</span>
-            <span id="shift-open-scanner-label">Open scanner</span>
-          </button>
-          <button id="shift-send-btn" class="btn bprimary" style="flex:1;padding:13px;font-size:14px;display:none" onclick="sendShiftCaptures()">
-            Auto-fill numbers →
-          </button>
-        </div>
-      </div>
-
-      <!-- UPLOAD MODE (fallback) -->
-      <div id="shift-upload-mode" style="display:none">
-        <div class="uzone" onclick="document.getElementById('shiftPhotos').click()" style="padding:20px">
-          <div style="font-size:28px;margin-bottom:6px">📸</div>
-          <div style="font-size:14px;color:var(--text2)" id="shiftPhotoLabel">Tap to add photos (optional)</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Register tape, cash drawer, POS screen</div>
-        </div>
-        <input type="file" id="shiftPhotos" accept="image/*" multiple style="display:none" onchange="handleShiftPhotos(this)" />
-      </div>
-
-      <div id="shiftPhotoScanMsg" style="display:none;margin-top:10px" class="auto-scanning">
-        <span class="spinner" style="border-top-color:var(--amber)"></span>Claude is reading your photos and filling in numbers...
-      </div>
     </div>
     <button class="btn bprimary" id="dailyBtn" onclick="subDaily()">Submit shift report</button>
   </div>
@@ -1328,6 +1301,15 @@
         <textarea id="oh-notes" rows="2" placeholder="Any additional details…"></textarea>
       </div>
 
+      <div style="margin-bottom:14px">
+        <label>📎 Receipt photo (optional)</label>
+        <div onclick="document.getElementById('ohPhotoInput').click()" style="border:2px dashed var(--border);border-radius:8px;padding:12px 16px;cursor:pointer;background:var(--bg2);display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">📷</span>
+          <span id="ohPhotoLabel" style="font-size:13px;color:var(--text2)">Tap to attach receipt</span>
+        </div>
+        <input type="file" id="ohPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleOhPhoto(this)" />
+      </div>
+
       <button class="btn bprimary" id="oh-submit-btn" style="padding:13px" onclick="submitOverhead()">Save Expense</button>
     </div>
 
@@ -1783,64 +1765,7 @@
   </div>
 </div>
 
-<!-- CAMERA SCANNER MODAL -->
-<div id="scannerModal">
-  <!-- Video feed -->
-  <div style="position:relative;flex:1;overflow:hidden;background:#000;">
-    <video id="scannerVideo" autoplay playsinline muted></video>
 
-    <!-- Overlay -->
-    <div class="scanner-overlay">
-      <div class="scanner-vignette"></div>
-      <!-- Corner frame -->
-      <div class="scan-frame" id="scanFrame">
-        <div class="scan-corner tl"></div>
-        <div class="scan-corner tr"></div>
-        <div class="scan-corner bl"></div>
-        <div class="scan-corner br"></div>
-        <div class="scan-laser" id="scanLaser"></div>
-      </div>
-      <!-- White flash on capture -->
-      <div class="scan-flash" id="scanFlash"></div>
-    </div>
-
-    <!-- Page counter top-left -->
-    <div id="scanPageBadge" style="position:absolute;top:14px;left:14px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;display:none;">
-      Page <span id="scanPageNum">1</span>
-    </div>
-    <!-- Hint above frame -->
-    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:rgba(255,255,255,.85);font-size:12px;padding:5px 12px;border-radius:20px;" id="scanHintTop">
-      Align invoice inside the frame
-    </div>
-  </div>
-
-  <!-- Bottom bar -->
-  <div class="scanner-bar">
-    <!-- Captured thumbnails row -->
-    <div id="scanThumbRow" style="display:none">
-      <div class="scan-captures" id="scanThumbs"></div>
-    </div>
-
-    <!-- Hint text -->
-    <div class="scanner-hint" id="scanHint">Hold phone steady · tap shutter to capture · scan each page separately</div>
-
-    <!-- Actions row -->
-    <div class="scanner-actions">
-      <!-- Close -->
-      <button class="scan-close-btn" onclick="closeScanner()" title="Close">✕</button>
-
-      <!-- Shutter -->
-      <button class="scan-shutter" onclick="captureFrame()" id="shutterBtn">
-        <div class="scan-shutter-inner"></div>
-      </button>
-
-      <!-- Done / send -->
-      <button class="scan-done-btn" id="scanDoneBtn" disabled onclick="closeScannerAndSend()">
-        Done<span id="scanDoneCount" style="display:none" class="scan-count-badge">0</span>
-      </button>
-    </div>
-  </div>
-</div>
   </div><!-- /page-area -->
   </div><!-- /app-body -->
 </div><!-- /appShell -->
@@ -1894,6 +1819,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage,ref,uploadString,getDownloadURL,deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 const app=initializeApp({apiKey:"AIzaSyC5ZtJ25RB4gz_Ov8H0lPHExsggpP00Gok",authDomain:"robious-mart.firebaseapp.com",projectId:"robious-mart",storageBucket:"robious-mart.firebasestorage.app",messagingSenderId:"679205177455",appId:"1:679205177455:web:b10c4c2835f9cf2c2e259a"});
 const db=getFirestore(app);
 // Enable offline persistence so writes queue when there is no network and sync automatically when connectivity returns
@@ -1902,7 +1828,9 @@ enableIndexedDbPersistence(db).catch(err=>{
   else if(err.code==='unimplemented'){console.warn('Offline persistence not supported in this browser');}
 });
 window.db=db;
-window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc};
+const storage=getStorage(app);
+window.storage=storage;
+window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,storageRef:ref,uploadString,getDownloadURL,deleteObject};
 window.dispatchEvent(new Event('fbReady'));
 </script>
 
@@ -2870,42 +2798,7 @@ function toggleDashSection(id){
 }
 
 // ---- DAILY ----
-async function handleShiftPhotos(input){
-  if(!input.files.length) return;
-  const label=document.getElementById('shiftPhotoLabel');
-  const msg=document.getElementById('shiftPhotoScanMsg');
-  label.textContent=`${input.files.length} photo${input.files.length>1?'s':''} selected — scanning...`;
-  msg.style.display='flex';
-  try{
-    const imgs=[];
-    for(const file of input.files){
-      const b64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(file);});
-      imgs.push({type:'image',source:{type:'base64',media_type:file.type,data:b64}});
-    }
-    imgs.push({type:'text',text:'These are end-of-shift photos from a convenience store (Robious Mart, Virginia). Please read all visible numbers and extract: 1) Total sales if visible, 2) Cash sales amount, 3) Credit/card sales amount, 4) Any lottery totals or payouts, 5) Any fuel gallon amounts. Return ONLY a JSON object like: {"totalSales":0,"cashSales":0,"creditSales":0,"lotteryTotal":0,"lotteryPayout":0,"regularGal":0,"premiumGal":0,"dieselGal":0,"notes":"any other relevant info seen"}. If a value is not visible return 0.'});
-    const resp=await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:imgs}]})});
-    const data=await resp.json();
-    const raw=data.content?.map(c=>c.text||'').join('')||'{}';
-    const clean=raw.replace(/```json|```/g,'').trim();
-    const vals=JSON.parse(clean);
-    if(vals.totalSales) document.getElementById('d-tot').value=vals.totalSales;
-    if(vals.cashSales) document.getElementById('d-cash').value=vals.cashSales;
-    if(vals.creditSales) document.getElementById('d-cred').value=vals.creditSales;
-    if(vals.lotteryTotal) document.getElementById('d-ltot').value=vals.lotteryTotal;
-    if(vals.lotteryPayout) document.getElementById('d-lpay').value=vals.lotteryPayout;
-    if(vals.regularGal) document.getElementById('d-reg').value=vals.regularGal;
-    if(vals.premiumGal) document.getElementById('d-prem').value=vals.premiumGal;
-    if(vals.dieselGal) document.getElementById('d-dies').value=vals.dieselGal;
-    chkMatch(); updLot();
-    label.textContent=`✓ ${input.files.length} photo${input.files.length>1?'s':''} scanned — numbers filled in below. Review and correct if needed.`;
-    label.style.color='var(--green)';
-    if(vals.notes) document.getElementById('d-notes').value=(document.getElementById('d-notes').value+' '+vals.notes).trim();
-  }catch(e){
-    label.textContent='Could not read photos — please enter numbers manually';
-    label.style.color='var(--red)';
-  }
-  msg.style.display='none';
-}
+
 
 
 function calcSalesCombined(){
@@ -2982,6 +2875,7 @@ async function subDaily(){
   calcSalesCombined(); calcShortOver();
   const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0,cashDiff=act-exp;
   try{
+    const shiftPhotoUrls = [];
     await window.F.addDoc(window.F.collection(window.db,'dailyReports'),{
       type:'dailyReports',employee:CU.name,role:CU.role,
       shift:document.getElementById('d-shift').value,
@@ -3015,6 +2909,7 @@ async function subDaily(){
       endTime:document.getElementById('d-end').value,
       hoursWorked:calcHours()||0,
       date:document.getElementById('d-date')?.value||localDate(),
+      photoUrls: shiftPhotoUrls,
       timestamp:window.F.serverTimestamp()
     });
     toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
@@ -3023,14 +2918,7 @@ async function subDaily(){
     document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
-    const pl=document.getElementById('shiftPhotoLabel');if(pl){pl.textContent='Tap to add photos (optional)';pl.style.color='';}
-    document.getElementById('shiftPhotos').value='';
-    // Reset scanner captures
-    shiftCaptures=[];
-    const scw=document.getElementById('shift-captures-wrap');if(scw)scw.style.display='none';
-    const ssb=document.getElementById('shift-send-btn');if(ssb)ssb.style.display='none';
-    const sol=document.getElementById('shift-open-scanner-label');if(sol)sol.textContent='Open scanner';
-    const scl=document.getElementById('shift-captures-label');if(scl){scl.textContent='0 photos scanned';scl.style.color='';}
+
     document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
@@ -3076,18 +2964,43 @@ function resizeImage(file,maxW){
   });
 }
 
+
+// ---- PHOTO UPLOAD TO FIREBASE STORAGE ----
+// Resizes image, uploads to Storage, returns the public download URL
+// path e.g. 'fuelReports/2026-05-08_abc123.jpg'
+async function uploadPhoto(file, storagePath, maxW) {
+  if (!file) return null;
+  try {
+    const dataUrl = await resizeImage(file, maxW || 1200);
+    // dataUrl is "data:image/jpeg;base64,XXXX" — strip the prefix
+    const base64 = dataUrl.split(',')[1];
+    const storageRef = window.F.storageRef(window.storage, storagePath);
+    await window.F.uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
+    const url = await window.F.getDownloadURL(storageRef);
+    return url;
+  } catch (e) {
+    console.error('uploadPhoto failed:', e);
+    throw e;
+  }
+}
+
+// Generate a unique storage path for a photo
+// e.g. photoStoragePath('fuelReports', '2026-05-08') → 'fuelReports/2026-05-08_a3f9b2.jpg'
+function photoStoragePath(collection, date) {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return collection + '/' + (date || localDate()) + '_' + rand + '.jpg';
+}
+
 async function subFuel(){
   const _btn=document.getElementById('fuelBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   try{
-    // Convert photo to base64 for storage
     let photoUrl='';
     const fuelPicFile=document.getElementById('fuelPic').files[0];
     if(fuelPicFile){
       try{
-        // Resize image to keep Firebase doc small
-        photoUrl=await resizeImage(fuelPicFile,800);
-      }catch(pe){console.log('Photo processing skipped',pe);}
+        photoUrl=await uploadPhoto(fuelPicFile, photoStoragePath('fuelReports', localDate()), 1200);
+      }catch(pe){console.warn('Fuel photo upload failed, continuing without photo',pe);}
     }
     await window.F.addDoc(window.F.collection(window.db,'fuelReports'),{
       type:'fuelReports',
@@ -3114,7 +3027,8 @@ async function subFuel(){
     document.getElementById('fuelPrev').innerHTML='<div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div>';
     document.getElementById('fuelPic').value='';
     document.getElementById('f-date').value=localDate();
-  }catch(e){toast('Error saving fuel report');}
+  }catch(e){toast('Error saving fuel report'); console.error(e);}
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML='Save fuel report';} }
 }
 
 // ---- FUEL ALERT THRESHOLDS (loaded from Firestore settings) ----
@@ -3599,6 +3513,7 @@ async function subScratch(){
     renderScrRows();
     if(CU.role==='operator') loadScrHistory();
   }catch(e){ toast('Error saving count'); console.error(e); }
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save carton count';} }
 }
 
 // ---- COUNT HISTORY (operator) ----
@@ -3872,7 +3787,7 @@ function renderTobCountForm(){
 
 async function submitTobCount(){
   const _btn=document.getElementById('tobCountBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   if(!tobBrands.length){ toast('No brands set up'); return; }
   const counts = {};
   let hasAny = false;
@@ -5095,9 +5010,11 @@ async function loadLogs(){
       }
       const editBtn=`<button class="bsm" onclick="openEditModalById('${d.id}','${d.col}')" style="flex-shrink:0">✏️ Edit</button>`;
       const ticketBtn=(d.col==='scratchCounts'&&d.slots&&d.slots.length)?'<button class="bsm" onclick="toggleScrDetail(\''+d.id+'\',this)" style="flex-shrink:0;margin-top:4px">🎟 Ticket #s</button>':'';
+      const _photoUrls = d.photoUrls && d.photoUrls.length ? d.photoUrls : (d.photoUrl ? [d.photoUrl] : []);
+      const _photoHtml = _photoUrls.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+_photoUrls.map(u=>`<img src="${u}" onclick="showPhotoModal('${u}','')" style="height:60px;width:80px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)" />`).join('')+'</div>' : '';
       return`<div class="litem">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div style="flex:1"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div></div>
+          <div style="flex:1"><div class="ltitle">${b}<span style="margin-left:6px">${t}</span></div><div class="lmeta">${d.date||''}</div><div class="ldet">${det}</div>${_photoHtml}</div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${editBtn}${ticketBtn}</div>
         </div>
         ${extraDetail}
@@ -6488,450 +6405,17 @@ function searchMargins(){
     }).join('');
 }
 
-function setShiftMode(mode){
-  document.getElementById('shift-scan-mode').style.display   = mode==='scan'   ? 'block' : 'none';
-  document.getElementById('shift-upload-mode').style.display = mode==='upload' ? 'block' : 'none';
-  document.getElementById('shift-tab-scan').classList.toggle('active',   mode==='scan');
-  document.getElementById('shift-tab-upload').classList.toggle('active', mode==='upload');
-}
-
-// ---- UPC BARCODE SCANNER ----
-let upcStream       = null;
-let upcDetecting    = false;
-let upcContext      = null;   // 'oc' = carton open, 'dr-N' = delivery row N
-let upcLastResult   = null;   // { upc, name, brandId }
-let upcAnimFrame    = null;
-
-function openUpcScanner(ctx){
-  upcContext   = ctx;
-  upcLastResult = null;
-  document.getElementById('upcScannerModal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.getElementById('upcStatus').textContent = 'Scanning for barcode…';
-  document.getElementById('upcResult').style.display = 'none';
-  document.getElementById('upcConfirmBtn').style.display = 'none';
-  startUpcCamera();
-}
-
-async function startUpcCamera(){
-  if(upcStream){ upcStream.getTracks().forEach(t=>t.stop()); upcStream=null; }
-  try{
-    upcStream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
-    });
-    const vid = document.getElementById('upcVideo');
-    vid.srcObject = upcStream;
-    await vid.play();
-    startUpcDetection();
-  }catch(e){
-    closeUpcScanner();
-    toast('Camera not available — select brand manually');
-  }
-}
-
-function startUpcDetection(){
-  upcDetecting = true;
-  // Prefer native BarcodeDetector (Chrome Android, Safari 17+)
-  if(window.BarcodeDetector){
-    const detector = new BarcodeDetector({ formats:['upc_a','upc_e','ean_13','ean_8','code_128','code_39'] });
-    const detect = async () => {
-      if(!upcDetecting) return;
-      const vid = document.getElementById('upcVideo');
-      if(vid.readyState === vid.HAVE_ENOUGH_DATA){
-        try{
-          const codes = await detector.detect(vid);
-          if(codes.length){
-            await onUpcDetected(codes[0].rawValue);
-            return;
-          }
-        }catch(e){}
-      }
-      upcAnimFrame = requestAnimationFrame(detect);
-    };
-    upcAnimFrame = requestAnimationFrame(detect);
-  } else {
-    // Fallback: use ZXing from CDN
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing.min.js';
-    script.onload = () => startZxingDetection();
-    script.onerror = () => {
-      document.getElementById('upcStatus').textContent = 'Barcode scanning not supported on this browser — select brand manually';
-    };
-    document.head.appendChild(script);
-  }
-}
-
-function startZxingDetection(){
-  try{
-    const hints = new Map();
-    const formats = [
-      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128
-    ];
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-    const reader = new ZXing.MultiFormatReader();
-    reader.setHints(hints);
-    const canvas = document.createElement('canvas');
-    const ctx    = canvas.getContext('2d');
-    const decode = () => {
-      if(!upcDetecting) return;
-      const vid = document.getElementById('upcVideo');
-      if(vid.readyState === vid.HAVE_ENOUGH_DATA){
-        canvas.width  = vid.videoWidth;
-        canvas.height = vid.videoHeight;
-        ctx.drawImage(vid, 0, 0);
-        try{
-          const lum  = ZXing.HTMLCanvasElementLuminanceSource ? new ZXing.HTMLCanvasElementLuminanceSource(canvas) : null;
-          if(lum){
-            const bmp  = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            const res  = reader.decode(bmp);
-            if(res){ onUpcDetected(res.getText()); return; }
-          }
-        }catch(e){}
-      }
-      upcAnimFrame = requestAnimationFrame(decode);
-    };
-    upcAnimFrame = requestAnimationFrame(decode);
-  }catch(e){
-    document.getElementById('upcStatus').textContent = 'Could not start barcode reader — select brand manually';
-  }
-}
-
-async function onUpcDetected(upc){
-  upcDetecting = false;
-  if(upcAnimFrame){ cancelAnimationFrame(upcAnimFrame); upcAnimFrame=null; }
-
-  document.getElementById('upcStatus').textContent = `Barcode: ${upc} — looking up product…`;
-
-  // Try to match against existing brands first (by stored UPC)
-  const brandMatch = tobBrands.find(b=>b.upc===upc);
-  if(brandMatch){
-    showUpcResult(upc, brandMatch.name, brandMatch.id);
-    return;
-  }
-
-  // Look up via Open Food Facts API
-  try{
-    const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
-    const data = await res.json();
-    if(data.status===1 && data.product){
-      const p    = data.product;
-      const name = p.product_name || p.brands || '';
-      if(name){
-        // Try to fuzzy-match to existing brand list
-        const nameLower = name.toLowerCase();
-        const fuzzy = tobBrands.find(b=>
-          nameLower.includes(b.name.toLowerCase()) ||
-          b.name.toLowerCase().includes(nameLower.split(' ')[0])
-        );
-        showUpcResult(upc, name, fuzzy?.id || null, fuzzy?.name || null);
-        return;
-      }
-    }
-  }catch(e){}
-
-  // Not found anywhere
-  document.getElementById('upcStatus').textContent = `UPC ${upc} not found in database — select brand manually`;
-  document.getElementById('upcResult').style.display = 'none';
-  document.getElementById('upcConfirmBtn').style.display = 'none';
-  // Close after 2s so employee can select manually
-  setTimeout(()=>closeUpcScanner(), 2000);
-}
-
-function showUpcResult(upc, rawName, matchedBrandId, matchedBrandName){
-  const displayName = matchedBrandName || rawName;
-  upcLastResult = { upc, rawName, brandId: matchedBrandId, displayName };
-
-  document.getElementById('upcResultName').textContent = displayName;
-  document.getElementById('upcResultCode').textContent = `UPC: ${upc}${matchedBrandId ? ' · matched to your brand list' : ' · new product'}`;
-  document.getElementById('upcResult').style.display = 'block';
-  document.getElementById('upcConfirmBtn').style.display = 'inline-block';
-  document.getElementById('upcStatus').textContent = matchedBrandId
-    ? '✅ Found in your brand list'
-    : '⚠️ Not in brand list — will pre-fill name';
-}
-
-function confirmUpcResult(){
-  if(!upcLastResult) return;
-  const { brandId, displayName, upc } = upcLastResult;
-  const ctx = upcContext;
-  closeUpcScanner();
-
-  if(ctx === 'oc'){
-    // Carton open form
-    const sel = document.getElementById('oc-brand');
-    if(sel && brandId){
-      sel.value = brandId;
-      updOcCalc();
-      toast(`✓ ${displayName} selected`);
-    } else {
-      toast(`Brand "${displayName}" not in list — please select manually`);
-    }
-  } else if(ctx && ctx.startsWith('dr-')){
-    // Delivery row — ctx is 'dr-N'
-    const rowNum = ctx.replace('dr-','');
-    const sel = document.getElementById('dr-brand-'+rowNum);
-    if(sel && brandId){
-      sel.value = brandId;
-      updDeliveryTotal();
-      toast(`✓ ${displayName} selected`);
-    } else {
-      toast(`Brand "${displayName}" not in list — please select manually`);
-    }
-  }
-}
-
-function closeUpcScanner(){
-  upcDetecting = false;
-  if(upcAnimFrame){ cancelAnimationFrame(upcAnimFrame); upcAnimFrame=null; }
-  if(upcStream){ upcStream.getTracks().forEach(t=>t.stop()); upcStream=null; }
-  const vid = document.getElementById('upcVideo');
-  if(vid) vid.srcObject = null;
-  document.getElementById('upcScannerModal').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-// ---- CAMERA SCANNER ----
-let scanStream    = null;   // active MediaStream
-let scanCaptures  = [];     // [{b64, dataUrl}]
-let shiftCaptures = [];     // [{b64, dataUrl}] — separate bucket for shift photos
-let scanContext   = 'inv';  // 'inv' | 'shift'
-
-function openScanner(ctx){
-  ctx = ctx || 'inv';
-  scanContext = ctx;
-  if(!navigator.mediaDevices?.getUserMedia){
-    toast('Camera not available — use upload instead');
-    if(ctx==='inv') setInvMode('upload');
-    else setShiftMode('upload');
-    return;
-  }
-  document.getElementById('scannerModal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  // Update hint based on context
-  const hint = document.getElementById('scanHintTop');
-  if(hint) hint.textContent = ctx==='shift' ? 'Aim at register tape or cash drawer' : 'Align invoice inside the frame';
-  startCamera();
-}
-
-async function startCamera(){
-  // Stop any existing stream
-  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
-
-  const constraints = {
-    video:{
-      facingMode:{ideal:'environment'},  // rear camera
-      width: {ideal:1920},
-      height:{ideal:1080},
-      focusMode:{ideal:'continuous'}
-    }
-  };
-
-  try{
-    scanStream = await navigator.mediaDevices.getUserMedia(constraints);
-    const vid   = document.getElementById('scannerVideo');
-    vid.srcObject = scanStream;
-    await vid.play();
-    updateScannerUI();
-  }catch(err){
-    console.error('Camera error:',err);
-    closeScanner();
-    if(err.name==='NotAllowedError'||err.name==='PermissionDeniedError'){
-      toast('Camera permission denied — use upload instead');
-    } else {
-      toast('Could not open camera — use upload instead');
-    }
-    setInvMode('upload');
-  }
-}
-
-function closeScanner(){
-  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
-  document.getElementById('scannerModal').classList.remove('open');
-  document.body.style.overflow = '';
-  const vid = document.getElementById('scannerVideo');
-  vid.srcObject = null;
-}
-
-function closeScannerAndSend(){
-  closeScanner();
-  updateShiftCapturesPreview();
-  if(shiftCaptures.length) sendShiftCaptures();
-}
-
-function captureFrame(){
-  const vid    = document.getElementById('scannerVideo');
-  if(!vid.videoWidth){ toast('Camera not ready yet'); return; }
-
-  const canvas  = document.createElement('canvas');
-  canvas.width  = vid.videoWidth;
-  canvas.height = vid.videoHeight;
-  const ctx     = canvas.getContext('2d');
-  ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-  const b64     = dataUrl.split(',')[1];
-
-  // Push into whichever context is active
-  if(scanContext === 'shift') shiftCaptures.push({b64, dataUrl});
-  else                        scanCaptures.push({b64, dataUrl});
-
-  // Flash animation
-  const flash = document.getElementById('scanFlash');
-  flash.classList.remove('flash');
-  void flash.offsetWidth;
-  flash.classList.add('flash');
-
-  updateScannerUI();
-  try{ navigator.vibrate && navigator.vibrate(40); }catch(e){}
-}
-
-function deleteScanCapture(idx){
-  if(scanContext==='shift') shiftCaptures.splice(idx,1);
-  else                      scanCaptures.splice(idx,1);
-  updateScannerUI();
-  if(scanContext==='shift') updateShiftCapturesPreview();
-  else                      updateInvCapturesPreview();
-}
-
-function updateScannerUI(){
-  const caps      = scanContext==='shift' ? shiftCaptures : scanCaptures;
-  const count     = caps.length;
-  const doneBtn   = document.getElementById('scanDoneBtn');
-  const doneCount = document.getElementById('scanDoneCount');
-  const thumbRow  = document.getElementById('scanThumbRow');
-  const thumbs    = document.getElementById('scanThumbs');
-  const badge     = document.getElementById('scanPageBadge');
-  const hint      = document.getElementById('scanHint');
-
-  doneBtn.disabled = count === 0;
-  const noun = scanContext==='shift' ? 'photo' : 'page';
-  if(count){
-    doneCount.style.display = 'inline-flex';
-    doneCount.textContent   = count;
-    badge.style.display     = 'block';
-    document.getElementById('scanPageNum').textContent = count+1;
-    hint.textContent = `${count} ${noun}${count!==1?'s':''} captured · tap shutter to add more`;
-  } else {
-    doneCount.style.display = 'none';
-    badge.style.display     = 'none';
-    hint.textContent        = 'Hold phone steady · tap shutter to capture';
-  }
-
-  if(count){
-    thumbRow.style.display='block';
-    thumbs.innerHTML = caps.map((c,i)=>`
-      <div class="scan-thumb-wrap">
-        <img src="${c.dataUrl}" class="scan-thumb" />
-        <div class="scan-page-num">${scanContext==='shift'?i+1:'p.'+(i+1)}</div>
-        <button class="scan-thumb-del" onclick="deleteScanCapture(${i})">✕</button>
-      </div>`).join('');
-  } else {
-    thumbRow.style.display='none';
-  }
-}
-
-
-// ---- SHIFT CAPTURES ----
-function updateShiftCapturesPreview(){
-  const wrap    = document.getElementById('shift-captures-wrap');
-  const label   = document.getElementById('shift-captures-label');
-  const thumbs  = document.getElementById('shift-captures-thumbs');
-  const sendBtn = document.getElementById('shift-send-btn');
-  const openLbl = document.getElementById('shift-open-scanner-label');
-
-  if(!shiftCaptures.length){
-    wrap.style.display    = 'none';
-    sendBtn.style.display = 'none';
-    openLbl.textContent   = 'Open scanner';
-    return;
-  }
-
-  wrap.style.display    = 'block';
-  sendBtn.style.display = 'block';
-  label.textContent     = `${shiftCaptures.length} photo${shiftCaptures.length!==1?'s':''} scanned — ready to auto-fill`;
-  openLbl.textContent   = '+ Scan more';
-
-  thumbs.innerHTML = shiftCaptures.map((c,i)=>`
-    <div style="position:relative;display:inline-block">
-      <img src="${c.dataUrl}" style="width:56px;height:74px;object-fit:cover;border-radius:6px;border:2px solid var(--border);display:block" />
-      <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;">${i+1}</div>
-      <button onclick="removeShiftPage(${i})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
-    </div>`).join('');
-}
-
-function removeShiftPage(idx){
-  shiftCaptures.splice(idx,1);
-  updateShiftCapturesPreview();
-}
-
-async function sendShiftCaptures(){
-  if(!shiftCaptures.length){ toast('No photos scanned yet'); return; }
-
-  const label  = document.getElementById('shift-captures-label');
-  const msgEl  = document.getElementById('shiftPhotoScanMsg');
-  const sendBtn= document.getElementById('shift-send-btn');
-
-  label.textContent    = `${shiftCaptures.length} photo${shiftCaptures.length!==1?'s':''} — Claude is reading them...`;
-  msgEl.style.display  = 'flex';
-  sendBtn.disabled     = true;
-
-  try{
-    const imgs = shiftCaptures.map(c=>({
-      type:'image',
-      source:{type:'base64', media_type:'image/jpeg', data:c.b64}
-    }));
-    imgs.push({type:'text', text:'These are end-of-shift photos from a convenience store (Robious Mart, Virginia). Please read all visible numbers and extract: 1) Total sales if visible, 2) Cash sales amount, 3) Credit/card sales amount, 4) Any lottery totals or payouts, 5) Any fuel gallon amounts. Return ONLY a JSON object like: {"totalSales":0,"cashSales":0,"creditSales":0,"lotteryTotal":0,"lotteryPayout":0,"regularGal":0,"premiumGal":0,"dieselGal":0,"notes":"any other relevant info seen"}. If a value is not visible return 0.'});
-
-    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:500, messages:[{role:'user',content:imgs}]})
-    });
-    const data  = await resp.json();
-    const raw   = data.content?.map(c=>c.text||'').join('')||'{}';
-    const vals  = JSON.parse(raw.replace(/```json|```/g,'').trim());
-
-    // Fill in the daily form fields
-    if(vals.totalSales)   document.getElementById('d-tot').value   = vals.totalSales;
-    if(vals.cashSales)    document.getElementById('d-cash').value  = vals.cashSales;
-    if(vals.creditSales)  document.getElementById('d-cred').value  = vals.creditSales;
-    if(vals.lotteryTotal) document.getElementById('d-ltot').value  = vals.lotteryTotal;
-    if(vals.lotteryPayout)document.getElementById('d-lpay').value  = vals.lotteryPayout;
-    if(vals.regularGal)   document.getElementById('d-reg').value   = vals.regularGal;
-    if(vals.premiumGal)   document.getElementById('d-prem').value  = vals.premiumGal;
-    if(vals.dieselGal)    document.getElementById('d-dies').value  = vals.dieselGal;
-    calcShortOver(); updLot();
-
-    label.textContent = `✓ ${shiftCaptures.length} photo${shiftCaptures.length!==1?'s':''} scanned — numbers filled in. Review and correct if needed.`;
-    label.style.color = 'var(--green)';
-    if(vals.notes){
-      const notesEl = document.getElementById('d-notes');
-      notesEl.value = (notesEl.value+' '+vals.notes).trim();
-    }
-  }catch(e){
-    label.textContent = 'Could not read photos — please enter numbers manually';
-    label.style.color = 'var(--red)';
-  }
-
-  msgEl.style.display = 'none';
-  sendBtn.disabled    = false;
-}
-
 // ---- EXPENSES ----
 let exPhotoData = null;
 
+let exPhotoFile = null;
 function handleExPhoto(input){
   const file = input.files[0];
   if(!file) return;
+  exPhotoFile = file;
   const label = document.getElementById('exPhotoLabel');
-  label.textContent = 'Processing...';
-  resizeImage(file, 800).then(b64 => {
-    exPhotoData = b64;
-    label.textContent = '✓ Photo added — tap to change';
-    label.style.color = 'var(--green)';
-  }).catch(() => { label.textContent = 'Error loading photo'; });
+  label.textContent = '✓ Photo ready — tap to change';
+  label.style.color = 'var(--green)';
 }
 
 async function submitExpense(){
@@ -6951,7 +6435,7 @@ async function submitExpense(){
       vendor,
       category: document.getElementById('ex-category').value,
       notes:    document.getElementById('ex-notes').value,
-      photoData: exPhotoData || '',
+      photoUrl: exPhotoFile ? await uploadPhoto(exPhotoFile, photoStoragePath('expenses', document.getElementById('ex-date')?.value||localDate()), 1200).catch(()=>'') : '',
       employee: CU.name,
       role:     CU.role,
       timestamp: window.F.serverTimestamp()
@@ -6962,6 +6446,7 @@ async function submitExpense(){
     document.getElementById('ex-notes').value='';
     document.getElementById('exPhoto').value='';
     exPhotoData=null;
+    exPhotoFile=null;
     const lbl=document.getElementById('exPhotoLabel');
     if(lbl){lbl.textContent='Tap to add photo';lbl.style.color='';}
     document.getElementById('ex-date').value='';
@@ -7027,8 +6512,8 @@ async function loadExpenses(){
     const catIcons={delivery:'🚚',repair:'🔧',utilities:'💡',supplies:'📦',labor:'👷',other:'📝'};
     el.innerHTML = myFiltered.map(x=>{
       const methodColor = x.method==='check'?'bblu':x.method==='cash'?'bgrn':'bamb';
-      const photoHtml = x.photoData
-        ? `<img src="${x.photoData}" style="width:100%;border-radius:6px;max-height:120px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','')" />`
+      const photoHtml = (x.photoUrl||x.photoData)
+        ? `<img src="${x.photoUrl||x.photoData}" style="width:100%;border-radius:6px;max-height:120px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','')" />`
         : '';
       return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
@@ -7113,9 +6598,18 @@ async function loadOhCategories(){
   }catch(e){ /* ignore */ }
 }
 
+let ohPhotoFile = null;
+function handleOhPhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  ohPhotoFile = file;
+  const label = document.getElementById('ohPhotoLabel');
+  if(label){ label.textContent = '✓ Photo ready — tap to change'; label.style.color = 'var(--green)'; }
+}
+
 async function submitOverhead(){
   const _btn=document.getElementById('oh-submit-btn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   const amount = parseFloat(document.getElementById('oh-amount').value);
   const desc   = document.getElementById('oh-desc').value.trim();
   const cat    = document.getElementById('oh-category').value;
@@ -7126,6 +6620,12 @@ async function submitOverhead(){
   if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
 
   try{
+    let ohPhotoUrl = '';
+    if(ohPhotoFile){
+      try{
+        ohPhotoUrl = await uploadPhoto(ohPhotoFile, photoStoragePath('overheadExpenses', document.getElementById('oh-date')?.value||localDate()), 1200);
+      }catch(pe){ console.warn('Overhead photo upload failed', pe); }
+    }
     await window.F.addDoc(window.F.collection(window.db,'overheadExpenses'),{
       date:     document.getElementById('oh-date')?.value || localDate(),
       amount,
@@ -7134,6 +6634,7 @@ async function submitOverhead(){
       vendor:   document.getElementById('oh-vendor').value.trim(),
       method:   document.getElementById('oh-method').value,
       notes:    document.getElementById('oh-notes').value.trim(),
+      photoUrl: ohPhotoUrl,
       employee: CU.name,
       timestamp: window.F.serverTimestamp()
     });
@@ -7143,14 +6644,17 @@ async function submitOverhead(){
     document.getElementById('oh-desc').value='';
     document.getElementById('oh-vendor').value='';
     document.getElementById('oh-notes').value='';
+    ohPhotoFile=null;
+    const ohLbl=document.getElementById('ohPhotoLabel');
+    if(ohLbl){ohLbl.textContent='Tap to attach receipt';ohLbl.style.color='';}
+    document.getElementById('ohPhotoInput').value='';
     renderOhCategoryPills('Overhead');
     if(btn){btn.innerHTML='✓ Saved!';btn.style.background='var(--green)';}
     setTimeout(()=>{if(btn){btn.innerHTML='Save Expense';btn.disabled=false;btn.style.background='';}},2500);
     loadOverhead();
   }catch(e){
     toast('Error saving expense');
-    if(btn){btn.innerHTML='Save Expense';btn.disabled=false;}
-  }
+  } finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save Expense';} }
 }
 
 async function loadOverhead(){
@@ -7227,6 +6731,7 @@ async function loadOverhead(){
               <div style="font-size:13px;font-weight:700;margin-bottom:1px">${x.description}</div>
               <div style="font-size:11px;color:var(--text2)">${x.date}${x.vendor?` · 📌 ${x.vendor}`:''}</div>
               ${x.notes?`<div style="font-size:11px;color:var(--text3);margin-top:1px">${x.notes}</div>`:''}
+              ${x.photoUrl?`<img src="${x.photoUrl}" onclick="showPhotoModal('${x.photoUrl}','Receipt')" style="margin-top:6px;width:100%;max-height:120px;object-fit:cover;border-radius:6px;cursor:pointer" />`:''}
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-size:16px;font-weight:800;color:var(--red)">$${(x.amount||0).toFixed(2)}</div>
@@ -7438,7 +6943,7 @@ function orSourceSelectChange(){
 
 async function submitOtherRev(){
   const _btn=document.getElementById('orSubmitBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   const date   = document.getElementById('or-date').value;
   const amount = parseFloat(document.getElementById('or-amount').value);
   const selVal = document.getElementById('or-source-select').value;
@@ -7467,7 +6972,7 @@ async function submitOtherRev(){
     document.getElementById('or-source-custom').value = '';
     loadOtherRev();
   }catch(e){ toast('Error saving entry'); console.error(e); }
-  finally{ btn.disabled=false; btn.textContent='Save revenue entry'; }
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save revenue entry';} }
 }
 
 async function loadOtherRev(){
@@ -7541,7 +7046,8 @@ async function deleteOtherRev(id){
 
 // ---- LOTTERY COMMISSIONS ----
 
-let lcPhotoData = null; // base64 data URL for the receipt photo
+let lcPhotoData = null;   // base64 preview only (for display before save)
+let lcPhotoFile = null;   // raw File for Storage upload
 
 function lcHandlePhoto(input){
   const file = input.files[0];
@@ -7549,6 +7055,7 @@ function lcHandlePhoto(input){
   const zone  = document.getElementById('lc-photo-zone');
   const label = document.getElementById('lc-photo-label');
   label.textContent = 'Processing…';
+  lcPhotoFile = file;
   resizeImage(file, 1200).then(dataUrl=>{
     lcPhotoData = dataUrl;
     document.getElementById('lc-photo-img').src = dataUrl;
@@ -7562,6 +7069,7 @@ function lcHandlePhoto(input){
 
 function lcClearPhoto(){
   lcPhotoData = null;
+  lcPhotoFile = null;
   document.getElementById('lc-photo-input').value = '';
   document.getElementById('lc-photo-preview').style.display = 'none';
   document.getElementById('lc-photo-img').src = '';
@@ -7609,7 +7117,7 @@ function lcCalcNet(){
 
 async function submitLotteryReport(){
   const _btn=document.getElementById('lcSubmitBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   const weekEnd   = document.getElementById('lc-week-end').value;
   const scrComm   = parseFloat(document.getElementById('lc-scr-comm').value)||0;
   const dgComm    = parseFloat(document.getElementById('lc-dg-comm').value)||0;
@@ -7635,10 +7143,17 @@ async function submitLotteryReport(){
   const btn = document.querySelector('#page-lotterycomm .bprimary');
   btn.disabled = true; btn.textContent = 'Saving...';
   try{
+    // Upload receipt photo to Firebase Storage
+    let photoUrl = '';
+    if(lcPhotoFile){
+      try{
+        photoUrl = await uploadPhoto(lcPhotoFile, photoStoragePath('lotteryReports', weekEnd), 1600);
+      }catch(pe){ console.warn('Lottery photo upload failed', pe); }
+    }
     await window.F.addDoc(window.F.collection(window.db,'lotteryReports'),{
       weekEnd, scrComm, dgComm, cashBonus, activations, eft, sweepDate,
       totalComm, net, notes,
-      photoData: lcPhotoData,
+      photoUrl,
       employee: CU.name,
       timestamp: window.F.serverTimestamp()
     });
@@ -7652,7 +7167,7 @@ async function submitLotteryReport(){
     lcClearPhoto();
     loadLotteryReports();
   }catch(e){ toast('Error saving report'); console.error(e); }
-  finally{ btn.disabled=false; btn.textContent='Save lottery report'; }
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save lottery report';} if(typeof btn!=='undefined'&&btn){btn.disabled=false;btn.textContent='Save lottery report';} }
 }
 
 async function loadLotteryReports(){
@@ -7716,8 +7231,8 @@ async function loadLotteryReports(){
       if(x.dgComm)     commParts.push(`🖥 DG $${parseFloat(x.dgComm).toFixed(2)}`);
       if(x.cashBonus)  commParts.push(`💵 Cash $${parseFloat(x.cashBonus).toFixed(2)}`);
       if(x.activations)commParts.push(`📦 Act $${parseFloat(x.activations).toFixed(2)}`);
-      const photoHtml = x.photoData
-        ? `<img src="${x.photoData}" style="width:100%;border-radius:6px;max-height:140px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','Week ending ${x.weekEnd}')" />`
+      const photoHtml = (x.photoUrl||x.photoData)
+        ? `<img src="${x.photoUrl||x.photoData}" style="width:100%;border-radius:6px;max-height:140px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','Week ending ${x.weekEnd}')" />`
         : `<div style="margin-top:6px;font-size:11px;color:var(--text3)">No photo attached</div>`;
       return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
@@ -8190,7 +7705,7 @@ function updActPackCalc(){
 
 async function saveActivation(){
   const _btn=document.getElementById('actSaveBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   const slotVal = document.getElementById('act-slot')?.value;
   const name    = document.getElementById('act-name')?.value.trim();
   const price   = parseFloat(document.getElementById('act-price')?.value)||0;
@@ -8225,6 +7740,7 @@ async function saveActivation(){
     await loadGames();
     loadActLog();
   }catch(e){ toast('Error saving activation'); console.error(e); }
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save activation';} }
 }
 
 async function loadActLog(){
@@ -8424,7 +7940,7 @@ function togDlNewVendor(){
 
 async function submitDelivery(){
   const _btn=document.getElementById('dlSubmitBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   // Vendor: prefer dropdown, fall back to new vendor input
   const selVendor = document.getElementById('del-vendor-sel')?.value;
   const newVendor = document.getElementById('del-vendor-new')?.value.trim();
@@ -8473,8 +7989,7 @@ async function submitDelivery(){
     document.getElementById('del-date').value=localDate();
     loadDeliveries();
   }catch(e){ toast('Error saving delivery'); console.error(e); }
-
-  if(btn){ btn.innerHTML='Save delivery'; btn.disabled=false; }
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save delivery';} }
 }
 
 async function loadDeliveries(){
@@ -8618,7 +8133,7 @@ function bdToggleAddAccount() {
 
 async function bdSaveAccount() {
   const _btn=document.getElementById('bdAcctBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   const bank = document.getElementById('bd-new-bank-name').value.trim();
   const nick = document.getElementById('bd-new-acct-nick').value.trim();
   if (!bank) { toast('Enter bank name'); return; }
@@ -8638,6 +8153,7 @@ async function bdSaveAccount() {
     document.getElementById('bd-add-account-form').style.display = 'none';
     await bdLoadAccounts();
   } catch(e) { toast('Error saving account'); console.error(e); }
+  finally { if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save account';} }
 }
 
 async function bdLoadAccounts() {
@@ -8690,7 +8206,7 @@ function bdPopulateAccountSelect() {
 
 async function bdSubmitDeposit() {
   const _btn=document.getElementById('bdDepositBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
+  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   const date = document.getElementById('bd-deposit-date').value;
   const acctId = document.getElementById('bd-deposit-acct').value;
   const amt = parseFloat(document.getElementById('bd-deposit-amount').value);
@@ -8720,6 +8236,7 @@ async function bdSubmitDeposit() {
     document.getElementById('bd-deposit-notes').value = '';
     bdLoadDeposits();
   } catch(e) { toast('Error saving deposit'); console.error(e); }
+  finally { if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save deposit';} }
 }
 
 async function bdLoadDeposits() {
