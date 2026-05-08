@@ -145,6 +145,9 @@
   .ei{font-size:28px;margin-bottom:6px;}
   .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg)}}
+  /* Offline indicator banner */
+  #offlineBanner{position:fixed;top:0;left:0;right:0;background:#854F0B;color:#fff;font-size:12px;font-weight:600;text-align:center;padding:6px 16px;z-index:1000;display:none;letter-spacing:.03em;}
+  #offlineBanner.show{display:block;}
   .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
   .toast.show{opacity:1;}
   .sh2{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
@@ -663,7 +666,7 @@
       </div>
       <div id="fuelBars"></div>
     </div>
-    <button class="btn bprimary" onclick="subFuel()">Save fuel report</button>
+    <button class="btn bprimary" id="fuelBtn" onclick="subFuel()">Save fuel report</button>
 
     <!-- Fuel Deliveries -->
     <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
@@ -819,7 +822,7 @@
           <div style="font-size:11px;color:var(--green);margin-top:1px" id="act-pack-sub"></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="saveActivation()">Save activation</button>
+          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" id="actSaveBtn" onclick="saveActivation()">Save activation</button>
           <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togActForm()">Cancel</button>
         </div>
       </div>
@@ -920,7 +923,7 @@
       </div>
       <div id="tobCountRows"><div class="empty"><div class="ei">🚬</div>No brands set up yet — ask operator to add brands</div></div>
       <div id="tobCountSubmitWrap" style="display:none;margin-top:12px">
-        <button class="btn bprimary" style="padding:13px" onclick="submitTobCount()">Save carton count</button>
+        <button class="btn bprimary" style="padding:13px" id="tobCountBtn" onclick="submitTobCount()">Save carton count</button>
       </div>
     </div>
 
@@ -1178,7 +1181,7 @@
         <input id="del-notes" placeholder="e.g. Short by 2 cases, driver left receipt..." />
       </div>
 
-      <button class="btn bprimary" style="padding:13px" onclick="submitDelivery()">Save delivery</button>
+      <button class="btn bprimary" style="padding:13px" id="dlSubmitBtn" onclick="submitDelivery()">Save delivery</button>
     </div>
 
     <!-- Vendor management (operator only) -->
@@ -1260,7 +1263,7 @@
         </div>
         <input type="file" id="exPhoto" accept="image/*" style="display:none" onchange="handleExPhoto(this)" />
       </div>
-      <button class="btn bprimary" style="padding:13px" onclick="submitExpense()">Save expense</button>
+      <button class="btn bprimary" style="padding:13px" id="expSubmitBtn" onclick="submitExpense()">Save expense</button>
     </div>
 
     <div class="card">
@@ -1562,7 +1565,7 @@
         <label>Notes (optional)</label>
         <textarea id="or-notes" rows="2" placeholder="e.g. Weekly ATM fee collection, air pump coin count..."></textarea>
       </div>
-      <button class="btn bprimary" style="padding:13px" onclick="submitOtherRev()">Save revenue entry</button>
+      <button class="btn bprimary" style="padding:13px" id="orSubmitBtn" onclick="submitOtherRev()">Save revenue entry</button>
     </div>
     <div class="card">
       <div class="sh2">
@@ -1663,7 +1666,7 @@
         </div>
       </div>
 
-      <button class="btn bprimary" style="padding:13px" onclick="submitLotteryReport()">Save lottery report</button>
+      <button class="btn bprimary" style="padding:13px" id="lcSubmitBtn" onclick="submitLotteryReport()">Save lottery report</button>
     </div>
 
     <div class="card">
@@ -1702,7 +1705,7 @@
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn bprimary" style="flex:1;padding:10px" onclick="bdSaveAccount()">Save account</button>
+          <button class="btn bprimary" style="flex:1;padding:10px" id="bdAcctBtn" onclick="bdSaveAccount()">Save account</button>
           <button class="btn" style="padding:10px;flex:1" onclick="bdToggleAddAccount()">Cancel</button>
         </div>
       </div>
@@ -1736,7 +1739,7 @@
           <input id="bd-deposit-notes" placeholder="e.g. daily sales" />
         </div>
       </div>
-      <button class="btn bprimary" style="padding:13px;width:100%" onclick="bdSubmitDeposit()">Save deposit</button>
+      <button class="btn bprimary" style="padding:13px;width:100%" id="bdDepositBtn" onclick="bdSubmitDeposit()">Save deposit</button>
     </div>
 
     <!-- History & Totals -->
@@ -1843,6 +1846,7 @@
 </div><!-- /appShell -->
 
 <div class="toast" id="toast"></div>
+<div id="offlineBanner">⚡ No internet connection — changes will save automatically when you reconnect</div>
 
 <!-- PHOTO MODAL -->
 <div id="photoModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:300;display:none;align-items:center;justify-content:center;padding:16px" onclick="closePhotoModal()">
@@ -1889,9 +1893,14 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyC5ZtJ25RB4gz_Ov8H0lPHExsggpP00Gok",authDomain:"robious-mart.firebaseapp.com",projectId:"robious-mart",storageBucket:"robious-mart.firebasestorage.app",messagingSenderId:"679205177455",appId:"1:679205177455:web:b10c4c2835f9cf2c2e259a"});
 const db=getFirestore(app);
+// Enable offline persistence so writes queue when there is no network and sync automatically when connectivity returns
+enableIndexedDbPersistence(db).catch(err=>{
+  if(err.code==='failed-precondition'){console.warn('Offline persistence disabled: multiple tabs open');}
+  else if(err.code==='unimplemented'){console.warn('Offline persistence not supported in this browser');}
+});
 window.db=db;
 window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc};
 window.dispatchEvent(new Event('fbReady'));
@@ -2096,6 +2105,30 @@ function showTab(id){
   if(id==='bankdeposits'){const bm=document.getElementById('bd-filter-month');if(bm&&!bm.value)bm.value=new Date().toISOString().slice(0,7);const dd=document.getElementById('bd-deposit-date');if(dd&&!dd.value)dd.value=localDate();bdInit();}
 }
 
+
+// Restore a guarded submit button to its original state
+function _restoreBtn(id, label) {
+  const b = document.getElementById(id);
+  if (b) { b.disabled = false; b.innerHTML = label; }
+}
+
+
+// ---- SUBMIT GUARD — prevents double-submits on all save buttons ----
+// Usage: wrap any async save function: withSubmitGuard(btnElement, async () => { ... })
+async function withSubmitGuard(btn, asyncFn) {
+  if (!btn || btn.disabled) return; // already in-flight
+  const origHTML = btn.innerHTML;
+  const origDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + btn.textContent.trim();
+  try {
+    await asyncFn();
+  } finally {
+    btn.disabled = origDisabled;
+    btn.innerHTML = origHTML;
+  }
+}
+
 // ---- TOAST ----
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
@@ -2136,7 +2169,7 @@ async function loadDashboard(){
   try{
     const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('timestamp','desc'),limit(300)));
+    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('date','desc')));
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdR=allReports.filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
     window._dashMtdR = mtdR;
@@ -2171,7 +2204,7 @@ async function loadDashboard(){
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
     // Overhead expenses for selected month
-    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('timestamp','desc'),limit(300)));
+    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('date','desc')));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
@@ -2186,7 +2219,7 @@ async function loadDashboard(){
     const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
 
     // Other revenue for selected month
-    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('timestamp','desc'),limit(200)));
+    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('date','desc')));
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
     // Group by source for dashboard breakdown
@@ -2194,19 +2227,19 @@ async function loadDashboard(){
     mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
     // Lottery commission for selected month
-    const lcSnap=await getDocs(window.F.query(window.F.collection(window.db,'lotteryReports'),window.F.orderBy('timestamp','desc'),window.F.limit(100)));
+    const lcSnap=await getDocs(window.F.query(window.F.collection(window.db,'lotteryReports'),window.F.orderBy('weekEnd','desc')));
     const allLC=lcSnap.docs.map(d=>({id:d.id,...d.data()}));
     // Filter by weekEnd falling within the selected month
     const mtdLC=allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(selMonth));
     const mtdLCTotal=mtdLC.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
 
     // Deliveries for selected month
-    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('timestamp','desc'),limit(200)));
+    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('date','desc')));
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
     // Fuel deliveries
-    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('timestamp','desc'),limit(200)));
+    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('date','desc')));
     const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
@@ -2241,7 +2274,7 @@ async function loadDashboard(){
     // ---- SCRATCH-OFF DASHBOARD DATA (new model) ----
     // Counts use type:'opening'|'closing'. Revenue per closing = totalRevenue (already correct per-shift).
     // Value on hand = most recent count's totalValue (the board value at that moment).
-    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(500)));
+    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc')));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
 
     // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
@@ -2250,7 +2283,7 @@ async function loadDashboard(){
     const latestCount = latestCountDoc; // used in sub-line display
 
     // Activations
-    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
+    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('date','desc')));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
@@ -3044,6 +3077,8 @@ function resizeImage(file,maxW){
 }
 
 async function subFuel(){
+  const _btn=document.getElementById('fuelBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   try{
     // Convert photo to base64 for storage
     let photoUrl='';
@@ -3836,6 +3871,8 @@ function renderTobCountForm(){
 }
 
 async function submitTobCount(){
+  const _btn=document.getElementById('tobCountBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   if(!tobBrands.length){ toast('No brands set up'); return; }
   const counts = {};
   let hasAny = false;
@@ -3870,14 +3907,12 @@ async function submitTobCount(){
       // Fetch recent deliveries and filter client-side
       const delivSnap = await window.F.getDocs(window.F.query(
         window.F.collection(window.db,'tobaccoCounts'),
-        window.F.orderBy('timestamp','desc'),
-        window.F.limit(100)
+        window.F.orderBy('timestamp','desc')
       ));
       // We store tobacco deliveries separately in tobaccoDeliveries collection
       const tobDelSnap = await window.F.getDocs(window.F.query(
         window.F.collection(window.db,'tobaccoDeliveries'),
-        window.F.orderBy('timestamp','desc'),
-        window.F.limit(100)
+        window.F.orderBy('timestamp','desc')
       )).catch(()=>({docs:[]}));
       const tobDels = tobDelSnap.docs.map(d=>({...d.data(), _ts:d.data().timestamp?.toMillis?.() || 0}))
         .filter(d=>d._ts > prevTs);
@@ -4549,8 +4584,7 @@ async function loadTodos(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'todos'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(200)
+      window.F.orderBy('timestamp','desc')
     ));
     todoItems = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderTodos();
@@ -4705,8 +4739,7 @@ async function loadTodosForDash(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'todos'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(100)
+      window.F.orderBy('timestamp','desc')
     ));
     return snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>!t.done);
   }catch(e){ return []; }
@@ -4768,8 +4801,7 @@ async function loadSchedule(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'schedules'),
-      window.F.orderBy('date','asc'),
-      window.F.limit(200)
+      window.F.orderBy('date','asc')
     ));
     schedShifts = snap.docs.map(d=>({id:d.id,...d.data()}));
 
@@ -4949,8 +4981,7 @@ async function loadMySchedule(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'schedules'),
-      window.F.orderBy('date','asc'),
-      window.F.limit(200)
+      window.F.orderBy('date','asc')
     ));
     const all = snap.docs.map(d=>({id:d.id,...d.data()}));
     const mine = all.filter(s => s.employee === CU.name && s.date >= today && s.date <= endStr);
@@ -5384,8 +5415,7 @@ async function loadPayrollStatus(month){
     try{
       const snap2 = await window.F.getDocs(window.F.query(
         window.F.collection(window.db,'payrollRecords'),
-        window.F.orderBy('timestamp','desc'),
-        window.F.limit(200)
+        window.F.orderBy('timestamp','desc')
       ));
       const map = {};
       snap2.docs.forEach(d=>{ 
@@ -5489,7 +5519,7 @@ async function loadEmployees(){
 
   try{
     const [snap, payroll, wageSnap] = await Promise.all([
-      window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('timestamp','desc'),window.F.limit(500))),
+      window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('date','desc'))),
       isOp ? loadPayrollStatus(month) : Promise.resolve({}),
       isOp ? window.F.getDocs(window.F.query(window.F.collection(window.db,'employeeWages'))) : Promise.resolve({docs:[]})
     ]);
@@ -5877,7 +5907,7 @@ async function loadMyHours(){
   const mtdEnd=month+'-31';
 
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('timestamp','desc'),window.F.limit(200)));
+    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('date','desc')));
     const myShifts=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.employee===CU.name&&r.date>=mtdStart&&r.date<=mtdEnd);
 
     const totalHours=myShifts.reduce((s,r)=>s+(parseFloat(r.hoursWorked)||0),0);
@@ -6956,8 +6986,7 @@ async function loadExpenses(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'expenses'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(200)
+      window.F.orderBy('timestamp','desc')
     ));
     let all = snap.docs.map(d=>({id:d.id,...d.data()}));
     const filtered = all.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
@@ -7085,6 +7114,8 @@ async function loadOhCategories(){
 }
 
 async function submitOverhead(){
+  const _btn=document.getElementById('oh-submit-btn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   const amount = parseFloat(document.getElementById('oh-amount').value);
   const desc   = document.getElementById('oh-desc').value.trim();
   const cat    = document.getElementById('oh-category').value;
@@ -7134,8 +7165,7 @@ async function loadOverhead(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'overheadExpenses'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(300)
+      window.F.orderBy('date','desc')
     ));
     const all = snap.docs.map(d=>({id:d.id,...d.data()}));
     const filtered = all.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
@@ -7407,6 +7437,8 @@ function orSourceSelectChange(){
 }
 
 async function submitOtherRev(){
+  const _btn=document.getElementById('orSubmitBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   const date   = document.getElementById('or-date').value;
   const amount = parseFloat(document.getElementById('or-amount').value);
   const selVal = document.getElementById('or-source-select').value;
@@ -7450,8 +7482,7 @@ async function loadOtherRev(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'otherRevenue'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(200)
+      window.F.orderBy('date','desc')
     ));
     const all      = snap.docs.map(d=>({id:d.id,...d.data()}));
     const filtered = all.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
@@ -7577,6 +7608,8 @@ function lcCalcNet(){
 }
 
 async function submitLotteryReport(){
+  const _btn=document.getElementById('lcSubmitBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   const weekEnd   = document.getElementById('lc-week-end').value;
   const scrComm   = parseFloat(document.getElementById('lc-scr-comm').value)||0;
   const dgComm    = parseFloat(document.getElementById('lc-dg-comm').value)||0;
@@ -7634,8 +7667,7 @@ async function loadLotteryReports(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'lotteryReports'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(200)
+      window.F.orderBy('weekEnd','desc')
     ));
     const all      = snap.docs.map(d=>({id:d.id,...d.data()}));
     const filtered = all.filter(x=>x.weekEnd>=mtdStart && x.weekEnd<=mtdEnd);
@@ -8157,6 +8189,8 @@ function updActPackCalc(){
 }
 
 async function saveActivation(){
+  const _btn=document.getElementById('actSaveBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   const slotVal = document.getElementById('act-slot')?.value;
   const name    = document.getElementById('act-name')?.value.trim();
   const price   = parseFloat(document.getElementById('act-price')?.value)||0;
@@ -8389,6 +8423,8 @@ function togDlNewVendor(){
 }
 
 async function submitDelivery(){
+  const _btn=document.getElementById('dlSubmitBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   // Vendor: prefer dropdown, fall back to new vendor input
   const selVendor = document.getElementById('del-vendor-sel')?.value;
   const newVendor = document.getElementById('del-vendor-new')?.value.trim();
@@ -8454,8 +8490,7 @@ async function loadDeliveries(){
   try{
     const snap = await window.F.getDocs(window.F.query(
       window.F.collection(window.db,'deliveries'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(300)
+      window.F.orderBy('date','desc')
     ));
     let all = snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=start&&x.date<=end);
     if(fVendor!=='all') all = all.filter(x=>x.vendor===fVendor);
@@ -8582,6 +8617,8 @@ function bdToggleAddAccount() {
 }
 
 async function bdSaveAccount() {
+  const _btn=document.getElementById('bdAcctBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   const bank = document.getElementById('bd-new-bank-name').value.trim();
   const nick = document.getElementById('bd-new-acct-nick').value.trim();
   if (!bank) { toast('Enter bank name'); return; }
@@ -8652,6 +8689,8 @@ function bdPopulateAccountSelect() {
 // ---- Deposits ----
 
 async function bdSubmitDeposit() {
+  const _btn=document.getElementById('bdDepositBtn');if(_btn&&_btn.disabled)return;
+  if(_btn){_btn.disabled=true;const _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';setTimeout(()=>{if(_btn.disabled){_btn.disabled=false;_btn.innerHTML=_orig;}},15000);}
   const date = document.getElementById('bd-deposit-date').value;
   const acctId = document.getElementById('bd-deposit-acct').value;
   const amt = parseFloat(document.getElementById('bd-deposit-amount').value);
@@ -8692,7 +8731,7 @@ async function bdLoadDeposits() {
 
   try {
     const snap = await window.F.getDocs(
-      window.F.query(window.F.collection(window.db, 'bankDeposits'), window.F.orderBy('timestamp', 'desc'), window.F.limit(500))
+      window.F.query(window.F.collection(window.db, 'bankDeposits'), window.F.orderBy('date', 'desc'))
     );
     const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     // Filter by selected month client-side
@@ -8770,6 +8809,20 @@ async function bdDeleteDeposit(id) {
 // ==================== END BANK DEPOSITS ====================
 
 window.addEventListener('fbReady',()=>{});
+
+// ---- CONNECTIVITY INDICATOR ----
+function updateOnlineStatus() {
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+  if (!navigator.onLine) {
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
 </script>
 </body>
 </html>
