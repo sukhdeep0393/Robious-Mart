@@ -1906,6 +1906,7 @@ const TABS={
 function loginOK(u){
   try{
   CU=u;
+  localStorage.setItem('cu_session', JSON.stringify(u));
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').style.display='block';
   document.getElementById('uBadge').textContent=u.name+(u.role==='operator'?' · Operator':u.role==='lead'?' · Lead':'');
@@ -1942,11 +1943,29 @@ function loginOK(u){
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
-  CU=null;pinBuf='';
+  CU=null;pinBuf='';localStorage.removeItem('cu_session');
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
   opPinBuf='';updOpDots();document.getElementById('empName').value='';updDots();
 }
+
+// ---- SESSION RESTORE ----
+(function restoreSession(){
+  try{
+    const saved = localStorage.getItem('cu_session');
+    if(saved){
+      const u = JSON.parse(saved);
+      if(u && u.name && u.role){
+        // Wait for Firebase to be ready before restoring
+        window.addEventListener('fbReady', function(){
+          loginOK(u);
+        }, {once:true});
+        // Also try immediately in case fbReady already fired
+        if(window.db) loginOK(u);
+      }
+    }
+  }catch(e){ localStorage.removeItem('cu_session'); }
+})();
 
 // ---- TABS ----
 function buildTabs(){
