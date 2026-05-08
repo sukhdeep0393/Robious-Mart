@@ -1677,6 +1677,83 @@
     </div>
   </div>
 
+  <!-- BANK DEPOSITS PAGE -->
+  <div class="page" id="page-bankdeposits">
+
+    <div style="background:var(--blue-light);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);line-height:1.6">
+      Track cash deposits to your bank accounts. Add your bank accounts below, then log each deposit with date and amount. Totals are calculated per account.
+    </div>
+
+    <!-- Manage Accounts -->
+    <div class="card" id="bd-accounts-card">
+      <div class="sh2" style="margin-bottom:12px">
+        <div class="ct" style="margin:0">Bank accounts</div>
+        <button class="btn bprimary" style="padding:7px 14px;font-size:12px" onclick="bdToggleAddAccount()">+ Add account</button>
+      </div>
+      <div id="bd-add-account-form" style="display:none;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg2)">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">New bank account</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div>
+            <label>Bank name</label>
+            <input id="bd-new-bank-name" placeholder="e.g. Wells Fargo" />
+          </div>
+          <div>
+            <label>Account nickname</label>
+            <input id="bd-new-acct-nick" placeholder="e.g. Main Checking" />
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:10px" onclick="bdSaveAccount()">Save account</button>
+          <button class="btn" style="padding:10px;flex:1" onclick="bdToggleAddAccount()">Cancel</button>
+        </div>
+      </div>
+      <div id="bd-accounts-list">
+        <div class="empty"><div class="ei">🏦</div>No accounts yet — add one above</div>
+      </div>
+    </div>
+
+    <!-- Log a Deposit -->
+    <div class="card">
+      <div class="ct">Log deposit</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div>
+          <label>Date</label>
+          <input type="date" id="bd-deposit-date" />
+        </div>
+        <div>
+          <label>Bank account</label>
+          <select id="bd-deposit-acct">
+            <option value="">— select account —</option>
+          </select>
+        </div>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div>
+          <label>Amount ($)</label>
+          <input type="number" id="bd-deposit-amount" placeholder="0.00" step="0.01" min="0" />
+        </div>
+        <div>
+          <label>Notes (optional)</label>
+          <input id="bd-deposit-notes" placeholder="e.g. daily sales" />
+        </div>
+      </div>
+      <button class="btn bprimary" style="padding:13px;width:100%" onclick="bdSubmitDeposit()">Save deposit</button>
+    </div>
+
+    <!-- History & Totals -->
+    <div class="card">
+      <div class="sh2" style="margin-bottom:12px">
+        <div class="ct" style="margin:0">Deposit history</div>
+        <input type="month" id="bd-filter-month" onchange="bdLoadDeposits()" style="font-size:12px;padding:5px 8px;width:auto" />
+      </div>
+      <!-- Per-account totals summary -->
+      <div id="bd-totals-summary" style="margin-bottom:14px"></div>
+      <!-- Full list -->
+      <div id="bd-deposits-list"><div class="empty"><div class="ei">💳</div>No deposits logged</div></div>
+    </div>
+
+  </div><!-- /page-bankdeposits -->
+
 <!-- UPC BARCODE SCANNER MODAL -->
 <div id="upcScannerModal">
   <div style="position:relative;flex:1;overflow:hidden;background:#000;">
@@ -1884,7 +1961,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
@@ -2017,6 +2094,7 @@ function showTab(id){
   if(id==='otherrev'){const om=document.getElementById('orMonth');if(om&&!om.value)om.value=new Date().toISOString().slice(0,7);loadOtherRev();}
   if(id==='lotterycomm'){const lm=document.getElementById('lc-filter-month');if(lm&&!lm.value)lm.value=new Date().toISOString().slice(0,7);loadLotteryReports();}
   if(id==='todo')loadTodos();
+  if(id==='bankdeposits'){const bm=document.getElementById('bd-filter-month');if(bm&&!bm.value)bm.value=new Date().toISOString().slice(0,7);const dd=document.getElementById('bd-deposit-date');if(dd&&!dd.value)dd.value=localDate();bdInit();}
 }
 
 // ---- TOAST ----
@@ -2059,35 +2137,7 @@ async function loadDashboard(){
   try{
     const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    // ---- FIRE ALL INDEPENDENT QUERIES IN PARALLEL ----
-    const needFuelReport = !window._latestFuelReport;
-    const isOperator = CU.role==='operator';
-
-    const [
-      snap, expSnap, orSnap, dlSnap, fdSnap,
-      scrSnap, actSnapAll, invSnap,
-      tobBrandSnap, tobCountSnap,
-      frSnap, todosSnap
-    ] = await Promise.all([
-      getDocs(query(collection(window.db,'dailyReports'),    orderBy('timestamp','desc'),limit(300))),
-      getDocs(query(collection(window.db,'overheadExpenses'),orderBy('timestamp','desc'),limit(300))),
-      getDocs(query(collection(window.db,'otherRevenue'),    orderBy('timestamp','desc'),limit(200))),
-      getDocs(query(collection(window.db,'deliveries'),      orderBy('timestamp','desc'),limit(200))),
-      getDocs(query(collection(window.db,'fuelDeliveries'),  orderBy('timestamp','desc'),limit(200))),
-      getDocs(query(collection(window.db,'scratchCounts'),   orderBy('timestamp','desc'),limit(200))),
-      getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(200))),
-      getDocs(query(collection(window.db,'inventoryFlags'),  orderBy('timestamp','desc'),limit(100))).catch(()=>({docs:[]})),
-      getDocs(query(collection(window.db,'tobaccoBrands'),   orderBy('name','asc'))).catch(()=>({docs:[]})),
-      getDocs(query(collection(window.db,'tobaccoCounts'),   orderBy('timestamp','desc'),limit(1))).catch(()=>({docs:[]})),
-      needFuelReport
-        ? getDocs(query(collection(window.db,'fuelReports'), orderBy('timestamp','desc'),limit(1))).catch(()=>({docs:[]}))
-        : Promise.resolve(null),
-      isOperator
-        ? getDocs(query(collection(window.db,'todos'),       orderBy('timestamp','desc'),limit(100))).catch(()=>({docs:[]}))
-        : Promise.resolve({docs:[]}),
-    ]);
-
-    // ---- DAILY REPORTS ----
+    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('timestamp','desc'),limit(300)));
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdR=allReports.filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
     window._dashMtdR = mtdR;
@@ -2105,9 +2155,11 @@ async function loadDashboard(){
     const mtdPremGal=sum(mtdR,'premiumGal');
     const mtdDiesGal=sum(mtdR,'dieselGal');
     const mtdTotalGal=mtdRegGal+mtdPremGal+mtdDiesGal;
+    // Cache for fuel margin preview widget on Fuel tab
     window._dashMtdRegGal=mtdRegGal; window._dashMtdPremGal=mtdPremGal; window._dashMtdDiesGal=mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
 
+    // Cash discrepancy summary
     const cashDiscReports=mtdR.filter(r=>r.cashStatus&&r.cashStatus!=='exact'&&r.cashDifference!=null);
     const mtdShortReports=cashDiscReports.filter(r=>r.cashDifference<0);
     const mtdOverReports=cashDiscReports.filter(r=>r.cashDifference>0);
@@ -2119,13 +2171,14 @@ async function loadDashboard(){
     const yestSales=sum(yestR,'totalSales');
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
-    // ---- OVERHEAD EXPENSES ----
+    // Overhead expenses for selected month
+    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('timestamp','desc'),limit(300)));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // ---- FUEL PROFIT ----
+    // Fuel profit — margin per gallon × MTD gallons sold
     const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
     const fuelProfitReg  = mtdRegGal  * (mgn.regular||0);
     const fuelProfitPrem = mtdPremGal * (mgn.premium||0);
@@ -2133,30 +2186,44 @@ async function loadDashboard(){
     const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
     const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
 
-    // ---- OTHER REVENUE ----
+    // Other revenue for selected month
+    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('timestamp','desc'),limit(200)));
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    // Group by source for dashboard breakdown
     const orBySource={};
     mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
-    // ---- DELIVERIES ----
+    // Lottery commission for selected month
+    const lcSnap=await getDocs(window.F.query(window.F.collection(window.db,'lotteryReports'),window.F.orderBy('timestamp','desc'),window.F.limit(100)));
+    const allLC=lcSnap.docs.map(d=>({id:d.id,...d.data()}));
+    // Filter by weekEnd falling within the selected month
+    const mtdLC=allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(selMonth));
+    const mtdLCTotal=mtdLC.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
+
+    // Deliveries for selected month
+    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('timestamp','desc'),limit(200)));
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
-    // ---- FUEL DELIVERIES ----
+    // Fuel deliveries
+    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('timestamp','desc'),limit(200)));
     const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
-    const recentFuelDl=allFuelDeliveries.slice(0,5);
+    const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
-
-    // ---- FUEL REPORT (for alerts) ----
-    if(!window._latestFuelReport && frSnap && !frSnap.empty){
-      const fr=frSnap.docs[0].data();
-      window._latestFuelReport={regularGal:fr.regularGal||0,premiumGal:fr.premiumGal||0,dieselGal:fr.dieselGal||0,date:fr.date,employee:fr.employee};
+    // Check fuel alerts using most recent fuel report
+    if(!window._latestFuelReport){
+      try{
+        const frSnap=await getDocs(query(collection(window.db,'fuelReports'),orderBy('timestamp','desc'),limit(1)));
+        if(!frSnap.empty){
+          const fr=frSnap.docs[0].data();
+          window._latestFuelReport={regularGal:fr.regularGal||0,premiumGal:fr.premiumGal||0,dieselGal:fr.dieselGal||0,date:fr.date,employee:fr.employee};
+        }
+      }catch(fe){console.log('fuel report fetch skipped',fe);}
     }
     checkFuelAlerts();
-
     const dlByVendor={};
     const today=localDate();
     mtdDl.forEach(x=>{
@@ -2172,32 +2239,49 @@ async function loadDashboard(){
     const totalPending=Object.values(dlByVendor).reduce((s,v)=>s+v.pending,0);
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
-    // ---- SCRATCH-OFFS ----
+    // ---- SCRATCH-OFF DASHBOARD DATA (new model) ----
+    // Counts use type:'opening'|'closing'. Revenue per closing = totalRevenue (already correct per-shift).
+    // Value on hand = most recent count's totalValue (the board value at that moment).
+    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc'),limit(500)));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
+
+    // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
     const latestCountDoc = scrAll.length ? scrAll[0] : null;
     const scrVal = latestCountDoc?.totalValue || 0;
-    const latestCount = latestCountDoc;
+    const latestCount = latestCountDoc; // used in sub-line display
 
+    // Activations
+    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('timestamp','desc'),limit(500)));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+(a.bookValue||0),0);
 
+    // MTD sold revenue — simple sum of all closing count revenues for the month
+    // Each closing count stores its own per-shift totalRevenue (not cumulative), so just sum them.
     const scrMTD = scrAll.filter(d=>d.type==='closing'&&d.date>=mtdStart&&d.date<=mtdEnd);
     const scrRevenue = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // ---- INVENTORY FLAGS ----
-    let openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
+    // Inventory flags
+    let openFlags=0;
+    try{
+      const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
+      openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
+    }catch(e2){}
 
-    // ---- TOBACCO ----
+    // Tobacco low stock + discrepancies
     let lowTobacco=[], tobDiscrepancies=[];
     try{
+      const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
       const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
-      if(tobBrandsAll.length && tobCountSnap.docs.length){
-        const latestTob=tobCountSnap.docs[0].data();
-        const latestCounts=latestTob.counts||{};
-        lowTobacco=tobBrandsAll.filter(b=>latestCounts[b.id]!==undefined&&latestCounts[b.id]<=(b.threshold||3));
-        tobDiscrepancies=latestTob.discrepancies||[];
+      if(tobBrandsAll.length){
+        const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
+        if(tobCountSnap.docs.length){
+          const latestTob=tobCountSnap.docs[0].data();
+          const latestCounts=latestTob.counts||{};
+          lowTobacco=tobBrandsAll.filter(b=>latestCounts[b.id]!==undefined&&latestCounts[b.id]<=(b.threshold||3));
+          tobDiscrepancies=latestTob.discrepancies||[];
+        }
       }
     }catch(e3){}
 
@@ -2205,8 +2289,8 @@ async function loadDashboard(){
     const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!=''&&r.date>=mtdStart&&r.date<=mtdEnd).slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 
-    // ---- TODOS (already fetched above) ----
-    const dashTodos = isOperator ? todosSnap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>!t.done) : [];
+    // Load todos for dashboard
+    const dashTodos = CU.role==='operator' ? await loadTodosForDash() : [];
     const urgentTodos = dashTodos.sort((a,b)=>todoSortScore(a)-todoSortScore(b));
     const hasUrgentTodo = urgentTodos.some(t=>{
       const dl=todoDaysLeft(t.due);
@@ -2215,7 +2299,7 @@ async function loadDashboard(){
 
     // Build todo card HTML outside template literal to avoid escaping issues
     let todoDashHtml = '';
-    if(isOperator && urgentTodos.length){
+    if(CU.role==='operator' && urgentTodos.length){
       const isExpanded = hasUrgentTodo;
       const headerColor = hasUrgentTodo ? 'var(--red)' : 'var(--text)';
       const headerBg    = hasUrgentTodo ? 'var(--red-light)' : 'var(--bg)';
@@ -2538,7 +2622,7 @@ async function loadDashboard(){
 
       <!-- ===== NET PROFIT CARD ===== -->
       ${(()=>{
-        const totalRevenue = mtdSales + mtdORTotal + mtdFuelProfit;
+        const totalRevenue = mtdSales + mtdORTotal + mtdFuelProfit + mtdLCTotal;
         const netProfit    = totalRevenue - mtdExpTotal;
         const netColor     = netProfit >= 0 ? 'var(--green)' : 'var(--red)';
         const netLabel     = netProfit >= 0 ? 'Net Profit' : 'Net Loss';
@@ -2562,6 +2646,15 @@ async function loadDashboard(){
                 <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Other Revenue</div>
                 <div style="font-size:17px;font-weight:800;color:var(--green)">$${mtdORTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
                 <div style="font-size:11px;color:var(--text3)">${mtdOR.length} entr${mtdOR.length!==1?'ies':'y'}</div>
+              </div>
+            </div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div style="padding:11px 14px">
+                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">🏆 Lottery Commission</div>
+                <div style="font-size:17px;font-weight:800;color:${mtdLCTotal>0?'var(--green)':'var(--text3)'}">
+                  ${mtdLCTotal>0 ? '$'+mtdLCTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}
+                </div>
+                <div style="font-size:11px;color:var(--text3)">${mtdLC.length} report${mtdLC.length!==1?'s':''} this month</div>
               </div>
             </div>
             <div style="border-bottom:1px solid var(--border)">
@@ -5945,7 +6038,7 @@ function renderMgCategories(filterText){
       if(!valid.length) return 0;
       return valid.reduce((s,p)=>{ const cpu=(p.units&&p.units>0)?p.cost/p.units:(p.costPerUnit||p.cost); return s+(calcMg(cpu,p.sell)||0); },0)/valid.length;
     })() : 0;
-    const isOpen = mgOpenCats[cat.id] === true; // default collapsed
+    const isOpen = mgOpenCats[cat.id] !== false; // default open
 
     const bgColors = {
       '🍺':'#fef3c7','🚬':'#f5f3ff','🥤':'#e0f2fe','🍬':'#fce7f3','🥛':'#f0fdf4',
@@ -8466,6 +8559,216 @@ async function markDeliveryPaid(id){
     loadDeliveries();
   }catch(e){ toast('Error updating delivery'); }
 }
+
+// ==================== BANK DEPOSITS ====================
+
+let bdAccounts = []; // cached list of accounts
+
+async function bdInit() {
+  await bdLoadAccounts();
+  bdLoadDeposits();
+}
+
+// ---- Accounts ----
+
+function bdToggleAddAccount() {
+  const form = document.getElementById('bd-add-account-form');
+  const visible = form.style.display !== 'none';
+  form.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    document.getElementById('bd-new-bank-name').value = '';
+    document.getElementById('bd-new-acct-nick').value = '';
+    document.getElementById('bd-new-bank-name').focus();
+  }
+}
+
+async function bdSaveAccount() {
+  const bank = document.getElementById('bd-new-bank-name').value.trim();
+  const nick = document.getElementById('bd-new-acct-nick').value.trim();
+  if (!bank) { toast('Enter bank name'); return; }
+  if (!nick) { toast('Enter account nickname'); return; }
+  const label = bank + ' — ' + nick;
+  // Check duplicate
+  if (bdAccounts.find(a => a.label.toLowerCase() === label.toLowerCase())) {
+    toast('Account already exists'); return;
+  }
+  try {
+    await window.F.addDoc(window.F.collection(window.db, 'bankAccounts'), {
+      bank, nick, label,
+      createdAt: window.F.serverTimestamp(),
+      createdBy: CU ? CU.name : ''
+    });
+    toast('✓ Account saved');
+    document.getElementById('bd-add-account-form').style.display = 'none';
+    await bdLoadAccounts();
+  } catch(e) { toast('Error saving account'); console.error(e); }
+}
+
+async function bdLoadAccounts() {
+  const snap = await window.F.getDocs(
+    window.F.query(window.F.collection(window.db, 'bankAccounts'), window.F.orderBy('createdAt', 'asc'))
+  );
+  bdAccounts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  bdRenderAccountsList();
+  bdPopulateAccountSelect();
+}
+
+function bdRenderAccountsList() {
+  const el = document.getElementById('bd-accounts-list');
+  if (!el) return;
+  if (!bdAccounts.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">🏦</div>No accounts yet — add one above</div>';
+    return;
+  }
+  el.innerHTML = bdAccounts.map(a => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text1)">🏦 ${a.label}</div>
+      </div>
+      <button onclick="bdDeleteAccount('${a.id}','${a.label.replace(/'/g,"&#39;")}')"
+        style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:4px 8px">✕ Remove</button>
+    </div>
+  `).join('');
+}
+
+async function bdDeleteAccount(id, label) {
+  if (!confirm('Remove "' + label + '"? Existing deposits will still show.')) return;
+  try {
+    await window.F.deleteDoc(window.F.doc(window.db, 'bankAccounts', id));
+    toast('Account removed');
+    await bdLoadAccounts();
+    bdLoadDeposits();
+  } catch(e) { toast('Error removing account'); }
+}
+
+function bdPopulateAccountSelect() {
+  const sel = document.getElementById('bd-deposit-acct');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— select account —</option>'
+    + bdAccounts.map(a => `<option value="${a.id}">${a.label}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+// ---- Deposits ----
+
+async function bdSubmitDeposit() {
+  const date = document.getElementById('bd-deposit-date').value;
+  const acctId = document.getElementById('bd-deposit-acct').value;
+  const amt = parseFloat(document.getElementById('bd-deposit-amount').value);
+  const notes = document.getElementById('bd-deposit-notes').value.trim();
+
+  if (!date) { toast('Select a date'); return; }
+  if (!acctId) { toast('Select a bank account'); return; }
+  if (!amt || amt <= 0) { toast('Enter a valid amount'); return; }
+
+  const acct = bdAccounts.find(a => a.id === acctId);
+  if (!acct) { toast('Account not found'); return; }
+
+  try {
+    await window.F.addDoc(window.F.collection(window.db, 'bankDeposits'), {
+      date,
+      acctId,
+      acctLabel: acct.label,
+      amount: amt,
+      notes,
+      timestamp: window.F.serverTimestamp(),
+      loggedBy: CU ? CU.name : ''
+    });
+    toast('✓ Deposit saved');
+    document.getElementById('bd-deposit-date').value = '';
+    document.getElementById('bd-deposit-acct').value = '';
+    document.getElementById('bd-deposit-amount').value = '';
+    document.getElementById('bd-deposit-notes').value = '';
+    bdLoadDeposits();
+  } catch(e) { toast('Error saving deposit'); console.error(e); }
+}
+
+async function bdLoadDeposits() {
+  const monthEl = document.getElementById('bd-filter-month');
+  const month = monthEl ? monthEl.value : new Date().toISOString().slice(0,7);
+  const listEl = document.getElementById('bd-deposits-list');
+  const totalsEl = document.getElementById('bd-totals-summary');
+  if (!listEl) return;
+
+  try {
+    const snap = await window.F.getDocs(
+      window.F.query(window.F.collection(window.db, 'bankDeposits'), window.F.orderBy('timestamp', 'desc'), window.F.limit(500))
+    );
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Filter by selected month client-side
+    const filtered = month ? all.filter(d => d.date && d.date.startsWith(month)) : all;
+
+    if (!filtered.length) {
+      listEl.innerHTML = '<div class="empty"><div class="ei">💳</div>No deposits for this month</div>';
+      totalsEl.innerHTML = '';
+      return;
+    }
+
+    // Build per-account totals
+    const totals = {};
+    filtered.forEach(d => {
+      const key = d.acctLabel || d.acctId;
+      totals[key] = (totals[key] || 0) + (d.amount || 0);
+    });
+
+    // Grand total
+    const grand = Object.values(totals).reduce((s, v) => s + v, 0);
+
+    // Render totals summary
+    const acctKeys = Object.keys(totals);
+    totalsEl.innerHTML = `
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:4px">
+        <div style="background:var(--bg2);padding:8px 14px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">
+          ${month ? new Date(month+'-02').toLocaleDateString('en-US',{month:'long',year:'numeric'}) : 'All'} — totals by account
+        </div>
+        ${acctKeys.map(k => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;color:var(--text1);font-weight:500">🏦 ${k}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--blue)">$${totals[k].toFixed(2)}</div>
+          </div>
+        `).join('')}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--blue-light)">
+          <div style="font-size:13px;font-weight:700;color:var(--blue)">Total deposited</div>
+          <div style="font-size:17px;font-weight:800;color:var(--blue)">$${grand.toFixed(2)}</div>
+        </div>
+      </div>
+    `;
+
+    // Render deposit rows
+    listEl.innerHTML = filtered.map(d => {
+      const dateDisp = d.date ? new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      return `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text1)">🏦 ${d.acctLabel || '—'}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${dateDisp}${d.notes ? ' · ' + d.notes : ''}${d.loggedBy ? ' · by ' + d.loggedBy : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <div style="font-size:15px;font-weight:700;color:var(--green)">$${(d.amount||0).toFixed(2)}</div>
+            <button onclick="bdDeleteDeposit('${d.id}')"
+              style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:2px 6px;opacity:.7">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch(e) {
+    listEl.innerHTML = '<div class="empty">Error loading deposits</div>';
+    console.error('bdLoadDeposits', e);
+  }
+}
+
+async function bdDeleteDeposit(id) {
+  if (!confirm('Delete this deposit?')) return;
+  try {
+    await window.F.deleteDoc(window.F.doc(window.db, 'bankDeposits', id));
+    toast('Deposit deleted');
+    bdLoadDeposits();
+  } catch(e) { toast('Error deleting deposit'); }
+}
+
+// ==================== END BANK DEPOSITS ====================
 
 window.addEventListener('fbReady',()=>{});
 </script>
