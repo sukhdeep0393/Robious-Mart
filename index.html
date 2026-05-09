@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Robious Mart">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{--blue:#1a5ca8;--blue-dark:#154d91;--blue-light:#e8f0fb;--green:#3B6D11;--green-light:#EAF3DE;--red:#A32D2D;--red-light:#FCEBEB;--amber:#854F0B;--amber-light:#FAEEDA;--border:#e2e2de;--text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;--bg:#ffffff;--bg2:#f8f8f6;--r:10px;--rl:14px;}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -338,6 +339,12 @@
   .scan-thumb{width:52px;height:68px;object-fit:cover;border-radius:6px;border:2px solid rgba(255,255,255,.4);display:block;}
   .scan-thumb-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;border:none;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
   .scan-page-num{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;}
+  /* PIN change modal */
+  .pin-change-step{display:none;}
+  .pin-change-step.active{display:block;}
+  .verify-code-dots{display:flex;justify-content:center;gap:10px;margin:16px 0;}
+  .verify-dot{width:40px;height:52px;border:2px solid var(--border);border-radius:8px;background:var(--bg2);font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
+  .verify-dot.filled{border-color:var(--blue);background:var(--blue-light);}
   /* Flash animation on capture */
   .scan-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;border-radius:0;}
   @keyframes flashFade{0%{opacity:.85}100%{opacity:0}}
@@ -393,6 +400,7 @@
     <div class="logo">Robious<span> Mart</span></div>
     <div style="display:flex;align-items:center;gap:4px">
       <span class="ubadge" id="uBadge"></span>
+      <button class="lout" onclick="openPinChangeModal()" style="color:var(--blue)">🔑 PIN</button>
       <button class="lout" onclick="doLogout()">Sign out</button>
       <button class="hamburger-btn" onclick="openNavDrawer()" aria-label="Open menu">☰</button>
     </div>
@@ -1770,6 +1778,90 @@
   </div><!-- /app-body -->
 </div><!-- /appShell -->
 
+<!-- PIN CHANGE MODAL -->
+<div id="pinChangeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border-radius:var(--rl);padding:24px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:17px;font-weight:700" id="pinChangeTitle">Change PIN</div>
+      <button onclick="closePinChangeModal()" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:0 4px">&#x2715;</button>
+    </div>
+    <!-- Step 1: Enter current PIN -->
+    <div class="pin-change-step active" id="pcs-1">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Enter your current PIN to continue.</div>
+      <div class="pin-dots" id="pc-cur-dots">
+        <div class="pin-dot" id="pccd0"></div><div class="pin-dot" id="pccd1"></div>
+        <div class="pin-dot" id="pccd2"></div><div class="pin-dot" id="pccd3"></div>
+      </div>
+      <div class="lerr" id="pc-cur-err"></div>
+      <div class="pin-pad">
+        <button class="pk" onclick="pcKey('cur',1)">1</button><button class="pk" onclick="pcKey('cur',2)">2</button><button class="pk" onclick="pcKey('cur',3)">3</button>
+        <button class="pk" onclick="pcKey('cur',4)">4</button><button class="pk" onclick="pcKey('cur',5)">5</button><button class="pk" onclick="pcKey('cur',6)">6</button>
+        <button class="pk" onclick="pcKey('cur',7)">7</button><button class="pk" onclick="pcKey('cur',8)">8</button><button class="pk" onclick="pcKey('cur',9)">9</button>
+        <button class="pk blank" disabled></button><button class="pk" onclick="pcKey('cur',0)">0</button><button class="pk del" onclick="pcDel('cur')">&#x232B;</button>
+      </div>
+    </div>
+    <!-- Step 2 (operator only): Email verification -->
+    <div class="pin-change-step" id="pcs-2">
+      <div style="background:var(--blue-light);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--blue);line-height:1.5">
+        A 6-digit verification code has been sent to <strong>sdhillon.1024@gmail.com</strong>. Check your inbox and enter it below.
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Enter verification code:</div>
+      <div class="verify-code-dots" id="pc-code-display" style="display:flex;justify-content:center;gap:8px;margin-bottom:12px">
+        <div class="verify-dot" id="vd0">-</div><div class="verify-dot" id="vd1">-</div>
+        <div class="verify-dot" id="vd2">-</div><div class="verify-dot" id="vd3">-</div>
+        <div class="verify-dot" id="vd4">-</div><div class="verify-dot" id="vd5">-</div>
+      </div>
+      <div class="lerr" id="pc-code-err"></div>
+      <div class="pin-pad" style="margin-bottom:12px">
+        <button class="pk" onclick="pcCodeKey(1)">1</button><button class="pk" onclick="pcCodeKey(2)">2</button><button class="pk" onclick="pcCodeKey(3)">3</button>
+        <button class="pk" onclick="pcCodeKey(4)">4</button><button class="pk" onclick="pcCodeKey(5)">5</button><button class="pk" onclick="pcCodeKey(6)">6</button>
+        <button class="pk" onclick="pcCodeKey(7)">7</button><button class="pk" onclick="pcCodeKey(8)">8</button><button class="pk" onclick="pcCodeKey(9)">9</button>
+        <button class="pk blank" disabled></button><button class="pk" onclick="pcCodeKey(0)">0</button><button class="pk del" onclick="pcCodeDel()">&#x232B;</button>
+      </div>
+      <button onclick="pcResendCode()" style="width:100%;background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;text-decoration:underline;padding:4px">Resend code</button>
+    </div>
+    <!-- Step 3: Enter new PIN -->
+    <div class="pin-change-step" id="pcs-3">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Enter your <strong>new</strong> 4-digit PIN.</div>
+      <div class="pin-dots" id="pc-new-dots">
+        <div class="pin-dot" id="pcnd0"></div><div class="pin-dot" id="pcnd1"></div>
+        <div class="pin-dot" id="pcnd2"></div><div class="pin-dot" id="pcnd3"></div>
+      </div>
+      <div class="lerr" id="pc-new-err"></div>
+      <div class="pin-pad">
+        <button class="pk" onclick="pcKey('new',1)">1</button><button class="pk" onclick="pcKey('new',2)">2</button><button class="pk" onclick="pcKey('new',3)">3</button>
+        <button class="pk" onclick="pcKey('new',4)">4</button><button class="pk" onclick="pcKey('new',5)">5</button><button class="pk" onclick="pcKey('new',6)">6</button>
+        <button class="pk" onclick="pcKey('new',7)">7</button><button class="pk" onclick="pcKey('new',8)">8</button><button class="pk" onclick="pcKey('new',9)">9</button>
+        <button class="pk blank" disabled></button><button class="pk" onclick="pcKey('new',0)">0</button><button class="pk del" onclick="pcDel('new')">&#x232B;</button>
+      </div>
+    </div>
+    <!-- Step 4: Confirm new PIN -->
+    <div class="pin-change-step" id="pcs-4">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Confirm your new PIN.</div>
+      <div class="pin-dots" id="pc-con-dots">
+        <div class="pin-dot" id="pcond0"></div><div class="pin-dot" id="pcond1"></div>
+        <div class="pin-dot" id="pcond2"></div><div class="pin-dot" id="pcond3"></div>
+      </div>
+      <div class="lerr" id="pc-con-err"></div>
+      <div class="pin-pad">
+        <button class="pk" onclick="pcKey('con',1)">1</button><button class="pk" onclick="pcKey('con',2)">2</button><button class="pk" onclick="pcKey('con',3)">3</button>
+        <button class="pk" onclick="pcKey('con',4)">4</button><button class="pk" onclick="pcKey('con',5)">5</button><button class="pk" onclick="pcKey('con',6)">6</button>
+        <button class="pk" onclick="pcKey('con',7)">7</button><button class="pk" onclick="pcKey('con',8)">8</button><button class="pk" onclick="pcKey('con',9)">9</button>
+        <button class="pk blank" disabled></button><button class="pk" onclick="pcKey('con',0)">0</button><button class="pk del" onclick="pcDel('con')">&#x232B;</button>
+      </div>
+    </div>
+    <!-- Step 5: Success -->
+    <div class="pin-change-step" id="pcs-5">
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:12px">&#x2705;</div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px">PIN updated!</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Your new PIN is active. Use it next time you log in.</div>
+        <button onclick="closePinChangeModal()" class="btn bprimary" style="padding:12px">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="offlineBanner">⚡ No internet connection — changes will save automatically when you reconnect</div>
 
@@ -1835,7 +1927,19 @@ window.dispatchEvent(new Event('fbReady'));
 </script>
 
 <script>
-const OP_PIN='1024', LEAD_PIN='1111';
+// ---- PIN AUTH (Firestore-backed, SHA-256 hashed) ----
+// EmailJS config
+const EMAILJS_SERVICE  = 'service_74kh3ub';
+const EMAILJS_TEMPLATE = 'template_uh3hpp9';
+const EMAILJS_KEY      = 'evbns_AfYORh1qmCR';
+const OPERATOR_EMAIL   = 'sdhillon.1024@gmail.com';
+
+// SHA-256 hash using Web Crypto API
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 let pinBuf='', opPinBuf='';
 
 function switchLTab(t,el){
@@ -1853,14 +1957,55 @@ function opPk(d){
 }
 function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
 function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
-function chkOpPin(){
-  if(opPinBuf===OP_PIN){
-    loginOK({name:'Sukh',role:'operator'});
-  } else {
-    document.getElementById('opErr').textContent='Incorrect PIN';
-    opPinBuf='';updOpDots();
-    setTimeout(()=>document.getElementById('opErr').textContent='',2500);
+async function chkOpPin(){
+  const errEl = document.getElementById('opErr');
+  errEl.textContent = 'Checking…';
+  try{
+    const hash = await sha256(opPinBuf);
+    // Check Firestore users collection for operator
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'users'),
+      window.F.where('role','==','operator')
+    ));
+    let matched = null;
+    snap.docs.forEach(d=>{ if(d.data().pin === hash) matched = d.data(); });
+    if(matched){
+      errEl.textContent='';
+      loginOK({name: matched.name || 'Sukh', role:'operator'});
+    } else {
+      errEl.textContent='Incorrect PIN';
+      opPinBuf=''; updOpDots();
+      setTimeout(()=>errEl.textContent='',2500);
+    }
+  }catch(e){
+    // Firestore unavailable or no users yet — fall back to seeded check
+    await chkOpPinFallback();
   }
+}
+// Fallback: on first run before any users are seeded
+async function chkOpPinFallback(){
+  const errEl = document.getElementById('opErr');
+  // Try to seed initial operator user if collection is empty
+  try{
+    const hash1024 = await sha256('1024');
+    loginOK({name:'Sukh',role:'operator'});
+    // Seed operator user doc so future logins use Firestore
+    await seedInitialUsers(hash1024);
+    errEl.textContent='';
+  }catch(e){
+    errEl.textContent='Incorrect PIN';
+    opPinBuf=''; updOpDots();
+    setTimeout(()=>errEl.textContent='',2500);
+  }
+}
+async function seedInitialUsers(opHash){
+  // Only seed if collection is empty
+  const snap = await window.F.getDocs(window.F.collection(window.db,'users'));
+  if(!snap.empty) return;
+  const leadHash = await sha256('1111');
+  await window.F.addDoc(window.F.collection(window.db,'users'),{
+    name:'Sukh', role:'operator', pin:opHash, createdAt:new Date().toISOString()
+  });
 }
 function doOpLogin(){}
 
@@ -1868,16 +2013,288 @@ function doOpLogin(){}
 function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
 function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
 function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
-function chkPin(){
+async function chkPin(){
   const n=document.getElementById('empName').value.trim();
-  if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
-  if(pinBuf===LEAD_PIN){
-    loginOK({name:n,role:'lead'});
-  } else {
-    document.getElementById('pinErr').textContent='Incorrect PIN';
-    pinBuf='';updDots();
-    setTimeout(()=>document.getElementById('pinErr').textContent='',2500);
+  const errEl = document.getElementById('pinErr');
+  if(!n){errEl.textContent='Enter your name first';pinBuf='';updDots();return;}
+  errEl.textContent='Checking…';
+  try{
+    const hash = await sha256(pinBuf);
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'users'),
+      window.F.where('name','==',n)
+    ));
+    let matched = null;
+    snap.docs.forEach(d=>{ if(d.data().pin===hash) matched=d.data(); });
+    if(matched){
+      errEl.textContent='';
+      loginOK({name:matched.name, role:matched.role||'employee'});
+    } else {
+      // Fallback for legacy shared PIN (1111 = lead)
+      const hash1111 = await sha256('1111');
+      if(hash===hash1111){
+        loginOK({name:n, role:'lead'});
+      } else {
+        errEl.textContent='Incorrect PIN';
+        pinBuf=''; updDots();
+        setTimeout(()=>errEl.textContent='',2500);
+      }
+    }
+  }catch(e){
+    errEl.textContent='Incorrect PIN';
+    pinBuf=''; updDots();
+    setTimeout(()=>errEl.textContent='',2500);
   }
+}
+
+// ---- PIN CHANGE SYSTEM ----
+let _pcState = { curBuf:'', newBuf:'', conBuf:'', codeBuf:'', sentCode:'', step:1 };
+
+function openPinChangeModal(){
+  if(!CU){ toast('Not logged in'); return; }
+  _pcState = { curBuf:'', newBuf:'', conBuf:'', codeBuf:'', sentCode:'', step:1 };
+  document.getElementById('pinChangeTitle').textContent = CU.name + ' — Change PIN';
+  // Reset all steps
+  document.querySelectorAll('.pin-change-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('pcs-1').classList.add('active');
+  // Clear dots and errors
+  ['pc-cur-err','pc-new-err','pc-con-err','pc-code-err'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='';
+  });
+  pcUpdDots('cur'); pcUpdDots('new'); pcUpdDots('con'); pcUpdCodeDots();
+  document.getElementById('pinChangeModal').style.display='flex';
+}
+
+function closePinChangeModal(){
+  document.getElementById('pinChangeModal').style.display='none';
+  _pcState = { curBuf:'', newBuf:'', conBuf:'', codeBuf:'', sentCode:'', step:1 };
+}
+
+function pcGoStep(n){
+  document.querySelectorAll('.pin-change-step').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById('pcs-'+n);
+  if(el) el.classList.add('active');
+  _pcState.step = n;
+}
+
+function pcUpdDots(which){
+  const buf = _pcState[which+'Buf'];
+  const prefix = which==='cur'?'pccd':which==='new'?'pcnd':'pcond';
+  for(let i=0;i<4;i++){
+    const el=document.getElementById(prefix+i);
+    if(el) el.classList.toggle('filled', i<buf.length);
+  }
+}
+
+function pcUpdCodeDots(){
+  const buf = _pcState.codeBuf;
+  for(let i=0;i<6;i++){
+    const el=document.getElementById('vd'+i);
+    if(el){
+      el.textContent = i<buf.length ? buf[i] : '-';
+      el.classList.toggle('filled', i<buf.length);
+    }
+  }
+}
+
+function pcKey(which, d){
+  const key = which+'Buf';
+  if(_pcState[key].length>=4) return;
+  _pcState[key] += d;
+  pcUpdDots(which);
+  if(_pcState[key].length===4) setTimeout(()=>pcHandleFull(which), 200);
+}
+
+function pcDel(which){
+  const key = which+'Buf';
+  _pcState[key] = _pcState[key].slice(0,-1);
+  pcUpdDots(which);
+}
+
+async function pcHandleFull(which){
+  if(which==='cur') await pcVerifyCurrent();
+  else if(which==='new') pcNewEntered();
+  else if(which==='con') await pcConfirmNew();
+}
+
+async function pcVerifyCurrent(){
+  const errEl = document.getElementById('pc-cur-err');
+  errEl.textContent = 'Verifying…';
+  try{
+    const hash = await sha256(_pcState.curBuf);
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'users'),
+      window.F.where('name','==',CU.name)
+    ));
+    let matched = null;
+    snap.docs.forEach(d=>{ if(d.data().pin===hash) matched=d.data(); });
+
+    // Fallback: also accept legacy PIN 1024 for operator, 1111 for others
+    if(!matched){
+      const legacy = CU.role==='operator' ? '1024' : '1111';
+      if(_pcState.curBuf === legacy) matched = {legacy:true};
+    }
+
+    if(matched){
+      errEl.textContent='';
+      // Operator: send email verification code first
+      if(CU.role==='operator'){
+        await pcSendVerificationCode();
+        pcGoStep(2);
+      } else {
+        pcGoStep(3);
+      }
+    } else {
+      errEl.textContent='Incorrect current PIN';
+      _pcState.curBuf=''; pcUpdDots('cur');
+      setTimeout(()=>errEl.textContent='',2500);
+    }
+  }catch(e){
+    errEl.textContent='Error verifying PIN';
+    _pcState.curBuf=''; pcUpdDots('cur');
+    setTimeout(()=>errEl.textContent='',2500);
+  }
+}
+
+async function pcSendVerificationCode(){
+  // Generate 6-digit code
+  const code = String(Math.floor(100000 + Math.random()*900000));
+  _pcState.sentCode = code;
+  _pcState.codeExpiry = Date.now() + 10*60*1000; // 10 minutes
+  try{
+    emailjs.init(EMAILJS_KEY);
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      code,
+      to_email: OPERATOR_EMAIL,
+      to_name: 'Sukh'
+    });
+    toast('Verification code sent to your email');
+  }catch(e){
+    console.error('EmailJS error:',e);
+    toast('Could not send email — check connection');
+  }
+}
+
+async function pcResendCode(){
+  toast('Resending code…');
+  _pcState.codeBuf = '';
+  pcUpdCodeDots();
+  document.getElementById('pc-code-err').textContent='';
+  await pcSendVerificationCode();
+}
+
+function pcCodeKey(d){
+  if(_pcState.codeBuf.length>=6) return;
+  _pcState.codeBuf += d;
+  pcUpdCodeDots();
+  if(_pcState.codeBuf.length===6) setTimeout(pcVerifyCode, 200);
+}
+
+function pcCodeDel(){
+  _pcState.codeBuf = _pcState.codeBuf.slice(0,-1);
+  pcUpdCodeDots();
+}
+
+function pcVerifyCode(){
+  const errEl = document.getElementById('pc-code-err');
+  if(Date.now() > _pcState.codeExpiry){
+    errEl.textContent='Code expired — tap "Resend code"';
+    _pcState.codeBuf=''; pcUpdCodeDots();
+    return;
+  }
+  if(_pcState.codeBuf === _pcState.sentCode){
+    errEl.textContent='';
+    pcGoStep(3);
+  } else {
+    errEl.textContent='Incorrect code — try again';
+    _pcState.codeBuf=''; pcUpdCodeDots();
+    setTimeout(()=>errEl.textContent='',2500);
+  }
+}
+
+function pcNewEntered(){
+  const pin = _pcState.newBuf;
+  const errEl = document.getElementById('pc-new-err');
+  // Basic strength check — block all-same digits like 1111
+  const allSame = pin.split('').every(c=>c===pin[0]);
+  if(allSame){
+    errEl.textContent='PIN too simple — use different digits';
+    _pcState.newBuf=''; pcUpdDots('new');
+    setTimeout(()=>errEl.textContent='',2500);
+    return;
+  }
+  errEl.textContent='';
+  pcGoStep(4);
+}
+
+async function pcConfirmNew(){
+  const errEl = document.getElementById('pc-con-err');
+  if(_pcState.conBuf !== _pcState.newBuf){
+    errEl.textContent='PINs do not match — try again';
+    _pcState.conBuf=''; pcUpdDots('con');
+    _pcState.newBuf=''; pcUpdDots('new');
+    setTimeout(()=>{errEl.textContent='';pcGoStep(3);},1500);
+    return;
+  }
+  errEl.textContent='Saving…';
+  try{
+    const hash = await sha256(_pcState.newBuf);
+    // Find user doc in Firestore
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'users'),
+      window.F.where('name','==',CU.name)
+    ));
+    if(snap.empty){
+      // Create new user doc (first time PIN set)
+      await window.F.addDoc(window.F.collection(window.db,'users'),{
+        name: CU.name,
+        role: CU.role,
+        pin: hash,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      await window.F.updateDoc(window.F.doc(window.db,'users',snap.docs[0].id),{
+        pin: hash,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    errEl.textContent='';
+    pcGoStep(5);
+  }catch(e){
+    errEl.textContent='Error saving PIN';
+    console.error(e);
+    setTimeout(()=>errEl.textContent='',2500);
+  }
+}
+
+// Operator can reset any employee's PIN from Employees tab
+async function operatorResetPin(empName){
+  if(!CU || CU.role!=='operator'){ toast('Operator only'); return; }
+  const newPin = prompt(`Set new PIN for ${empName} (4 digits):`);
+  if(!newPin || newPin.length!==4 || !/^\d{4}$/.test(newPin)){
+    toast('Enter exactly 4 digits'); return;
+  }
+  const allSame = newPin.split('').every(c=>c===newPin[0]);
+  if(allSame){ toast('PIN too simple — use different digits'); return; }
+  try{
+    const hash = await sha256(newPin);
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'users'),
+      window.F.where('name','==',empName)
+    ));
+    if(snap.empty){
+      await window.F.addDoc(window.F.collection(window.db,'users'),{
+        name:empName, role:'employee', pin:hash,
+        createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+      });
+    } else {
+      await window.F.updateDoc(window.F.doc(window.db,'users',snap.docs[0].id),{
+        pin:hash, updatedAt:new Date().toISOString(), resetBy:CU.name
+      });
+    }
+    toast(`✓ PIN set for ${empName}`);
+  }catch(e){ toast('Error setting PIN'); console.error(e); }
 }
 
 let CU=null,games=[];
@@ -1943,7 +2360,7 @@ function loginOK(u){
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
-  CU=null;pinBuf='';localStorage.removeItem('cu_session');
+  CU=null;pinBuf='';opPinBuf='';localStorage.removeItem('cu_session');
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
   opPinBuf='';updOpDots();document.getElementById('empName').value='';updDots();
@@ -1956,11 +2373,7 @@ function doLogout(){
     if(saved){
       const u = JSON.parse(saved);
       if(u && u.name && u.role){
-        // Wait for Firebase to be ready before restoring
-        window.addEventListener('fbReady', function(){
-          loginOK(u);
-        }, {once:true});
-        // Also try immediately in case fbReady already fired
+        window.addEventListener('fbReady', function(){ loginOK(u); }, {once:true});
         if(window.db) loginOK(u);
       }
     }
@@ -5509,7 +5922,7 @@ async function loadEmployees(){
               <div style="font-size:12px;color:var(--text3)">${e.shifts.length} shift${e.shifts.length!==1?'s':''} · ${new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
               ${paidBadge}
               ${isOp&&empRate>0?`<div style="font-size:11px;color:var(--blue);margin-top:2px">$${empRate.toFixed(2)}/hr</div>`:''}
-            </div>
+              ${isOp?`<button onclick="operatorResetPin('${e.name}')" style="margin-top:5px;background:none;border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:11px;color:var(--text2);cursor:pointer">🔑 Reset PIN</button>`:''}
           </div>
           <div style="text-align:right">
             <div style="font-size:18px;font-weight:700;color:var(--blue)">${fmtHours(e.totalHours)}</div>
