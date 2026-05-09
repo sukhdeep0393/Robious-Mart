@@ -2008,17 +2008,38 @@ async function chkPin(){
 // ---- PIN CHANGE SYSTEM ----
 let _pcState={curBuf:'',newBuf:'',conBuf:'',codeBuf:'',sentCode:'',codeExpiry:0,step:1};
 
-function openPinChangeModal(){
+async function openPinChangeModal(){
   if(!CU){toast('Not logged in');return;}
   _pcState={curBuf:'',newBuf:'',conBuf:'',codeBuf:'',sentCode:'',codeExpiry:0,step:1};
   document.getElementById('pinChangeTitle').textContent=CU.name+' — Change PIN';
   document.querySelectorAll('.pin-change-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('pcs-1').classList.add('active');
   ['pc-cur-err','pc-new-err','pc-con-err','pc-code-err'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.textContent='';
   });
   pcUpdDots('cur');pcUpdDots('new');pcUpdDots('con');pcUpdCodeDots();
   document.getElementById('pinChangeModal').style.display='flex';
+
+  // Check if this user has a PIN set yet
+  try{
+    const snap=await window.F.getDocs(window.F.collection(window.db,'users'));
+    const existing=snap.docs.find(d=>d.data().name===CU.name&&d.data().pin);
+    if(!existing){
+      // No PIN set yet — skip current PIN step, go straight to set new PIN
+      const msg=document.getElementById('pc-new-err');
+      if(msg)msg.textContent='';
+      // Show a hint on step 3
+      const hint=document.getElementById('pcs-3');
+      if(hint){
+        const sub=hint.querySelector('div');
+        if(sub)sub.textContent='You don\'t have a PIN yet. Set one now.';
+      }
+      pcGoStep(3);
+      return;
+    }
+  }catch(e){ /* proceed normally if Firestore unavailable */ }
+
+  // Has a PIN — start at step 1
+  document.getElementById('pcs-1').classList.add('active');
 }
 
 function closePinChangeModal(){
@@ -2072,13 +2093,18 @@ async function pcVerifyCurrent(){
   try{
     const hash=await sha256(_pcState.curBuf);
     const snap=await window.F.getDocs(window.F.collection(window.db,'users'));
+    const userDoc=snap.docs.find(d=>d.data().name===CU.name);
     let matched=null;
-    snap.docs.forEach(d=>{const x=d.data();if(x.name===CU.name&&x.pin===hash)matched=x;});
-    // Legacy fallback
-    if(!matched){
+
+    if(userDoc && userDoc.data().pin){
+      // User has a PIN in Firestore — must match it exactly
+      if(userDoc.data().pin===hash) matched=userDoc.data();
+    } else {
+      // No Firestore PIN yet — accept legacy PIN (1024 for operator, 1111 for others)
       const legacy=CU.role==='operator'?'1024':'1111';
-      if(_pcState.curBuf===legacy)matched={legacy:true};
+      if(_pcState.curBuf===legacy) matched={legacy:true};
     }
+
     if(matched){
       errEl.textContent='';
       if(CU.role==='operator'){
