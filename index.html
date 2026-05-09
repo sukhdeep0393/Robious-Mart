@@ -340,8 +340,8 @@
   .scan-thumb-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;border:none;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
   .scan-page-num{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;}
   /* PIN change modal */
-  .pin-change-step{display:none;}
-  .pin-change-step.active{display:block;}
+  .pin-change-step{display:none !important;}
+  .pin-change-step.active{display:block !important;}
   .verify-code-dots{display:flex;justify-content:center;gap:10px;margin:16px 0;}
   .verify-dot{width:40px;height:52px;border:2px solid var(--border);border-radius:8px;background:var(--bg2);font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
   .verify-dot.filled{border-color:var(--blue);background:var(--blue-light);}
@@ -2052,11 +2052,13 @@ let _pcState = { curBuf:'', newBuf:'', conBuf:'', codeBuf:'', sentCode:'', step:
 
 function openPinChangeModal(){
   if(!CU){ toast('Not logged in'); return; }
-  _pcState = { curBuf:'', newBuf:'', conBuf:'', codeBuf:'', sentCode:'', step:1 };
+  _pcState = { curBuf:'', newBuf:'', conBuf:'', codeBuf:'', sentCode:'', codeExpiry:0, step:1 };
   document.getElementById('pinChangeTitle').textContent = CU.name + ' — Change PIN';
-  // Reset all steps
-  document.querySelectorAll('.pin-change-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('pcs-1').classList.add('active');
+  // Hard reset ALL steps — remove active from everything first
+  document.querySelectorAll('.pin-change-step').forEach(s=>{ s.classList.remove('active'); s.style.display=''; });
+  // Explicitly show only step 1
+  const step1 = document.getElementById('pcs-1');
+  if(step1) step1.classList.add('active');
   // Clear dots and errors
   ['pc-cur-err','pc-new-err','pc-con-err','pc-code-err'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.textContent='';
@@ -2136,11 +2138,10 @@ async function pcVerifyCurrent(){
     }
 
     if(matched){
-      errEl.textContent='';
-      // Operator: send email verification code first
+      errEl.textContent='';\n      // Operator: go to email verification step, THEN send code
       if(CU.role==='operator'){
-        await pcSendVerificationCode();
         pcGoStep(2);
+        await pcSendVerificationCode();
       } else {
         pcGoStep(3);
       }
