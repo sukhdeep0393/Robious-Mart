@@ -1906,7 +1906,6 @@ const TABS={
 function loginOK(u){
   try{
   CU=u;
-  localStorage.setItem('cu_session',JSON.stringify(u));
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').style.display='block';
   document.getElementById('uBadge').textContent=u.name+(u.role==='operator'?' · Operator':u.role==='lead'?' · Lead':'');
@@ -1943,25 +1942,11 @@ function loginOK(u){
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
-  CU=null;pinBuf='';opPinBuf='';localStorage.removeItem('cu_session');
+  CU=null;pinBuf='';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
   opPinBuf='';updOpDots();document.getElementById('empName').value='';updDots();
 }
-
-// ---- SESSION RESTORE ----
-(function restoreSession(){
-  try{
-    const saved=localStorage.getItem('cu_session');
-    if(saved){
-      const u=JSON.parse(saved);
-      if(u&&u.name&&u.role){
-        window.addEventListener('fbReady',function(){loginOK(u);},{once:true});
-        if(window.db)loginOK(u);
-      }
-    }
-  }catch(e){localStorage.removeItem('cu_session');}
-})();
 
 // ---- TABS ----
 function buildTabs(){
@@ -2929,20 +2914,21 @@ async function subDaily(){
     });
     toast('✓ Shift report saved!');btn.innerHTML='✓ Submitted!';btn.style.background='var(--green)';
     setTimeout(()=>{btn.innerHTML='Submit shift report';btn.disabled=false;btn.style.background='';},3000);
+  }catch(e){toast('Error saving');console.error(e);btn.innerHTML='Submit shift report';btn.disabled=false;return;}
+  // Post-save cleanup (outside try/catch so errors here don't show "Error saving")
+  try{
     ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
-
     document.getElementById('d-date').value=localDate();
-  document.getElementById('f-date').value=localDate();
-  document.getElementById('f-emp').value=u.name;
-  try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
-  // Set default month filters
-  const ym=new Date().toISOString().slice(0,7);
-  const em=document.getElementById('empMonth');if(em)em.value=ym;
-  const mm=document.getElementById('myHoursMonth');if(mm)mm.value=ym;
-  }catch(e){toast('Error saving');btn.innerHTML='Submit shift report';btn.disabled=false;}
+    document.getElementById('f-date').value=localDate();
+    document.getElementById('f-emp').value=u.name;
+    try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
+    const ym=new Date().toISOString().slice(0,7);
+    const em=document.getElementById('empMonth');if(em)em.value=ym;
+    const mm=document.getElementById('myHoursMonth');if(mm)mm.value=ym;
+  }catch(ex){console.warn('Post-save cleanup error:',ex);}
 }
 
 // ---- FUEL ----
