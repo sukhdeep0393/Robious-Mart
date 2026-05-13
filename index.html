@@ -2583,7 +2583,7 @@ async function loadDashboard(){
       <!-- ===== NET PROFIT CARD ===== -->
       ${(()=>{
         const totalRevenue = mtdSales + mtdORTotal + mtdFuelProfit + mtdLCTotal;
-        const netProfit    = totalRevenue - mtdExpTotal;
+        const netProfit    = totalRevenue - mtdExpTotal - mtdDlTotal;
         const netColor     = netProfit >= 0 ? 'var(--green)' : 'var(--red)';
         const netLabel     = netProfit >= 0 ? 'Net Profit' : 'Net Loss';
         const netIcon      = netProfit >= 0 ? '📈' : '📉';
@@ -2628,6 +2628,15 @@ async function loadDashboard(){
                   + (fuelProfitPrem>0 ? `· Prem ${mtdPremGal.toLocaleString()}g × $${mgn.premium.toFixed(3)} ` : '')
                   + (fuelProfitDies>0 ? `· Diesel ${mtdDiesGal.toLocaleString()}g × $${mgn.diesel.toFixed(3)}` : '')
                   + `</div>` : `<div style="font-size:11px;color:var(--amber)">Go to ⛽ Fuel tab → set margins</div>`}
+              </div>
+            </div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div style="padding:11px 14px">
+                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">📦 COGS (Deliveries)</div>
+                <div style="font-size:17px;font-weight:800;color:${mtdDlTotal>0?'var(--red)':'var(--text3)'}">
+                  ${mtdDlTotal>0 ? '-$'+mtdDlTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}
+                </div>
+                <div style="font-size:11px;color:var(--text3)">${mtdDl.length} deliver${mtdDl.length!==1?'ies':'y'} this month</div>
               </div>
             </div>
             <div style="padding:11px 14px">
