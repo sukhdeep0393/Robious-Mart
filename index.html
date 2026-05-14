@@ -987,8 +987,18 @@
 
   <!-- EMPLOYEES (operator only) -->
   <div class="page" id="page-employees">
+
+    <!-- Employee Logins (operator only) -->
+    <div class="card" id="empLoginsCard" style="display:none">
+      <div class="sh2" style="margin-bottom:14px">
+        <div class="ct" style="margin:0">&#128272; Employee Logins</div>
+        <button class="bsm" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="openAddEmpLogin()">+ Add Employee</button>
+      </div>
+      <div id="empLoginsList"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+    </div>
+
     <div class="card">
-      <div class="ct">Filter</div>
+      <div class="ct">Hours Filter</div>
       <div class="filter-bar">
         <input type="month" id="empMonth" onchange="loadEmployees()" />
         <select id="empFilter" onchange="loadEmployees()">
@@ -996,7 +1006,39 @@
         </select>
       </div>
     </div>
-    <div id="empContent"><div class="empty"><div class="ei">👥</div>Loading...</div></div>
+    <div id="empContent"><div class="empty"><div class="ei">&#128101;</div>Loading...</div></div>
+  </div>
+
+  <!-- Add/Edit Employee Login Modal -->
+  <div id="empLoginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeEmpLoginModal()">
+    <div style="background:var(--bg);border-radius:var(--rl);padding:24px;width:calc(100% - 32px);max-width:380px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div style="font-size:16px;font-weight:700" id="empLoginModalTitle">Add Employee Login</div>
+        <button onclick="closeEmpLoginModal()" style="background:none;border:none;font-size:20px;color:var(--text3);padding:4px">&#x2715;</button>
+      </div>
+      <input type="hidden" id="elm-docId" />
+      <div style="margin-bottom:12px">
+        <label>Employee Name</label>
+        <input id="elm-name" placeholder="First name (e.g. Priya)" autocomplete="off" />
+      </div>
+      <div style="margin-bottom:12px">
+        <label>Role</label>
+        <select id="elm-role">
+          <option value="employee">Employee (basic access)</option>
+          <option value="lead">Lead (full access)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:20px">
+        <label id="elm-pin-label">4-Digit PIN</label>
+        <input id="elm-pin" type="password" inputmode="numeric" maxlength="4" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="new-password" style="letter-spacing:6px;font-size:20px;text-align:center" />
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="elm-pin-hint">Set a unique 4-digit PIN for this employee</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn bsecondary" style="flex:1" onclick="closeEmpLoginModal()">Cancel</button>
+        <button class="btn" style="flex:2;background:var(--blue);color:#fff;border-color:var(--blue)" onclick="saveEmpLogin()">Save</button>
+      </div>
+      <div id="elm-err" style="color:var(--red);font-size:13px;margin-top:10px;text-align:center;min-height:18px"></div>
+    </div>
   </div>
 
   <!-- MY HOURS (employee/lead) -->
@@ -1868,16 +1910,21 @@ function doOpLogin(){}
 function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
 function pdel(){pinBuf=pinBuf.slice(0,-1);updDots();}
 function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuf.length);}
-function chkPin(){
+async function chkPin(){
   const n=document.getElementById('empName').value.trim();
   if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
-  if(pinBuf===LEAD_PIN){
-    loginOK({name:n,role:'lead'});
-  } else {
-    document.getElementById('pinErr').textContent='Incorrect PIN';
-    pinBuf='';updDots();
-    setTimeout(()=>document.getElementById('pinErr').textContent='',2500);
-  }
+  const enteredPin=pinBuf;
+  pinBuf='';updDots();
+  // First check legacy shared LEAD_PIN (keeps Tilak working)
+  if(enteredPin===LEAD_PIN){loginOK({name:n,role:'lead'});return;}
+  // Then check Firestore per-employee PINs
+  try{
+    const snap=await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+    const match=snap.docs.map(d=>({id:d.id,...d.data()})).find(e=>e.name.toLowerCase()===n.toLowerCase()&&e.pin===enteredPin);
+    if(match){loginOK({name:match.name,role:match.role||'employee'});return;}
+  }catch(err){console.error('PIN lookup error:',err);}
+  document.getElementById('pinErr').textContent='Incorrect PIN';
+  setTimeout(()=>document.getElementById('pinErr').textContent='',2500);
 }
 
 let CU=null,games=[];
@@ -2019,7 +2066,7 @@ function showTab(id){
     if(hc) hc.style.display = CU.role==='operator' ? 'block' : 'none';
   }
   if(id==='compliance')loadLics();
-  if(id==='employees')loadEmployees();
+  if(id==='employees'){loadEmployees();loadEmpLogins();}
   if(id==='expenses')loadExpenses();
   if(id==='overhead')loadOverhead();
   if(id==='deliveries')initDeliveries();
@@ -5430,6 +5477,119 @@ async function markWeekPaid(payKey, empName, weekLabel, month){
     toast('✓ Marked as paid' + (amount ? ` — $${amount.toFixed(2)}` : ''));
     loadEmployees();
   }catch(e){ toast('Error saving'); console.error(e); }
+}
+
+// ---- EMPLOYEE LOGINS MANAGEMENT ----
+async function loadEmpLogins(){
+  const card = document.getElementById('empLoginsCard');
+  const list = document.getElementById('empLoginsList');
+  if(!card||!list) return;
+  if(CU?.role !== 'operator'){card.style.display='none';return;}
+  card.style.display='block';
+  list.innerHTML='<div style="color:var(--text3);font-size:13px">Loading...</div>';
+  try{
+    const snap = await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+    const emps = snap.docs.map(d=>({docId:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!emps.length){
+      list.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px 0">No employee logins yet. Add your first employee above.</div>';
+      return;
+    }
+    list.innerHTML = emps.map(e=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--blue)">${e.name.charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-size:14px;font-weight:600">${e.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${e.role==='lead'?'Lead':'Employee'} &middot; PIN: &#x2022;&#x2022;&#x2022;&#x2022;</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="openEditEmpLogin('${e.docId}','${e.name.replace(/'/g,"\'")}','${e.role}','${e.pin}')" style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer">Change PIN</button>
+          <button onclick="deleteEmpLogin('${e.docId}','${e.name.replace(/'/g,"\'")}' )" style="font-size:12px;padding:5px 10px;border-radius:20px;border:1px solid var(--red-light);background:var(--red-light);color:var(--red);cursor:pointer">Remove</button>
+        </div>
+      </div>`).join('');
+  }catch(err){list.innerHTML='<div style="color:var(--red);font-size:13px">Error loading logins</div>';console.error(err);}
+}
+
+function openAddEmpLogin(){
+  document.getElementById('empLoginModalTitle').textContent='Add Employee Login';
+  document.getElementById('elm-docId').value='';
+  document.getElementById('elm-name').value='';
+  document.getElementById('elm-role').value='employee';
+  document.getElementById('elm-pin').value='';
+  document.getElementById('elm-pin-label').textContent='4-Digit PIN';
+  document.getElementById('elm-pin-hint').textContent='Set a unique 4-digit PIN for this employee';
+  document.getElementById('elm-name').disabled=false;
+  document.getElementById('elm-err').textContent='';
+  const m=document.getElementById('empLoginModal');
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('elm-name').focus(),100);
+}
+
+function openEditEmpLogin(docId, name, role, pin){
+  document.getElementById('empLoginModalTitle').textContent='Change PIN / Role';
+  document.getElementById('elm-docId').value=docId;
+  document.getElementById('elm-name').value=name;
+  document.getElementById('elm-name').disabled=true;
+  document.getElementById('elm-role').value=role||'employee';
+  document.getElementById('elm-pin').value='';
+  document.getElementById('elm-pin-label').textContent='New 4-Digit PIN';
+  document.getElementById('elm-pin-hint').textContent='Leave blank to keep existing PIN unchanged';
+  document.getElementById('elm-err').textContent='';
+  const m=document.getElementById('empLoginModal');
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('elm-pin').focus(),100);
+}
+
+function closeEmpLoginModal(){
+  document.getElementById('empLoginModal').style.display='none';
+}
+
+async function saveEmpLogin(){
+  const docId=document.getElementById('elm-docId').value;
+  const name=document.getElementById('elm-name').value.trim();
+  const role=document.getElementById('elm-role').value;
+  const pin=document.getElementById('elm-pin').value.trim();
+  const errEl=document.getElementById('elm-err');
+  errEl.textContent='';
+
+  const isEdit=!!docId;
+
+  if(!name){errEl.textContent='Please enter a name';return;}
+  if(!isEdit && !/^\d{4}$/.test(pin)){errEl.textContent='PIN must be exactly 4 digits';return;}
+  if(isEdit && pin && !/^\d{4}$/.test(pin)){errEl.textContent='PIN must be exactly 4 digits';return;}
+  if(pin===OP_PIN){errEl.textContent='That PIN is reserved for the operator';return;}
+  if(pin===LEAD_PIN){errEl.textContent='That PIN is reserved for the shared lead login';return;}
+
+  try{
+    if(isEdit){
+      const ref=window.F.doc(window.db,'employeeLogins',docId);
+      const upd={role, updatedBy:CU.name, updatedAt:new Date().toISOString()};
+      if(pin) upd.pin=pin;
+      await window.F.updateDoc(ref,upd);
+      toast('✓ Login updated for '+name);
+    } else {
+      // Check for duplicate name
+      const snap=await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+      const dup=snap.docs.find(d=>d.data().name.toLowerCase()===name.toLowerCase());
+      if(dup){errEl.textContent='An employee login for "'+name+'" already exists';return;}
+      await window.F.addDoc(window.F.collection(window.db,'employeeLogins'),{
+        name, role, pin, createdBy:CU.name, createdAt:new Date().toISOString()
+      });
+      toast('✓ Login created for '+name);
+    }
+    closeEmpLoginModal();
+    loadEmpLogins();
+  }catch(err){errEl.textContent='Error saving: '+err.message;console.error(err);}
+}
+
+async function deleteEmpLogin(docId, name){
+  if(!confirm('Remove login for '+name+'? They will no longer be able to sign in.')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'employeeLogins',docId));
+    toast('Login removed for '+name);
+    loadEmpLogins();
+  }catch(err){toast('Error removing login');console.error(err);}
 }
 
 async function loadEmployees(){
