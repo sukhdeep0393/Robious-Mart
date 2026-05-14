@@ -688,16 +688,8 @@
 
     <!-- Shift info -->
     <div class="card">
-      <div class="ct">Shift info</div>
-      <div class="g2">
-        <div><label>Employee</label><input id="s-emp" readonly style="background:var(--bg2)" /></div>
-        <div><label>Count type</label>
-          <select id="s-type" onchange="onScrShiftTypeChange(this.value)">
-            <option value="opening">Opening count</option>
-            <option value="closing">Closing count</option>
-          </select>
-        </div>
-      </div>
+      <div class="ct">My shift count</div>
+      <div><label>Employee</label><input id="s-emp" readonly style="background:var(--bg2)" /></div>
     </div>
 
     <!-- Slot setup card — operator/lead only -->
@@ -737,15 +729,12 @@
     <!-- Baseline banner -->
     <div id="scrBaselineBanner" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.6;border:1px solid transparent"></div>
 
-    <!-- Discrepancy alert -->
-    <div id="scrDiscrepancyAlert" style="display:none;background:var(--red-light);border:1px solid #f7c1c1;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--red);line-height:1.6"></div>
-
     <!-- Count entry card -->
     <div class="card">
       <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--amber);line-height:1.5">
-        <span id="scrHintText">Enter the <strong>opening ticket number</strong> for each slot. Type 3 digits and it jumps to the next slot automatically.</span>
+        Enter the <strong>current ticket #</strong> for each slot (000 = brand new, higher = more sold). If a new book was opened during your shift, check the box on that slot. Numbers auto-advance after 3 digits.
       </div>
-      <div id="scrRows"><div class="empty"><div class="ei">🎟</div>No slots set up yet</div></div>
+      <div id="scrRows"><div class="empty"><div class="ei">&#127967;</div>No slots set up yet</div></div>
       <div id="scrTot" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
         <div class="g2">
           <div>
@@ -753,64 +742,21 @@
             <div style="font-size:22px;font-weight:700" id="scrTotVal">$0</div>
           </div>
           <div id="scrSoldBlock" style="display:none">
-            <div style="font-size:11px;color:var(--green);margin-bottom:2px;font-weight:600">Est. sold this shift</div>
+            <div style="font-size:11px;color:var(--green);margin-bottom:2px;font-weight:600">Sold since last count</div>
             <div style="font-size:22px;font-weight:700;color:var(--green)" id="scrSoldVal">$0</div>
           </div>
         </div>
       </div>
     </div>
-    <button class="btn bprimary" id="scrBtn" onclick="subScratch()" style="margin-bottom:16px">Save opening count</button>
-
-    <!-- New book activation card -->
-    <div class="card">
-      <div class="sh2">
-        <div class="ct" style="margin:0">📦 New book activations</div>
-        <button class="bsm" onclick="togActForm()">+ Log activation</button>
-      </div>
-      <div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.5">
-        Log every new book you open. The system uses this to track value on hand and calculate revenue correctly when a new book is activated mid-shift.
-      </div>
-
-      <!-- Activation form -->
-      <div id="actForm" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Log new book activation</div>
-        <div style="margin-bottom:10px">
-          <label>Slot #</label>
-          <select id="act-slot" onchange="onActSlotChange(this.value)">
-            <option value="">— select slot —</option>
-          </select>
-          <div id="act-slot-hint" style="display:none;margin-top:6px;font-size:12px;padding:7px 10px;border-radius:7px;background:var(--blue-light);color:var(--blue)"></div>
-        </div>
-        <div class="g2" style="margin-bottom:10px">
-          <div><label>Game name</label><input id="act-name" placeholder="e.g. Gold Rush $5" /></div>
-          <div><label>Price per ticket ($)</label><input type="number" id="act-price" placeholder="e.g. 5" oninput="updActPackCalc()" /></div>
-        </div>
-        <div class="g2" style="margin-bottom:10px">
-          <div><label>Tickets in this book</label><input type="number" id="act-tix" placeholder="e.g. 40" oninput="updActPackCalc()" /></div>
-          <div><label>Game # (optional)</label><input type="number" id="act-gamenum" placeholder="e.g. 1234" /></div>
-        </div>
-        <div id="act-pack-val" style="display:none;background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px">Book value</div>
-          <div style="font-size:22px;font-weight:800;color:var(--green)" id="act-pack-num">$0</div>
-          <div style="font-size:11px;color:var(--green);margin-top:1px" id="act-pack-sub"></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" id="actSaveBtn" onclick="saveActivation()">Save activation</button>
-          <button class="btn bsecondary" style="padding:10px;font-size:13px" onclick="togActForm()">Cancel</button>
-        </div>
-      </div>
-
-      <!-- Activation log -->
-      <div id="actLogList"><div class="empty" style="padding:16px"><div class="ei">📦</div>No activations logged yet</div></div>
-    </div>
+    <button class="btn bprimary" id="scrBtn" onclick="subScratch()" style="margin-bottom:16px">Submit my count</button>
 
     <!-- Count history (operator only) -->
     <div class="card" id="scrHistoryCard" style="display:none">
       <div class="sh2">
-        <div class="ct" style="margin:0">📋 Count history</div>
+        <div class="ct" style="margin:0">&#128203; Count history</div>
         <button class="bsm" onclick="loadScrHistory()">Refresh</button>
       </div>
-      <div id="scrHistoryList"><div class="empty" style="padding:16px"><div class="ei">📋</div>Loading...</div></div>
+      <div id="scrHistoryList"><div class="empty" style="padding:16px"><div class="ei">&#128203;</div>Loading...</div></div>
     </div>
 
   </div>
@@ -2060,10 +2006,10 @@ function showTab(id){
   if(id==='inventory')loadInvFlags();
   if(id==='tobacco')loadTobaccoTab();
   if(id==='scratch'){
-    loadGames();
-    loadActLog();
+    loadGames().then(()=>loadScrBaseline().then(()=>renderScrRows()));
     const hc = document.getElementById('scrHistoryCard');
     if(hc) hc.style.display = CU.role==='operator' ? 'block' : 'none';
+    if(CU.role==='operator') loadScrHistory();
   }
   if(id==='compliance')loadLics();
   if(id==='employees'){loadEmployees();loadEmpLogins();}
@@ -3313,9 +3259,8 @@ async function clearScrSlot(){
 }
 
 // ---- BASELINE LOADING ----
-// Always uses the most recent count doc (any type, any employee) as the opening baseline.
-// This means Tilak's closing count automatically becomes the next employee's opening baseline
-// — no manual "skip opening count" needed.
+// Always uses the most recent count doc as the baseline for the next count.
+// Each employee just counts what they see — revenue is calculated between counts.
 
 async function loadScrBaseline(){
   try{
@@ -3325,27 +3270,22 @@ async function loadScrBaseline(){
       window.F.limit(50)
     ));
     scrBaseline = snap.empty ? null : snap.docs[0].data();
-    scrBaseline = scrBaseline || null;
   }catch(e){ scrBaseline = null; }
 }
 
 function renderScrBaselineBanner(){
   const el = document.getElementById('scrBaselineBanner');
   if(!el) return;
-  const type = document.getElementById('s-type')?.value;
-  if(type === 'opening'){ el.style.display='none'; return; }
-
   if(!scrBaseline){
     el.style.display='block';
     el.style.background='var(--amber-light)';
     el.style.borderColor='#e8c98a';
     el.style.color='var(--amber)';
-    el.innerHTML='⚠️ No previous count found — this will be treated as the first count. Enter current ticket numbers for all slots.';
+    el.innerHTML='&#9888;&#65039; No previous count found — this will be the first count on record. Enter current ticket numbers for all slots.';
     return;
   }
   const baseDate = scrBaseline.date || '';
   const baseEmp  = scrBaseline.employee || 'Unknown';
-  const baseType = scrBaseline.type || 'count';
   const baseTime = scrBaseline.timestamp?.toDate?.()?.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})||'';
   const isToday  = baseDate === localDate();
   const dateLabel = isToday ? 'today' : baseDate;
@@ -3353,106 +3293,110 @@ function renderScrBaselineBanner(){
   el.style.background='var(--green-light)';
   el.style.borderColor='#b8dfa0';
   el.style.color='var(--green)';
-  el.innerHTML=`✅ Baseline: <strong>${baseEmp}</strong>'s ${baseType} count from ${dateLabel}${baseTime?' at '+baseTime:''} — sold amounts calculated automatically.`;
+  el.innerHTML=`&#9989; Baseline: <strong>${baseEmp}</strong>'s count from ${dateLabel}${baseTime?' at '+baseTime:''} — revenue since then calculated automatically.`;
 }
 
 // ---- COUNT ENTRY RENDERING ----
-
-function onScrShiftTypeChange(val){
-  const btn    = document.getElementById('scrBtn');
-  const hintEl = document.getElementById('scrHintText');
-  scrNewBook   = {};
-  if(val==='opening'){
-    if(btn) btn.textContent='Save opening count';
-    if(hintEl) hintEl.innerHTML='Enter the <strong>opening ticket number</strong> for each slot. Type 3 digits and it jumps to the next slot automatically.';
-    document.getElementById('scrBaselineBanner').style.display='none';
-    document.getElementById('scrDiscrepancyAlert').style.display='none';
-  } else {
-    if(btn) btn.textContent='Save closing count';
-    if(hintEl) hintEl.innerHTML='Enter the <strong>closing ticket number</strong> for each slot. Sold amount is calculated automatically. Check "New book" if a fresh book was activated this shift for that slot.';
-    renderScrBaselineBanner();
-  }
-  renderScrRows();
-}
 
 function renderScrRows(){
   const el = document.getElementById('scrRows');
   if(!el) return;
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
   if(!activeSlots.length){
-    el.innerHTML='<div class="empty"><div class="ei">🎟</div>No slots set up yet — operator can set up slots above</div>';
+    el.innerHTML='<div class="empty"><div class="ei">&#127967;</div>No slots set up yet — operator can set up slots above</div>';
     document.getElementById('scrTot').style.display='none';
     return;
   }
-  const type = document.getElementById('s-type')?.value || 'opening';
   el.innerHTML = activeSlots.map(s=>{
     const key      = 'slot_'+s.slotIdx;
     const baseline = scrBaseline?.counts?.[key];
-    const isNewBook = !!scrNewBook[s.slotIdx];
-    const baselineLabel = (type==='closing' && baseline !== undefined)
-      ? `<span style="color:var(--text3);font-size:10px"> · Baseline: ${baseline}</span>` : '';
+    const baselineLabel = baseline !== undefined
+      ? `<span style="color:var(--text3);font-size:10px"> &middot; Last count: ${baseline}</span>` : '';
     return `
-    <div id="scr-row-${s.slotIdx}" style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-      <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;margin-top:2px">${s.slotIdx+1}</div>
-      <div>
-        <div style="font-size:13px;font-weight:600">$${s.price} — ${s.name}</div>
-        <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' · ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${baselineLabel}</div>
-        ${type==='closing'?`<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--text2);cursor:pointer">
-          <input type="checkbox" id="sc-nb-${s.slotIdx}" ${isNewBook?'checked':''} onchange="toggleNewBook(${s.slotIdx},this.checked)" style="width:16px;height:16px;cursor:pointer" />
-          New book activated this shift
-        </label>`:''}
-        <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
-      </div>
-      <div>
-        <input type="number" min="0" max="999" placeholder="000"
-          id="sc-slot-${s.slotIdx}"
-          oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
-          style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
+    <div id="scr-row-${s.slotIdx}" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start">
+        <div style="background:var(--blue-light);color:var(--blue);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;text-align:center;margin-top:2px">${s.slotIdx+1}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">$${s.price} &mdash; ${s.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' &middot; ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${baselineLabel}</div>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="sc-nb-${s.slotIdx}" onchange="toggleNewBook(${s.slotIdx},this.checked)" style="width:16px;height:16px;cursor:pointer" />
+            New book opened this shift
+          </label>
+          <div id="sc-nb-fields-${s.slotIdx}" style="display:none;margin-top:8px;background:var(--amber-light);border-radius:8px;padding:10px 12px">
+            <div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:6px">Where did the old book end?</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="font-size:12px;color:var(--text2);white-space:nowrap;margin:0">Old book ended at #</label>
+              <input type="number" min="0" max="999" placeholder="000" id="sc-ob-${s.slotIdx}"
+                oninput="updScrTot()"
+                style="text-align:center;padding:6px;font-size:15px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
+            </div>
+            <div style="font-size:11px;color:var(--amber);margin-top:6px">Revenue = (old book end &minus; baseline) + new book current#</div>
+          </div>
+          <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:6px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
+        </div>
+        <div>
+          <input type="number" min="0" max="999" placeholder="000"
+            id="sc-slot-${s.slotIdx}"
+            oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
+            style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
+        </div>
       </div>
     </div>`;
   }).join('');
+  renderScrBaselineBanner();
   updScrTot();
 }
 
 function toggleNewBook(slotIdx, checked){
   scrNewBook[slotIdx] = checked;
+  const fields = document.getElementById('sc-nb-fields-'+slotIdx);
+  if(fields) fields.style.display = checked ? 'block' : 'none';
+  if(!checked){
+    const obEl = document.getElementById('sc-ob-'+slotIdx);
+    if(obEl) obEl.value = '';
+  }
   updScrTot();
 }
 
 function updScrTot(){
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
-  const type = document.getElementById('s-type')?.value || 'opening';
   let totVal=0, totSold=0, hasSoldAny=false;
 
   activeSlots.forEach(s=>{
     const inp = document.getElementById('sc-slot-'+s.slotIdx);
     const val = inp?.value;
     if(val===''||val===undefined||val===null) return;
-    const ticketNum  = parseInt(val)||0;
-    const slotValue  = ticketNum * s.price;
-    totVal += slotValue;
+    const ticketNum = parseInt(val)||0;
+    // Value on hand = tickets sold so far × price (ticket# = tickets sold)
+    totVal += ticketNum * s.price;
 
-    if(type==='closing'){
-      const key      = 'slot_'+s.slotIdx;
-      const baseline = scrBaseline?.counts?.[key];
-      const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
-      if(baseline !== undefined && s.totalTickets > 0){
-        let ticketsSold;
-        if(scrNewBook[s.slotIdx]){
-          // New book activated: sold = (baseline tickets remaining from old book) + (tickets sold from new book)
-          // Old book: all remaining tickets from baseline were sold → baseline tickets gone
-          // New book: full book minus current position = sold from new book
-          ticketsSold = baseline + (s.totalTickets - ticketNum);
+    const key      = 'slot_'+s.slotIdx;
+    const baseline = scrBaseline?.counts?.[key];
+    const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
+    if(baseline !== undefined){
+      let ticketsSold;
+      if(scrNewBook[s.slotIdx]){
+        // New book: revenue = (oldBookEnd - baseline) + newBookCurrent
+        const obEl = document.getElementById('sc-ob-'+s.slotIdx);
+        const oldBookEnd = obEl && obEl.value !== '' ? (parseInt(obEl.value)||0) : null;
+        if(oldBookEnd !== null){
+          const fromOldBook = Math.max(0, oldBookEnd - baseline);
+          const fromNewBook = ticketNum; // new book starts at 000, current# = sold
+          ticketsSold = fromOldBook + fromNewBook;
         } else {
-          // Same book: sold = closing# - opening#
-          ticketsSold = Math.max(0, ticketNum - baseline);
+          if(soldEl) soldEl.textContent = '&#8592; Enter old book end # above';
+          return;
         }
-        const rev = ticketsSold * s.price;
-        totSold += rev;
-        if(ticketsSold > 0) hasSoldAny=true;
-        if(soldEl) soldEl.textContent = ticketsSold > 0 ? `↓ ${ticketsSold} sold · $${rev.toFixed(0)}` : '';
-      } else if(soldEl){ soldEl.textContent=''; }
-    }
+      } else {
+        // Same book: sold = current# - baseline
+        ticketsSold = Math.max(0, ticketNum - baseline);
+      }
+      const rev = ticketsSold * s.price;
+      totSold += rev;
+      if(ticketsSold > 0) hasSoldAny = true;
+      if(soldEl) soldEl.textContent = ticketsSold > 0 ? `&#8593; ${ticketsSold} sold &middot; $${rev.toFixed(0)}` : '';
+    } else if(soldEl){ soldEl.textContent=''; }
   });
 
   const hasAny = activeSlots.some(s=>document.getElementById('sc-slot-'+s.slotIdx)?.value!=='');
@@ -3461,7 +3405,7 @@ function updScrTot(){
   const soldBlock = document.getElementById('scrSoldBlock');
   const soldVal   = document.getElementById('scrSoldVal');
   if(soldBlock&&soldVal){
-    soldBlock.style.display = (hasSoldAny&&type==='closing')?'block':'none';
+    soldBlock.style.display = hasSoldAny?'block':'none';
     soldVal.textContent = '$'+totSold.toLocaleString();
   }
 }
@@ -3480,88 +3424,102 @@ function scrAutoAdvance(inputEl, slotIdx){
 // ---- SUBMIT COUNT ----
 
 async function subScratch(){
+  const _btn = document.getElementById('scrBtn');
+  if(_btn && _btn.disabled) return;
+  const _orig = _btn?.innerHTML;
+  if(_btn){ _btn.disabled=true; _btn.innerHTML='<span class="spinner"></span>Saving...'; }
+
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
-  const type = document.getElementById('s-type')?.value || 'opening';
-  const counts    = {};
+  const counts     = {};
   const soldBySlot = {};
+  const newBookData = {}; // slotIdx -> {oldBookEnd}
   let   totalRevenue = 0;
   let   totalValue   = 0;
+  let   hasBaseline  = !!scrBaseline;
+
+  // Validate new-book slots have old book end filled in
+  for(const s of activeSlots){
+    if(scrNewBook[s.slotIdx]){
+      const obEl = document.getElementById('sc-ob-'+s.slotIdx);
+      if(!obEl || obEl.value===''){
+        toast('Enter where the old book ended for Slot '+(s.slotIdx+1));
+        if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Submit my count';}
+        return;
+      }
+      newBookData[s.slotIdx] = parseInt(obEl.value)||0;
+    }
+  }
 
   activeSlots.forEach(s=>{
-    const key      = 'slot_'+s.slotIdx;
-    const inp      = document.getElementById('sc-slot-'+s.slotIdx);
+    const key       = 'slot_'+s.slotIdx;
+    const inp       = document.getElementById('sc-slot-'+s.slotIdx);
     const ticketNum = inp ? (parseInt(inp.value)||0) : 0;
-    counts[key] = ticketNum;
-    totalValue += ticketNum * s.price;
+    counts[key]     = ticketNum;
+    totalValue      += ticketNum * s.price;
 
-    if(type==='closing'){
-      const baseline = scrBaseline?.counts?.[key];
-      if(baseline !== undefined && s.totalTickets > 0){
-        let ticketsSold;
-        if(scrNewBook[s.slotIdx]){
-          ticketsSold = baseline + (s.totalTickets - ticketNum);
-        } else {
-          ticketsSold = Math.max(0, ticketNum - baseline);
-        }
-        const revenue = ticketsSold * s.price;
-        soldBySlot[key] = {name:s.name, price:s.price, ticketsSold, revenue, newBook:!!scrNewBook[s.slotIdx]};
-        totalRevenue += revenue;
+    const baseline = scrBaseline?.counts?.[key];
+    if(baseline !== undefined){
+      let ticketsSold;
+      if(scrNewBook[s.slotIdx]){
+        const oldBookEnd   = newBookData[s.slotIdx];
+        const fromOldBook  = Math.max(0, oldBookEnd - baseline);
+        const fromNewBook  = ticketNum;
+        ticketsSold        = fromOldBook + fromNewBook;
+      } else {
+        ticketsSold = Math.max(0, ticketNum - baseline);
       }
+      const revenue = ticketsSold * s.price;
+      soldBySlot[key] = {
+        name: s.name, price: s.price, ticketsSold, revenue,
+        newBook: !!scrNewBook[s.slotIdx],
+        ...(scrNewBook[s.slotIdx] ? {oldBookEnd: newBookData[s.slotIdx]} : {})
+      };
+      totalRevenue += revenue;
     }
   });
 
-  // Discrepancy check for opening counts:
-  // Compare this opening count to the most recent closing count for the same date
-  let discrepancies = [];
-  if(type==='opening' && scrBaseline && scrBaseline.type==='closing' && scrBaseline.date===localDate()){
-    activeSlots.forEach(s=>{
-      const key = 'slot_'+s.slotIdx;
-      const prev = scrBaseline.counts?.[key];
-      if(prev !== undefined && counts[key] !== prev){
-        discrepancies.push({slot:s.slotIdx+1, name:s.name, expected:prev, got:counts[key]});
-      }
-    });
-  }
-
   try{
     const docData = {
-      type,
+      type: 'count', // unified — no more opening/closing distinction
       employee: CU.name,
       date: localDate(),
       timestamp: window.F.serverTimestamp(),
       counts,
       totalValue,
+      soldBySlot,
+      totalRevenue,
       slots: activeSlots.map(s=>({slot:s.slotIdx+1,price:s.price,name:s.name,gameNum:s.gameNum,totalTickets:s.totalTickets||0})),
       baselineDocDate: scrBaseline?.date || null,
       baselineEmployee: scrBaseline?.employee || null,
+      newBooks: Object.keys(scrNewBook).filter(k=>scrNewBook[k]).map(k=>({slot:parseInt(k)+1,oldBookEnd:newBookData[parseInt(k)]}))
     };
-    if(type==='closing'){
-      docData.soldBySlot    = soldBySlot;
-      docData.totalRevenue  = totalRevenue;
-      docData.newBooks      = Object.keys(scrNewBook).filter(k=>scrNewBook[k]).map(k=>parseInt(k)+1);
-    }
-    if(discrepancies.length){
-      docData.discrepancies = discrepancies;
-    }
-    await window.F.addDoc(window.F.collection(window.db,'scratchCounts'), docData);
 
-    // Show discrepancy alert if opening didn't match prior closing
-    if(discrepancies.length){
-      const alertEl = document.getElementById('scrDiscrepancyAlert');
-      if(alertEl){
-        alertEl.style.display='block';
-        alertEl.innerHTML = `⚠️ <strong>Discrepancy detected!</strong> Your opening count doesn't match the previous closing count on ${scrBaseline.date}:<br>`
-          + discrepancies.map(d=>`Slot ${d.slot} (${d.name}): expected <strong>${d.expected}</strong>, you entered <strong>${d.got}</strong>`).join('<br>');
+    // If any new books were activated, also write to scratchActivations for dashboard MTD tracking
+    for(const s of activeSlots){
+      if(scrNewBook[s.slotIdx] && s.totalTickets){
+        await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
+          slotNum: s.slotIdx+1, slotIdx: s.slotIdx,
+          gameName: s.name, price: s.price,
+          totalTickets: s.totalTickets, gameNum: s.gameNum||'',
+          bookValue: s.price * s.totalTickets,
+          employee: CU.name, date: localDate(),
+          timestamp: window.F.serverTimestamp()
+        });
       }
     }
 
-    const msg = type==='opening'
-      ? `✓ Opening count saved!${discrepancies.length?' · ⚠️ '+discrepancies.length+' discrepanc'+(discrepancies.length===1?'y':'ies'):''}`
-      : `✓ Closing count saved! · $${totalRevenue.toLocaleString()} sold this shift`;
-    toast(msg);
+    await window.F.addDoc(window.F.collection(window.db,'scratchCounts'), docData);
+
+    const soldMsg = hasBaseline && totalRevenue > 0 ? ` &middot; $${totalRevenue.toLocaleString()} sold since last count` : '';
+    toast('&#10003; Count saved!' + soldMsg);
 
     // Clear inputs
-    activeSlots.forEach(s=>{ const el=document.getElementById('sc-slot-'+s.slotIdx); if(el) el.value=''; });
+    activeSlots.forEach(s=>{
+      const el=document.getElementById('sc-slot-'+s.slotIdx); if(el) el.value='';
+      const ob=document.getElementById('sc-ob-'+s.slotIdx); if(ob) ob.value='';
+      const cb=document.getElementById('sc-nb-'+s.slotIdx); if(cb) cb.checked=false;
+      const nb=document.getElementById('sc-nb-fields-'+s.slotIdx); if(nb) nb.style.display='none';
+    });
     scrNewBook = {};
     document.getElementById('scrTot').style.display='none';
 
@@ -3570,7 +3528,7 @@ async function subScratch(){
     renderScrRows();
     if(CU.role==='operator') loadScrHistory();
   }catch(e){ toast('Error saving count'); console.error(e); }
-  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save carton count';} }
+  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Submit my count';} }
 }
 
 // ---- COUNT HISTORY (operator) ----
@@ -3584,28 +3542,29 @@ async function loadScrHistory(){
       window.F.orderBy('timestamp','desc'),
       window.F.limit(60)
     ));
-    if(snap.empty){ el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📋</div>No counts yet</div>'; return; }
+    if(snap.empty){ el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">&#128203;</div>No counts yet</div>'; return; }
     el.innerHTML = snap.docs.map(d=>{
       const x = d.data();
       const time = x.timestamp?.toDate?.()?.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})||x.date||'';
-      const isClose = x.type==='closing';
-      const hasDisc = x.discrepancies?.length;
-      const revLine = isClose&&x.totalRevenue>0 ? `<span style="color:var(--green);font-weight:600">$${x.totalRevenue.toLocaleString()} sold</span> · ` : '';
-      const discBadge = hasDisc ? `<span style="background:var(--red-light);color:var(--red);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;margin-left:4px">⚠️ ${x.discrepancies.length} discrepancy</span>` : '';
+      const hasRev = x.totalRevenue > 0;
+      const revLine = hasRev ? `<span style="color:var(--green);font-weight:600">$${x.totalRevenue.toLocaleString()} sold</span> &middot; ` : '';
+      const newBookBadge = x.newBooks?.length ? `<span style="background:var(--amber-light);color:var(--amber);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;margin-left:4px">&#128230; ${x.newBooks.length} new book</span>` : '';
+      // Support legacy opening/closing type labels
+      const typeLabel = x.type==='opening' ? 'Opening' : x.type==='closing' ? 'Closing' : 'Count';
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div>
             <span style="font-size:13px;font-weight:600">${x.employee}</span>
-            <span style="font-size:11px;color:var(--text3);margin-left:6px">${x.type==='opening'?'Opening':'Closing'} · ${time}</span>
-            ${discBadge}
+            <span style="font-size:11px;color:var(--text3);margin-left:6px">${typeLabel} &middot; ${time}</span>
+            ${newBookBadge}
           </div>
           <div style="font-size:12px;text-align:right;color:var(--text3)">${revLine}$${(x.totalValue||0).toLocaleString()} on hand</div>
         </div>
-        ${hasDisc?`<div style="margin-top:6px;font-size:11px;color:var(--red)">${x.discrepancies.map(d=>`Slot ${d.slot}: expected ${d.expected}, got ${d.got}`).join(' · ')}</div>`:''}
       </div>`;
     }).join('');
   }catch(e){ el.innerHTML='<div style="padding:16px;color:var(--text3)">Error loading history</div>'; }
 }
+
 
 
 // ---- COMPLIANCE ----
