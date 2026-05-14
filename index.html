@@ -3368,8 +3368,11 @@ function updScrTot(){
     const val = inp?.value;
     if(val===''||val===undefined||val===null) return;
     const ticketNum = parseInt(val)||0;
-    // Value on hand = tickets sold so far × price (ticket# = tickets sold)
-    totVal += ticketNum * s.price;
+    // Value on hand = remaining tickets × price
+    // ticket# = tickets sold so far, so remaining = totalTickets - ticketNum
+    if(s.totalTickets > 0){
+      totVal += Math.max(0, s.totalTickets - ticketNum) * s.price;
+    }
 
     const key      = 'slot_'+s.slotIdx;
     const baseline = scrBaseline?.counts?.[key];
@@ -3455,7 +3458,10 @@ async function subScratch(){
     const inp       = document.getElementById('sc-slot-'+s.slotIdx);
     const ticketNum = inp ? (parseInt(inp.value)||0) : 0;
     counts[key]     = ticketNum;
-    totalValue      += ticketNum * s.price;
+    // Value on hand = remaining tickets × price (ticket# = tickets sold, not remaining)
+    if(s.totalTickets > 0){
+      totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
+    }
 
     const baseline = scrBaseline?.counts?.[key];
     if(baseline !== undefined){
