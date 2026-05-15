@@ -3456,10 +3456,13 @@ async function subScratch(){
   activeSlots.forEach(s=>{
     const key       = 'slot_'+s.slotIdx;
     const inp       = document.getElementById('sc-slot-'+s.slotIdx);
-    const ticketNum = inp ? (parseInt(inp.value)||0) : 0;
+    const rawVal    = inp ? inp.value : '';
+    const hasEntry  = rawVal !== '' && rawVal !== null && rawVal !== undefined;
+    const ticketNum = hasEntry ? (parseInt(rawVal)||0) : 0;
     counts[key]     = ticketNum;
     // Value on hand = remaining tickets × price (ticket# = tickets sold, not remaining)
-    if(s.totalTickets > 0){
+    // Only count slots where the employee actually entered a number — blank = unknown, skip it
+    if(s.totalTickets > 0 && hasEntry){
       totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
     }
 
