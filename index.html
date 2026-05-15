@@ -2192,8 +2192,8 @@ async function loadDashboard(){
     const totalPending=Object.values(dlByVendor).reduce((s,v)=>s+v.pending,0);
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
-    // ---- SCRATCH-OFF DASHBOARD DATA (new model) ----
-    // Counts use type:'opening'|'closing'. Revenue per closing = totalRevenue (already correct per-shift).
+    // ---- SCRATCH-OFF DASHBOARD DATA ----
+    // Counts use type:'count'. Revenue per count = totalRevenue (shift-scoped, from soldBySlot).
     // Value on hand = most recent count's totalValue (the board value at that moment).
     const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc')));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
@@ -2210,9 +2210,9 @@ async function loadDashboard(){
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+(a.bookValue||0),0);
 
-    // MTD sold revenue — simple sum of all closing count revenues for the month
-    // Each closing count stores its own per-shift totalRevenue (not cumulative), so just sum them.
-    const scrMTD = scrAll.filter(d=>d.type==='closing'&&d.date>=mtdStart&&d.date<=mtdEnd);
+    // MTD sold revenue — sum all count docs for the month that have soldBySlot data
+    // Docs are saved with type:'count' (not 'closing'). Only docs with soldBySlot had a baseline and recorded shift revenue.
+    const scrMTD = scrAll.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=mtdStart&&d.date<=mtdEnd);
     const scrRevenue = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
     // Inventory flags
@@ -2674,8 +2674,8 @@ async function loadDashboard(){
         <!-- Expandable detail section -->
         <div id="scrDashExpanded" style="display:none" onclick="event.stopPropagation()">
           ${(()=>{
-            // Today's sales: sum all closing counts for today — each stores its own per-shift revenue
-            const todayCounts = scrAll.filter(d => d.type==='closing' && d.date===localDate())
+            // Today's sales: sum all count docs for today that have soldBySlot revenue data
+            const todayCounts = scrAll.filter(d => d.type==='count' && d.soldBySlot && Object.keys(d.soldBySlot).length>0 && d.date===localDate())
               .sort((a,b)=>(a._ts||0)-(b._ts||0));
 
             let todayTotal = 0;
@@ -2689,9 +2689,9 @@ async function loadDashboard(){
             });
             const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
 
-            // MTD daily breakdown — simple: sum closing count revenues per day
+            // MTD daily breakdown — sum count revenues per day (only docs with soldBySlot revenue data)
             const byDay={};
-            scrAll.filter(d=>d.type==='closing'&&d.date>=mtdStart&&d.date<=mtdEnd&&d.date!==localDate())
+            scrAll.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=mtdStart&&d.date<=mtdEnd&&d.date!==localDate())
               .forEach(d=>{
                 if(!byDay[d.date]) byDay[d.date]={date:d.date,revenue:0,empBreakdown:{}};
                 byDay[d.date].revenue += d.totalRevenue||0;
