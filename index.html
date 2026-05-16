@@ -3361,18 +3361,13 @@ function toggleNewBook(slotIdx, checked){
 
 function updScrTot(){
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
-  let totVal=0, totSold=0, hasSoldAny=false;
+  let totSold=0, newBooksVal=0, hasSoldAny=false;
 
   activeSlots.forEach(s=>{
     const inp = document.getElementById('sc-slot-'+s.slotIdx);
     const val = inp?.value;
     if(val===''||val===undefined||val===null) return;
     const ticketNum = parseInt(val)||0;
-    // Value on hand = remaining tickets × price
-    // ticket# = tickets sold so far, so remaining = totalTickets - ticketNum
-    if(s.totalTickets > 0){
-      totVal += Math.max(0, s.totalTickets - ticketNum) * s.price;
-    }
 
     const key      = 'slot_'+s.slotIdx;
     const baseline = scrBaseline?.counts?.[key];
@@ -3380,19 +3375,18 @@ function updScrTot(){
     if(baseline !== undefined){
       let ticketsSold;
       if(scrNewBook[s.slotIdx]){
-        // New book: revenue = (oldBookEnd - baseline) + newBookCurrent
         const obEl = document.getElementById('sc-ob-'+s.slotIdx);
         const oldBookEnd = obEl && obEl.value !== '' ? (parseInt(obEl.value)||0) : null;
         if(oldBookEnd !== null){
           const fromOldBook = Math.max(0, oldBookEnd - baseline);
-          const fromNewBook = ticketNum; // new book starts at 000, current# = sold
+          const fromNewBook = ticketNum;
           ticketsSold = fromOldBook + fromNewBook;
+          if(s.totalTickets > 0) newBooksVal += s.totalTickets * s.price;
         } else {
           if(soldEl) soldEl.textContent = '&#8592; Enter old book end # above';
           return;
         }
       } else {
-        // Same book: sold = current# - baseline
         ticketsSold = Math.max(0, ticketNum - baseline);
       }
       const rev = ticketsSold * s.price;
@@ -3401,6 +3395,20 @@ function updScrTot(){
       if(soldEl) soldEl.textContent = ticketsSold > 0 ? `&#8593; ${ticketsSold} sold &middot; $${rev.toFixed(0)}` : '';
     } else if(soldEl){ soldEl.textContent=''; }
   });
+
+  // On-hand preview: previousOnHand - soldThisShift + newBooksAdded
+  let totVal = 0;
+  if(scrBaseline && scrBaseline.totalValue !== undefined){
+    totVal = Math.max(0, (scrBaseline.totalValue || 0) - totSold + newBooksVal);
+  } else {
+    activeSlots.forEach(s=>{
+      const inp = document.getElementById('sc-slot-'+s.slotIdx);
+      const val = inp?.value;
+      if(val===''||val===undefined||val===null) return;
+      const ticketNum = parseInt(val)||0;
+      if(s.totalTickets > 0) totVal += Math.max(0, s.totalTickets - ticketNum) * s.price;
+    });
+  }
 
   const hasAny = activeSlots.some(s=>document.getElementById('sc-slot-'+s.slotIdx)?.value!=='');
   document.getElementById('scrTot').style.display = hasAny?'block':'none';
@@ -3453,6 +3461,8 @@ async function subScratch(){
     }
   }
 
+  let newBooksValue = 0; // total value of new books activated this shift
+
   activeSlots.forEach(s=>{
     const key       = 'slot_'+s.slotIdx;
     const inp       = document.getElementById('sc-slot-'+s.slotIdx);
@@ -3460,11 +3470,6 @@ async function subScratch(){
     const hasEntry  = rawVal !== '' && rawVal !== null && rawVal !== undefined;
     const ticketNum = hasEntry ? (parseInt(rawVal)||0) : 0;
     counts[key]     = ticketNum;
-    // Value on hand = remaining tickets × price (ticket# = tickets sold, not remaining)
-    // Only count slots where the employee actually entered a number — blank = unknown, skip it
-    if(s.totalTickets > 0 && hasEntry){
-      totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
-    }
 
     const baseline = scrBaseline?.counts?.[key];
     if(baseline !== undefined){
@@ -3474,6 +3479,8 @@ async function subScratch(){
         const fromOldBook  = Math.max(0, oldBookEnd - baseline);
         const fromNewBook  = ticketNum;
         ticketsSold        = fromOldBook + fromNewBook;
+        // New book adds a full book's value to inventory
+        if(s.totalTickets > 0) newBooksValue += s.totalTickets * s.price;
       } else {
         ticketsSold = Math.max(0, ticketNum - baseline);
       }
@@ -3486,6 +3493,25 @@ async function subScratch(){
       totalRevenue += revenue;
     }
   });
+
+  // On-hand = previousOnHand - soldThisShift + newBooksAdded
+  // This is reliable regardless of how many slots were filled in.
+  // Fall back to slot-by-slot sum only if there's no baseline (first ever count).
+  if(scrBaseline && scrBaseline.totalValue !== undefined){
+    totalValue = Math.max(0, (scrBaseline.totalValue || 0) - totalRevenue + newBooksValue);
+  } else {
+    // First count ever — calculate from scratch using entered slots only
+    activeSlots.forEach(s=>{
+      const key    = 'slot_'+s.slotIdx;
+      const inp    = document.getElementById('sc-slot-'+s.slotIdx);
+      const rawVal = inp ? inp.value : '';
+      if(rawVal === '' || rawVal === null || rawVal === undefined) return;
+      const ticketNum = parseInt(rawVal)||0;
+      if(s.totalTickets > 0){
+        totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
+      }
+    });
+  }
 
   try{
     const docData = {
