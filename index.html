@@ -3172,6 +3172,7 @@ let editingSlot = -1;
 let scrBaseline = null; // full Firestore doc data
 // newBook flags: slotIdx -> true if employee toggled "new book activated this shift"
 let scrNewBook = {};
+let scrSoldOut = {}; // slotIdx -> true if employee marked this slot as sold out
 
 // ---- SLOT SETUP ----
 
@@ -3335,11 +3336,17 @@ function renderScrRows(){
           </div>
           <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:6px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
         </div>
-        <div>
-          <input type="number" min="0" max="999" placeholder="000"
-            id="sc-slot-${s.slotIdx}"
-            oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
-            style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <div id="sc-input-wrap-${s.slotIdx}">
+            <input type="number" min="0" max="999" placeholder="000"
+              id="sc-slot-${s.slotIdx}"
+              oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
+              style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
+          </div>
+          <button type="button" id="sc-so-btn-${s.slotIdx}" onclick="toggleSoldOut(${s.slotIdx})"
+            style="font-size:10px;font-weight:700;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;white-space:nowrap;width:76px">
+            🎟 Sold Out
+          </button>
         </div>
       </div>
     </div>`;
@@ -3359,19 +3366,83 @@ function toggleNewBook(slotIdx, checked){
   updScrTot();
 }
 
+function toggleSoldOut(slotIdx){
+  const isSoldOut = !scrSoldOut[slotIdx];
+  scrSoldOut[slotIdx] = isSoldOut;
+
+  const inputWrap = document.getElementById('sc-input-wrap-'+slotIdx);
+  const btn       = document.getElementById('sc-so-btn-'+slotIdx);
+  const inp       = document.getElementById('sc-slot-'+slotIdx);
+  const nbCheck   = document.getElementById('sc-nb-'+slotIdx);
+  const nbFields  = document.getElementById('sc-nb-fields-'+slotIdx);
+  const row       = document.getElementById('scr-row-'+slotIdx);
+
+  if(isSoldOut){
+    // Hide number input, show sold-out state
+    if(inputWrap) inputWrap.style.display = 'none';
+    if(btn){
+      btn.style.background = '#fee2e2';
+      btn.style.color = '#dc2626';
+      btn.style.borderColor = '#fca5a5';
+      btn.textContent = '✓ Sold Out';
+      btn.style.width = '76px';
+    }
+    if(row) row.style.borderLeft = '3px solid #dc2626';
+    // Disable new-book if active
+    if(nbCheck){ nbCheck.checked = false; scrNewBook[slotIdx] = false; }
+    if(nbFields) nbFields.style.display = 'none';
+  } else {
+    // Restore number input
+    if(inputWrap) inputWrap.style.display = 'block';
+    if(inp) inp.value = '';
+    if(btn){
+      btn.style.background = 'var(--surface2)';
+      btn.style.color = 'var(--text2)';
+      btn.style.borderColor = 'var(--border)';
+      btn.textContent = '🎟 Sold Out';
+    }
+    if(row) row.style.borderLeft = '';
+  }
+  updScrTot();
+}
+
 function updScrTot(){
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
-  let totSold=0, newBooksVal=0, hasSoldAny=false;
+  let totVal=0, totSold=0, hasSoldAny=false;
 
   activeSlots.forEach(s=>{
+    const key      = 'slot_'+s.slotIdx;
+    const baseline = scrBaseline?.counts?.[key];
+    const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
+
+    // ---- SOLD OUT path ----
+    if(scrSoldOut[s.slotIdx]){
+      // Value on hand = 0 (all tickets gone)
+      // Tickets sold = totalTickets - baseline (entire remaining book sold)
+      if(baseline !== undefined && s.totalTickets > 0){
+        const ticketsSold = Math.max(0, s.totalTickets - baseline);
+        const rev = ticketsSold * s.price;
+        totSold += rev;
+        if(ticketsSold > 0) hasSoldAny = true;
+        if(soldEl) soldEl.innerHTML = `<span style="color:#dc2626;font-weight:700">&#128721; ${ticketsSold} sold (full book) &middot; $${rev.toFixed(0)}</span>`;
+      } else if(soldEl){
+        soldEl.innerHTML = s.totalTickets > 0
+          ? '<span style="color:#dc2626">Sold out &#8212; no baseline yet, revenue logged at $0</span>'
+          : '<span style="color:#dc2626">Sold out &#8212; set total tickets/book on this slot to auto-calc</span>';
+      }
+      return; // skip normal input logic
+    }
+
+    // ---- Normal path ----
     const inp = document.getElementById('sc-slot-'+s.slotIdx);
     const val = inp?.value;
     if(val===''||val===undefined||val===null) return;
     const ticketNum = parseInt(val)||0;
+    // Value on hand = remaining tickets x price
+    if(s.totalTickets > 0){
+      totVal += Math.max(0, s.totalTickets - ticketNum) * s.price;
+    }
 
-    const key      = 'slot_'+s.slotIdx;
-    const baseline = scrBaseline?.counts?.[key];
-    const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
     if(baseline !== undefined){
       let ticketsSold;
       if(scrNewBook[s.slotIdx]){
@@ -3381,7 +3452,6 @@ function updScrTot(){
           const fromOldBook = Math.max(0, oldBookEnd - baseline);
           const fromNewBook = ticketNum;
           ticketsSold = fromOldBook + fromNewBook;
-          if(s.totalTickets > 0) newBooksVal += s.totalTickets * s.price;
         } else {
           if(soldEl) soldEl.textContent = '&#8592; Enter old book end # above';
           return;
@@ -3396,21 +3466,7 @@ function updScrTot(){
     } else if(soldEl){ soldEl.textContent=''; }
   });
 
-  // On-hand preview: previousOnHand - soldThisShift + newBooksAdded
-  let totVal = 0;
-  if(scrBaseline && scrBaseline.totalValue !== undefined){
-    totVal = Math.max(0, (scrBaseline.totalValue || 0) - totSold + newBooksVal);
-  } else {
-    activeSlots.forEach(s=>{
-      const inp = document.getElementById('sc-slot-'+s.slotIdx);
-      const val = inp?.value;
-      if(val===''||val===undefined||val===null) return;
-      const ticketNum = parseInt(val)||0;
-      if(s.totalTickets > 0) totVal += Math.max(0, s.totalTickets - ticketNum) * s.price;
-    });
-  }
-
-  const hasAny = activeSlots.some(s=>document.getElementById('sc-slot-'+s.slotIdx)?.value!=='');
+  const hasAny = activeSlots.some(s=>scrSoldOut[s.slotIdx]||document.getElementById('sc-slot-'+s.slotIdx)?.value!=='');
   document.getElementById('scrTot').style.display = hasAny?'block':'none';
   document.getElementById('scrTotVal').textContent = '$'+totVal.toLocaleString();
   const soldBlock = document.getElementById('scrSoldBlock');
@@ -3461,17 +3517,35 @@ async function subScratch(){
     }
   }
 
-  let newBooksValue = 0; // total value of new books activated this shift
-
   activeSlots.forEach(s=>{
     const key       = 'slot_'+s.slotIdx;
-    const inp       = document.getElementById('sc-slot-'+s.slotIdx);
-    const rawVal    = inp ? inp.value : '';
-    const hasEntry  = rawVal !== '' && rawVal !== null && rawVal !== undefined;
-    const ticketNum = hasEntry ? (parseInt(rawVal)||0) : 0;
-    counts[key]     = ticketNum;
+    const baseline  = scrBaseline?.counts?.[key];
 
-    const baseline = scrBaseline?.counts?.[key];
+    // ---- SOLD OUT path ----
+    if(scrSoldOut[s.slotIdx]){
+      counts[key] = s.totalTickets || 0; // record as fully used
+      // totalValue contribution = 0 (no tickets remaining)
+      if(baseline !== undefined && s.totalTickets > 0){
+        const ticketsSold = Math.max(0, s.totalTickets - baseline);
+        const revenue = ticketsSold * s.price;
+        soldBySlot[key] = {
+          name: s.name, price: s.price, ticketsSold, revenue,
+          soldOut: true, newBook: false
+        };
+        totalRevenue += revenue;
+      }
+      return;
+    }
+
+    // ---- Normal path ----
+    const inp       = document.getElementById('sc-slot-'+s.slotIdx);
+    const ticketNum = inp ? (parseInt(inp.value)||0) : 0;
+    counts[key]     = ticketNum;
+    // Value on hand = remaining tickets x price
+    if(s.totalTickets > 0){
+      totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
+    }
+
     if(baseline !== undefined){
       let ticketsSold;
       if(scrNewBook[s.slotIdx]){
@@ -3479,8 +3553,6 @@ async function subScratch(){
         const fromOldBook  = Math.max(0, oldBookEnd - baseline);
         const fromNewBook  = ticketNum;
         ticketsSold        = fromOldBook + fromNewBook;
-        // New book adds a full book's value to inventory
-        if(s.totalTickets > 0) newBooksValue += s.totalTickets * s.price;
       } else {
         ticketsSold = Math.max(0, ticketNum - baseline);
       }
@@ -3493,25 +3565,6 @@ async function subScratch(){
       totalRevenue += revenue;
     }
   });
-
-  // On-hand = previousOnHand - soldThisShift + newBooksAdded
-  // This is reliable regardless of how many slots were filled in.
-  // Fall back to slot-by-slot sum only if there's no baseline (first ever count).
-  if(scrBaseline && scrBaseline.totalValue !== undefined){
-    totalValue = Math.max(0, (scrBaseline.totalValue || 0) - totalRevenue + newBooksValue);
-  } else {
-    // First count ever — calculate from scratch using entered slots only
-    activeSlots.forEach(s=>{
-      const key    = 'slot_'+s.slotIdx;
-      const inp    = document.getElementById('sc-slot-'+s.slotIdx);
-      const rawVal = inp ? inp.value : '';
-      if(rawVal === '' || rawVal === null || rawVal === undefined) return;
-      const ticketNum = parseInt(rawVal)||0;
-      if(s.totalTickets > 0){
-        totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
-      }
-    });
-  }
 
   try{
     const docData = {
@@ -3526,7 +3579,8 @@ async function subScratch(){
       slots: activeSlots.map(s=>({slot:s.slotIdx+1,price:s.price,name:s.name,gameNum:s.gameNum,totalTickets:s.totalTickets||0})),
       baselineDocDate: scrBaseline?.date || null,
       baselineEmployee: scrBaseline?.employee || null,
-      newBooks: Object.keys(scrNewBook).filter(k=>scrNewBook[k]).map(k=>({slot:parseInt(k)+1,oldBookEnd:newBookData[parseInt(k)]}))
+      newBooks: Object.keys(scrNewBook).filter(k=>scrNewBook[k]).map(k=>({slot:parseInt(k)+1,oldBookEnd:newBookData[parseInt(k)]})),
+      soldOutSlots: Object.keys(scrSoldOut).filter(k=>scrSoldOut[k]).map(k=>parseInt(k)+1)
     };
 
     // If any new books were activated, also write to scratchActivations for dashboard MTD tracking
@@ -3556,6 +3610,7 @@ async function subScratch(){
       const nb=document.getElementById('sc-nb-fields-'+s.slotIdx); if(nb) nb.style.display='none';
     });
     scrNewBook = {};
+    scrSoldOut = {};
     document.getElementById('scrTot').style.display='none';
 
     // Reload baseline so next entry chains correctly
@@ -3584,6 +3639,7 @@ async function loadScrHistory(){
       const hasRev = x.totalRevenue > 0;
       const revLine = hasRev ? `<span style="color:var(--green);font-weight:600">$${x.totalRevenue.toLocaleString()} sold</span> &middot; ` : '';
       const newBookBadge = x.newBooks?.length ? `<span style="background:var(--amber-light);color:var(--amber);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;margin-left:4px">&#128230; ${x.newBooks.length} new book</span>` : '';
+      const soldOutBadge = x.soldOutSlots?.length ? `<span style="background:#fee2e2;color:#dc2626;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;margin-left:4px">&#128721; ${x.soldOutSlots.length} sold out</span>` : '';
       // Support legacy opening/closing type labels
       const typeLabel = x.type==='opening' ? 'Opening' : x.type==='closing' ? 'Closing' : 'Count';
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--border)">
@@ -3592,6 +3648,7 @@ async function loadScrHistory(){
             <span style="font-size:13px;font-weight:600">${x.employee}</span>
             <span style="font-size:11px;color:var(--text3);margin-left:6px">${typeLabel} &middot; ${time}</span>
             ${newBookBadge}
+            ${soldOutBadge}
           </div>
           <div style="font-size:12px;text-align:right;color:var(--text3)">${revLine}$${(x.totalValue||0).toLocaleString()} on hand</div>
         </div>
@@ -5043,9 +5100,11 @@ async function loadLogs(){
             const tixSold = sb ? sb.ticketsSold : null;
             const rev = sb ? sb.revenue : null;
             const isNewBook = sb && sb.newBook === true;
+            const isSoldOutSlot = sb && sb.soldOut === true;
             const nameCell = '<div><div style="font-weight:600">$'+s.price+' — '+(s.name||'—')+'</div>'
               +(s.gameNum?'<div style="font-size:10px;color:var(--text3)">Game #'+s.gameNum+'</div>':'')
               +(isNewBook?'<div style="font-size:10px;font-weight:700;color:var(--blue)">📦 New book</div>':'')
+              +(isSoldOutSlot?'<div style="font-size:10px;font-weight:700;color:#dc2626">🚫 Sold out</div>':'')
               +'</div>';
             const dataCols = isClose
               ? `<div style="text-align:center;color:var(--text3)">${closeNum}</div><div style="text-align:center;font-weight:700">${closeNum}</div><div style="text-align:center;color:${tixSold>0?'var(--amber)':'var(--text3)'};font-weight:600">${tixSold!==null?tixSold:'—'}</div><div style="text-align:right;color:${rev>0?'var(--green)':'var(--text3)'};font-weight:600">${rev!==null&&rev>0?'$'+rev.toFixed(0):'—'}</div>`
