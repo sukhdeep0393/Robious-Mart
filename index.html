@@ -1030,11 +1030,36 @@
     <div id="mySchedContent"><div class="empty"><div class="ei">📅</div>Loading...</div></div>
   </div>
 
-  <!-- ADD/EDIT SHIFT MODAL -->
+  <!-- ADD SHIFTS FOR WEEK MODAL (multi-shift) -->
+  <div id="weekShiftModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeWeekShiftModal()">
+    <div style="background:var(--bg);border-radius:var(--rl) var(--rl) 0 0;padding:20px 20px 32px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:16px;font-weight:700">Schedule Shifts for Week</div>
+        <button onclick="closeWeekShiftModal()" style="background:none;border:none;font-size:20px;color:var(--text3);padding:4px">✕</button>
+      </div>
+      <!-- Employee picker -->
+      <div style="margin-bottom:14px">
+        <label>Employee</label>
+        <select id="wsm-emp" onchange="wsm_refreshDays()" style="font-size:14px;font-weight:600">
+          <option value="">— select employee —</option>
+        </select>
+      </div>
+      <!-- Week label -->
+      <div id="wsm-week-label" style="font-size:12px;color:var(--text3);margin-bottom:12px;font-weight:600;letter-spacing:.3px;text-transform:uppercase"></div>
+      <!-- Day rows -->
+      <div id="wsm-days"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn bprimary" style="flex:1;padding:11px" onclick="saveWeekShifts()">Save shifts</button>
+        <button class="btn bsecondary" style="padding:11px" onclick="closeWeekShiftModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT SHIFT MODAL (single shift edit/delete) -->
   <div id="shiftModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeShiftModal()">
     <div style="background:var(--bg);border-radius:var(--rl) var(--rl) 0 0;padding:20px 20px 32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-size:16px;font-weight:700" id="shiftModalTitle">Add Shift</div>
+        <div style="font-size:16px;font-weight:700" id="shiftModalTitle">Edit Shift</div>
         <button onclick="closeShiftModal()" style="background:none;border:none;font-size:20px;color:var(--text3);padding:4px">✕</button>
       </div>
       <div class="g2" style="margin-bottom:10px">
@@ -1167,7 +1192,7 @@
     </div>
 
     <!-- Delivery list -->
-    <div class="card" id="dlHistoryCard">
+    <div class="card">
       <div class="sh2" style="margin-bottom:10px">
         <div class="ct" style="margin:0">Delivery history</div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -1891,8 +1916,8 @@ function fmtHours(decimalHrs){
 
 const TABS={
   operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
 // ---- LOGIN ----
@@ -3172,7 +3197,6 @@ let editingSlot = -1;
 let scrBaseline = null; // full Firestore doc data
 // newBook flags: slotIdx -> true if employee toggled "new book activated this shift"
 let scrNewBook = {};
-let scrSoldOut = {}; // slotIdx -> true if employee marked this slot as sold out
 
 // ---- SLOT SETUP ----
 
@@ -3336,17 +3360,11 @@ function renderScrRows(){
           </div>
           <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:6px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-          <div id="sc-input-wrap-${s.slotIdx}">
-            <input type="number" min="0" max="999" placeholder="000"
-              id="sc-slot-${s.slotIdx}"
-              oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
-              style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
-          </div>
-          <button type="button" id="sc-so-btn-${s.slotIdx}" onclick="toggleSoldOut(${s.slotIdx})"
-            style="font-size:10px;font-weight:700;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;white-space:nowrap;width:76px">
-            🎟 Sold Out
-          </button>
+        <div>
+          <input type="number" min="0" max="999" placeholder="000"
+            id="sc-slot-${s.slotIdx}"
+            oninput="updScrTot();scrAutoAdvance(this,${s.slotIdx})"
+            style="text-align:center;padding:8px;font-size:16px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
         </div>
       </div>
     </div>`;
@@ -3366,97 +3384,40 @@ function toggleNewBook(slotIdx, checked){
   updScrTot();
 }
 
-function toggleSoldOut(slotIdx){
-  const isSoldOut = !scrSoldOut[slotIdx];
-  scrSoldOut[slotIdx] = isSoldOut;
-
-  const inputWrap = document.getElementById('sc-input-wrap-'+slotIdx);
-  const btn       = document.getElementById('sc-so-btn-'+slotIdx);
-  const inp       = document.getElementById('sc-slot-'+slotIdx);
-  const nbCheck   = document.getElementById('sc-nb-'+slotIdx);
-  const nbFields  = document.getElementById('sc-nb-fields-'+slotIdx);
-  const row       = document.getElementById('scr-row-'+slotIdx);
-
-  if(isSoldOut){
-    // Hide number input, show sold-out state
-    if(inputWrap) inputWrap.style.display = 'none';
-    if(btn){
-      btn.style.background = '#fee2e2';
-      btn.style.color = '#dc2626';
-      btn.style.borderColor = '#fca5a5';
-      btn.textContent = '✓ Sold Out';
-      btn.style.width = '76px';
-    }
-    if(row) row.style.borderLeft = '3px solid #dc2626';
-    // Disable new-book if active
-    if(nbCheck){ nbCheck.checked = false; scrNewBook[slotIdx] = false; }
-    if(nbFields) nbFields.style.display = 'none';
-  } else {
-    // Restore number input
-    if(inputWrap) inputWrap.style.display = 'block';
-    if(inp) inp.value = '';
-    if(btn){
-      btn.style.background = 'var(--surface2)';
-      btn.style.color = 'var(--text2)';
-      btn.style.borderColor = 'var(--border)';
-      btn.textContent = '🎟 Sold Out';
-    }
-    if(row) row.style.borderLeft = '';
-  }
-  updScrTot();
-}
-
 function updScrTot(){
   const activeSlots = slots.map((s,i)=>({...s,slotIdx:i})).filter(s=>s&&s.name);
   let totVal=0, totSold=0, hasSoldAny=false;
 
   activeSlots.forEach(s=>{
-    const key      = 'slot_'+s.slotIdx;
-    const baseline = scrBaseline?.counts?.[key];
-    const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
-
-    // ---- SOLD OUT path ----
-    if(scrSoldOut[s.slotIdx]){
-      // Value on hand = 0 (all tickets gone)
-      // Tickets sold = totalTickets - baseline (entire remaining book sold)
-      if(baseline !== undefined && s.totalTickets > 0){
-        const ticketsSold = Math.max(0, s.totalTickets - baseline);
-        const rev = ticketsSold * s.price;
-        totSold += rev;
-        if(ticketsSold > 0) hasSoldAny = true;
-        if(soldEl) soldEl.innerHTML = `<span style="color:#dc2626;font-weight:700">&#128721; ${ticketsSold} sold (full book) &middot; $${rev.toFixed(0)}</span>`;
-      } else if(soldEl){
-        soldEl.innerHTML = s.totalTickets > 0
-          ? '<span style="color:#dc2626">Sold out &#8212; no baseline yet, revenue logged at $0</span>'
-          : '<span style="color:#dc2626">Sold out &#8212; set total tickets/book on this slot to auto-calc</span>';
-      }
-      return; // skip normal input logic
-    }
-
-    // ---- Normal path ----
     const inp = document.getElementById('sc-slot-'+s.slotIdx);
     const val = inp?.value;
     if(val===''||val===undefined||val===null) return;
     const ticketNum = parseInt(val)||0;
-    // Value on hand = remaining tickets x price
+    // Value on hand = remaining tickets × price
+    // ticket# = tickets sold so far, so remaining = totalTickets - ticketNum
     if(s.totalTickets > 0){
       totVal += Math.max(0, s.totalTickets - ticketNum) * s.price;
     }
 
+    const key      = 'slot_'+s.slotIdx;
+    const baseline = scrBaseline?.counts?.[key];
+    const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
     if(baseline !== undefined){
       let ticketsSold;
       if(scrNewBook[s.slotIdx]){
+        // New book: revenue = (oldBookEnd - baseline) + newBookCurrent
         const obEl = document.getElementById('sc-ob-'+s.slotIdx);
         const oldBookEnd = obEl && obEl.value !== '' ? (parseInt(obEl.value)||0) : null;
         if(oldBookEnd !== null){
           const fromOldBook = Math.max(0, oldBookEnd - baseline);
-          const fromNewBook = ticketNum;
+          const fromNewBook = ticketNum; // new book starts at 000, current# = sold
           ticketsSold = fromOldBook + fromNewBook;
         } else {
           if(soldEl) soldEl.textContent = '&#8592; Enter old book end # above';
           return;
         }
       } else {
+        // Same book: sold = current# - baseline
         ticketsSold = Math.max(0, ticketNum - baseline);
       }
       const rev = ticketsSold * s.price;
@@ -3466,7 +3427,7 @@ function updScrTot(){
     } else if(soldEl){ soldEl.textContent=''; }
   });
 
-  const hasAny = activeSlots.some(s=>scrSoldOut[s.slotIdx]||document.getElementById('sc-slot-'+s.slotIdx)?.value!=='');
+  const hasAny = activeSlots.some(s=>document.getElementById('sc-slot-'+s.slotIdx)?.value!=='');
   document.getElementById('scrTot').style.display = hasAny?'block':'none';
   document.getElementById('scrTotVal').textContent = '$'+totVal.toLocaleString();
   const soldBlock = document.getElementById('scrSoldBlock');
@@ -3519,33 +3480,15 @@ async function subScratch(){
 
   activeSlots.forEach(s=>{
     const key       = 'slot_'+s.slotIdx;
-    const baseline  = scrBaseline?.counts?.[key];
-
-    // ---- SOLD OUT path ----
-    if(scrSoldOut[s.slotIdx]){
-      counts[key] = s.totalTickets || 0; // record as fully used
-      // totalValue contribution = 0 (no tickets remaining)
-      if(baseline !== undefined && s.totalTickets > 0){
-        const ticketsSold = Math.max(0, s.totalTickets - baseline);
-        const revenue = ticketsSold * s.price;
-        soldBySlot[key] = {
-          name: s.name, price: s.price, ticketsSold, revenue,
-          soldOut: true, newBook: false
-        };
-        totalRevenue += revenue;
-      }
-      return;
-    }
-
-    // ---- Normal path ----
     const inp       = document.getElementById('sc-slot-'+s.slotIdx);
     const ticketNum = inp ? (parseInt(inp.value)||0) : 0;
     counts[key]     = ticketNum;
-    // Value on hand = remaining tickets x price
+    // Value on hand = remaining tickets × price (ticket# = tickets sold, not remaining)
     if(s.totalTickets > 0){
       totalValue += Math.max(0, s.totalTickets - ticketNum) * s.price;
     }
 
+    const baseline = scrBaseline?.counts?.[key];
     if(baseline !== undefined){
       let ticketsSold;
       if(scrNewBook[s.slotIdx]){
@@ -3579,8 +3522,7 @@ async function subScratch(){
       slots: activeSlots.map(s=>({slot:s.slotIdx+1,price:s.price,name:s.name,gameNum:s.gameNum,totalTickets:s.totalTickets||0})),
       baselineDocDate: scrBaseline?.date || null,
       baselineEmployee: scrBaseline?.employee || null,
-      newBooks: Object.keys(scrNewBook).filter(k=>scrNewBook[k]).map(k=>({slot:parseInt(k)+1,oldBookEnd:newBookData[parseInt(k)]})),
-      soldOutSlots: Object.keys(scrSoldOut).filter(k=>scrSoldOut[k]).map(k=>parseInt(k)+1)
+      newBooks: Object.keys(scrNewBook).filter(k=>scrNewBook[k]).map(k=>({slot:parseInt(k)+1,oldBookEnd:newBookData[parseInt(k)]}))
     };
 
     // If any new books were activated, also write to scratchActivations for dashboard MTD tracking
@@ -3610,7 +3552,6 @@ async function subScratch(){
       const nb=document.getElementById('sc-nb-fields-'+s.slotIdx); if(nb) nb.style.display='none';
     });
     scrNewBook = {};
-    scrSoldOut = {};
     document.getElementById('scrTot').style.display='none';
 
     // Reload baseline so next entry chains correctly
@@ -3639,7 +3580,6 @@ async function loadScrHistory(){
       const hasRev = x.totalRevenue > 0;
       const revLine = hasRev ? `<span style="color:var(--green);font-weight:600">$${x.totalRevenue.toLocaleString()} sold</span> &middot; ` : '';
       const newBookBadge = x.newBooks?.length ? `<span style="background:var(--amber-light);color:var(--amber);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;margin-left:4px">&#128230; ${x.newBooks.length} new book</span>` : '';
-      const soldOutBadge = x.soldOutSlots?.length ? `<span style="background:#fee2e2;color:#dc2626;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;margin-left:4px">&#128721; ${x.soldOutSlots.length} sold out</span>` : '';
       // Support legacy opening/closing type labels
       const typeLabel = x.type==='opening' ? 'Opening' : x.type==='closing' ? 'Closing' : 'Count';
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--border)">
@@ -3648,7 +3588,6 @@ async function loadScrHistory(){
             <span style="font-size:13px;font-weight:600">${x.employee}</span>
             <span style="font-size:11px;color:var(--text3);margin-left:6px">${typeLabel} &middot; ${time}</span>
             ${newBookBadge}
-            ${soldOutBadge}
           </div>
           <div style="font-size:12px;text-align:right;color:var(--text3)">${revLine}$${(x.totalValue||0).toLocaleString()} on hand</div>
         </div>
@@ -4913,22 +4852,162 @@ function renderSchedule(startStr, endStr){
   }).join('');
 }
 
-function openAddShift(){
-  editingShiftId = null;
-  document.getElementById('shiftModalTitle').textContent = 'Add Shift';
-  document.getElementById('sm-emp').value = '';
-  document.getElementById('sm-date').value = localDate();
-  document.getElementById('sm-start').value = '';
-  document.getElementById('sm-end').value = '';
-  document.getElementById('sm-role').value = 'Morning';
-  document.getElementById('sm-note').value = '';
-  document.getElementById('sm-delete-wrap').style.display = 'none';
-  document.getElementById('shiftModal').style.display = 'flex';
+// ---- WEEKLY MULTI-SHIFT MODAL ----
+let wsmPreselectedDate = null; // set when opened from a day's "+ Add" button
+
+async function openAddShift(preselectedDate){
+  wsmPreselectedDate = preselectedDate || null;
+
+  // Load employees from Firestore
+  const sel = document.getElementById('wsm-emp');
+  sel.innerHTML = '<option value="">— select employee —</option>';
+  try{
+    const snap = await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+    const emps = snap.docs.map(d=>d.data().name).filter(Boolean).sort();
+    // Also include any employees already in schedule (in case not in loginList)
+    const schedEmps = [...new Set(schedShifts.map(s=>s.employee).filter(Boolean))];
+    const allEmps = [...new Set([...emps,...schedEmps])].sort();
+    sel.innerHTML = '<option value="">— select employee —</option>' +
+      allEmps.map(n=>`<option value="${n}">${n}</option>`).join('');
+  }catch(e){ console.error('wsm load emps',e); }
+
+  // Week label
+  const start = new Date(schedWeekStart);
+  const end = new Date(schedWeekStart); end.setDate(end.getDate()+6);
+  const fmtShort = d => (d.getMonth()+1)+'/'+d.getDate();
+  document.getElementById('wsm-week-label').textContent =
+    'Week of '+fmtShort(start)+' – '+fmtShort(end);
+
+  wsm_refreshDays();
+  document.getElementById('weekShiftModal').style.display = 'flex';
+}
+
+function wsm_refreshDays(){
+  const empName = document.getElementById('wsm-emp').value;
+  const container = document.getElementById('wsm-days');
+  const today = localDate();
+
+  // Build the 7 days of current schedWeekStart
+  const days = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(schedWeekStart);
+    d.setDate(d.getDate()+i);
+    const fmt = d2 => d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0')+'-'+String(d2.getDate()).padStart(2,'0');
+    days.push(fmt(d));
+  }
+
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  container.innerHTML = days.map((dateStr, i) => {
+    const isToday = dateStr === today;
+    const isPast  = dateStr < today;
+    // Pre-check if this is the preselected day OR if employee already has a shift this day
+    const existingShift = empName
+      ? schedShifts.find(s=>s.employee===empName && s.date===dateStr)
+      : null;
+    const checked = existingShift || dateStr === wsmPreselectedDate;
+    const startVal = existingShift?.startTime || '';
+    const endVal   = existingShift?.endTime   || '';
+    const roleVal  = existingShift?.role      || 'Morning';
+    const [yyyy,mm,dd] = dateStr.split('-');
+    const displayDate = parseInt(mm)+'/'+parseInt(dd);
+
+    return `<div id="wsm-day-${i}" style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;${isToday?'border-color:var(--blue)':''}">
+      <!-- Day header toggle -->
+      <div onclick="wsm_toggleDay(${i})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;background:${checked?'var(--blue-light)':'var(--bg2)'};" id="wsm-day-hdr-${i}">
+        <input type="checkbox" id="wsm-chk-${i}" ${checked?'checked':''} onclick="event.stopPropagation();wsm_toggleDay(${i})" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer" />
+        <div style="flex:1">
+          <span style="font-size:14px;font-weight:700;color:${isToday?'var(--blue)':isPast?'var(--text3)':'var(--text)'}">${dayNames[i]}</span>
+          <span style="font-size:12px;color:var(--text3);margin-left:6px">${displayDate}</span>
+          ${isToday?'<span style="margin-left:6px;font-size:10px;background:var(--blue);color:#fff;border-radius:4px;padding:1px 5px">TODAY</span>':''}
+        </div>
+        ${existingShift && existingShift.startTime ? `<span style="font-size:11px;color:var(--blue);font-weight:600">${fmtTime(existingShift.startTime)}${existingShift.endTime?' – '+fmtTime(existingShift.endTime):''}</span>` : ''}
+      </div>
+      <!-- Shift inputs (shown when checked) -->
+      <div id="wsm-body-${i}" style="display:${checked?'block':'none'};padding:10px 12px;background:var(--bg);border-top:1px solid var(--border)">
+        <input type="hidden" id="wsm-existing-${i}" value="${existingShift?.id||''}" />
+        <div class="g2" style="margin-bottom:8px">
+          <div>
+            <label style="font-size:11px">Start time</label>
+            <input type="time" id="wsm-start-${i}" value="${startVal}" style="font-size:13px" />
+          </div>
+          <div>
+            <label style="font-size:11px">End time</label>
+            <input type="time" id="wsm-end-${i}" value="${endVal}" style="font-size:13px" />
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px">Shift type</label>
+          <select id="wsm-role-${i}" style="font-size:13px">
+            ${['Morning','Afternoon','Evening','Night','Split','Custom'].map(r=>`<option value="${r}"${r===roleVal?' selected':''}>${r}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function wsm_toggleDay(i){
+  const chk = document.getElementById(`wsm-chk-${i}`);
+  const body = document.getElementById(`wsm-body-${i}`);
+  const hdr  = document.getElementById(`wsm-day-hdr-${i}`);
+  chk.checked = !chk.checked;
+  body.style.display = chk.checked ? 'block' : 'none';
+  hdr.style.background = chk.checked ? 'var(--blue-light)' : 'var(--bg2)';
+}
+
+async function saveWeekShifts(){
+  const empName = document.getElementById('wsm-emp').value.trim();
+  if(!empName){ toast('Select an employee'); return; }
+
+  const days = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(schedWeekStart);
+    d.setDate(d.getDate()+i);
+    const fmt = d2 => d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0')+'-'+String(d2.getDate()).padStart(2,'0');
+    days.push(fmt(d));
+  }
+
+  const saves = [];
+  let count = 0;
+
+  for(let i=0;i<7;i++){
+    const chk = document.getElementById(`wsm-chk-${i}`);
+    if(!chk?.checked) continue;
+    const start    = document.getElementById(`wsm-start-${i}`)?.value || '';
+    const end      = document.getElementById(`wsm-end-${i}`)?.value   || '';
+    const role     = document.getElementById(`wsm-role-${i}`)?.value  || 'Morning';
+    const existId  = document.getElementById(`wsm-existing-${i}`)?.value || '';
+
+    const data = { employee:empName, date:days[i], startTime:start, endTime:end, role, note:'', updatedBy:CU.name, updatedAt:new Date().toISOString() };
+
+    if(existId){
+      saves.push(window.F.updateDoc(window.F.doc(window.db,'schedules',existId), data));
+    } else {
+      data.createdBy = CU.name;
+      data.timestamp = window.F.serverTimestamp();
+      saves.push(window.F.addDoc(window.F.collection(window.db,'schedules'), data));
+    }
+    count++;
+  }
+
+  if(!count){ toast('No days selected'); return; }
+
+  try{
+    await Promise.all(saves);
+    toast(`✓ ${count} shift${count>1?'s':''} saved for ${empName}`);
+    closeWeekShiftModal();
+    loadSchedule();
+  }catch(e){ toast('Error saving shifts'); console.error(e); }
+}
+
+function closeWeekShiftModal(){
+  document.getElementById('weekShiftModal').style.display = 'none';
+  wsmPreselectedDate = null;
 }
 
 function openAddShiftOnDay(date){
-  openAddShift();
-  document.getElementById('sm-date').value = date;
+  openAddShift(date);
 }
 
 function openEditShift(id){
@@ -5100,11 +5179,9 @@ async function loadLogs(){
             const tixSold = sb ? sb.ticketsSold : null;
             const rev = sb ? sb.revenue : null;
             const isNewBook = sb && sb.newBook === true;
-            const isSoldOutSlot = sb && sb.soldOut === true;
             const nameCell = '<div><div style="font-weight:600">$'+s.price+' — '+(s.name||'—')+'</div>'
               +(s.gameNum?'<div style="font-size:10px;color:var(--text3)">Game #'+s.gameNum+'</div>':'')
               +(isNewBook?'<div style="font-size:10px;font-weight:700;color:var(--blue)">📦 New book</div>':'')
-              +(isSoldOutSlot?'<div style="font-size:10px;font-weight:700;color:#dc2626">🚫 Sold out</div>':'')
               +'</div>';
             const dataCols = isClose
               ? `<div style="text-align:center;color:var(--text3)">${closeNum}</div><div style="text-align:center;font-weight:700">${closeNum}</div><div style="text-align:center;color:${tixSold>0?'var(--amber)':'var(--text3)'};font-weight:600">${tixSold!==null?tixSold:'—'}</div><div style="text-align:right;color:${rev>0?'var(--green)':'var(--text3)'};font-weight:600">${rev!==null&&rev>0?'$'+rev.toFixed(0):'—'}</div>`
@@ -8012,14 +8089,11 @@ async function initDeliveries(){
   // Set default month
   const dm = document.getElementById('dlMonth');
   if(dm && !dm.value) dm.value = new Date().toISOString().slice(0,7);
-  // Show vendor management card for operators only
+  // Show vendor management card for operators
   const mgmt = document.getElementById('dlVendorMgmtCard');
   if(mgmt && CU?.role==='operator') mgmt.style.display='block';
-  // Hide delivery history card for non-operators (employees/leads only need to log)
-  const histCard = document.getElementById('dlHistoryCard');
-  if(histCard) histCard.style.display = CU?.role==='operator' ? 'block' : 'none';
   await loadDlVendors();
-  if(CU?.role==='operator') loadDeliveries();
+  loadDeliveries();
 }
 
 async function loadDlVendors(){
