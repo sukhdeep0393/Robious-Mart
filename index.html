@@ -641,7 +641,8 @@
     </div>
     <button class="btn bprimary" id="fuelBtn" onclick="subFuel()">Save fuel report</button>
 
-    <!-- Fuel Deliveries -->
+    <!-- Fuel Deliveries — operator/lead only -->
+    <div id="fuelDeliverySection">
     <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
     <div class="card" id="fuelDeliveryForm">
       <div class="ct">Log a fuel delivery</div>
@@ -681,6 +682,7 @@
       <input type="date" id="fuelPhotoDate" onchange="loadFuelPhotos()" placeholder="Filter by date" />
     </div>
     <div id="fuelPhotoList"><div class="empty"><div class="ei">📷</div>No fuel photos yet</div></div>
+    </div><!-- end fuelDeliverySection -->
   </div>
 
   <!-- SCRATCH-OFFS -->
@@ -1952,6 +1954,9 @@ function loginOK(u){
   // Show price field only to operator
   const fdPriceRow=document.getElementById('fd-price-row');
   if(fdPriceRow) fdPriceRow.style.display = u.role==='operator' ? '' : 'none';
+  // Hide fuel delivery section from employees
+  const fuelDelivSec=document.getElementById('fuelDeliverySection');
+  if(fuelDelivSec) fuelDelivSec.style.display = u.role==='employee' ? 'none' : '';
   // Set fuel delivery date
   const fdDate=document.getElementById('fd-date');
   if(fdDate) fdDate.value=localDate();
