@@ -5976,6 +5976,7 @@ async function loadFuelPhotos(){
   try{
     const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
     let docs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.photoUrl&&d.photoUrl!='');
+    if(CU?.role==='employee')docs=docs.filter(d=>d.employee===CU.name);
     if(dateFilter)docs=docs.filter(d=>d.date===dateFilter);
     if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>No fuel photos'+(dateFilter?' for this date':' yet')+'</div>';return;}
     el.innerHTML=docs.map(d=>`<div class="card" style="margin-bottom:10px">
