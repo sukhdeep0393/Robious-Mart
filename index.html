@@ -1167,10 +1167,10 @@
     </div>
 
     <!-- Delivery list -->
-    <div class="card">
+    <div class="card" id="dlHistoryCard">
       <div class="sh2" style="margin-bottom:10px">
         <div class="ct" style="margin:0">Delivery history</div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center" id="dlFilterControls">
           <input type="month" id="dlMonth" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto" />
           <select id="dlVendorFilter" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto">
             <option value="all">All vendors</option>
@@ -1892,7 +1892,7 @@ function fmtHours(decimalHrs){
 const TABS={
   operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
 // ---- LOGIN ----
@@ -7962,9 +7962,15 @@ async function initDeliveries(){
   // Set default month
   const dm = document.getElementById('dlMonth');
   if(dm && !dm.value) dm.value = new Date().toISOString().slice(0,7);
-  // Show vendor management card for operators
+  // Show vendor management card for operators only
   const mgmt = document.getElementById('dlVendorMgmtCard');
   if(mgmt && CU?.role==='operator') mgmt.style.display='block';
+  // For employees: hide history card; for others: show it
+  const histCard = document.getElementById('dlHistoryCard');
+  const filterControls = document.getElementById('dlFilterControls');
+  const isEmployee = CU?.role==='employee';
+  if(histCard) histCard.style.display = isEmployee ? 'none' : 'block';
+  if(filterControls) filterControls.style.display = isEmployee ? 'none' : 'flex';
   await loadDlVendors();
   loadDeliveries();
 }
@@ -8170,9 +8176,10 @@ async function loadDeliveries(){
   const sumEl  = document.getElementById('dlMTDSummary');
   if(!el) return;
 
+  const isEmployee = CU?.role === 'employee';
   const month  = document.getElementById('dlMonth')?.value || new Date().toISOString().slice(0,7);
-  const start  = month+'-01';
-  const end    = month+'-31';
+  const start  = isEmployee ? new Date().toISOString().slice(0,10) : month+'-01';
+  const end    = isEmployee ? new Date().toISOString().slice(0,10) : month+'-31';
   const fVendor= document.getElementById('dlVendorFilter')?.value||'all';
 
   try{
