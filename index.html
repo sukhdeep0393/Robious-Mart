@@ -1040,7 +1040,9 @@
       <div class="g2" style="margin-bottom:10px">
         <div>
           <label>Employee</label>
-          <input id="sm-emp" placeholder="Employee name" />
+          <select id="sm-emp">
+            <option value="">— Select employee —</option>
+          </select>
         </div>
         <div>
           <label>Date</label>
@@ -4773,10 +4775,16 @@ async function loadSchedule(){
     ));
     schedShifts = snap.docs.map(d=>({id:d.id,...d.data()}));
 
-    // Populate employee filter
+    // Populate employee filter from empLogins (so all employees appear even without shifts)
     const empFilter = document.getElementById('schedEmpFilter');
     if(empFilter){
-      const names = [...new Set(schedShifts.map(s=>s.employee).filter(Boolean))].sort();
+      const schedNames = [...new Set(schedShifts.map(s=>s.employee).filter(Boolean))];
+      let loginNames = [];
+      try{
+        const ls = await window.F.getDocs(window.F.collection(window.db,'empLogins'));
+        loginNames = ls.docs.map(d=>d.data().name).filter(Boolean);
+      }catch(e){}
+      const names = [...new Set([...loginNames,...schedNames])].sort();
       const cur = empFilter.value;
       empFilter.innerHTML = '<option value="all">All employees</option>' +
         names.map(n=>`<option value="${n}"${n===cur?' selected':''}>${n}</option>`).join('');
@@ -4827,6 +4835,14 @@ function renderSchedule(startStr, endStr){
     return empColors[name];
   }
 
+  // Helper: compute shift minutes
+  function shiftMins(s){ if(!s.startTime||!s.endTime) return 0; const [sh,sm]=s.startTime.split(':').map(Number); const [eh,em]=s.endTime.split(':').map(Number); let m=(eh*60+em)-(sh*60+sm); return m<0?m+1440:m; }
+  function minsToHrStr(m){ const h=Math.floor(m/60),min=m%60; return h+'h'+(min>0?' '+min+'m':''); }
+
+  // Weekly totals per employee
+  const weeklyEmpMins = {};
+  filtered.forEach(s=>{ const m=shiftMins(s); if(m>0){ weeklyEmpMins[s.employee]=(weeklyEmpMins[s.employee]||0)+m; } });
+
   grid.innerHTML = days.map(day => {
     const shifts = shiftsByDay[day];
     const isToday = day === today;
@@ -4835,12 +4851,20 @@ function renderSchedule(startStr, endStr){
     const dayBg = isToday ? 'background:var(--blue-light);border:1.5px solid var(--blue)' : 'background:var(--bg);border:1px solid var(--border)';
     const dayLabelColor = isToday ? 'color:var(--blue);font-weight:800' : isPast ? 'color:var(--text3)' : 'color:var(--text);font-weight:700';
 
+    // Daily total hours
+    const dayTotalMins = shifts.reduce((acc,s)=>acc+shiftMins(s),0);
+    const dayTotalStr = dayTotalMins > 0 ? minsToHrStr(dayTotalMins) : '';
+
     const shiftCards = shifts.length
       ? shifts.map(s => {
           const c = empColor(s.employee||'?');
           const timeStr = s.startTime && s.endTime ? `${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}` : s.startTime ? `From ${fmtTime(s.startTime)}` : '';
+          const hrs = s.startTime && s.endTime ? calcShiftHrs(s.startTime,s.endTime) : '';
           return `<div onclick="openEditShift('${s.id}')" style="background:${c}18;border-left:3px solid ${c};border-radius:6px;padding:7px 9px;margin-bottom:6px;cursor:pointer">
-            <div style="font-size:13px;font-weight:700;color:${c}">${s.employee||'Unknown'}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-size:13px;font-weight:700;color:${c}">${s.employee||'Unknown'}</div>
+              ${hrs ? `<div style="font-size:12px;font-weight:700;color:${c}">${hrs}</div>` : ''}
+            </div>
             ${timeStr ? `<div style="font-size:11px;color:var(--text2);margin-top:1px">${timeStr}</div>` : ''}
             ${s.role ? `<div style="font-size:11px;color:var(--text3)">${s.role}</div>` : ''}
             ${s.note ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;font-style:italic">${s.note}</div>` : ''}
@@ -4851,17 +4875,50 @@ function renderSchedule(startStr, endStr){
     return `<div style="${dayBg};border-radius:var(--r);padding:12px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="font-size:13px;${dayLabelColor}">${dayLabel}${isToday?' <span style="font-size:10px;background:var(--blue);color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px">TODAY</span>':''}</div>
-        <button onclick="openAddShiftOnDay('${day}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--text2)">+ Add</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${dayTotalStr ? `<span style="font-size:12px;font-weight:700;color:var(--text2);background:var(--bg2);border-radius:6px;padding:2px 7px">⏱ ${dayTotalStr} total</span>` : ''}
+          <button onclick="openAddShiftOnDay('${day}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--text2)">+ Add</button>
+        </div>
       </div>
       ${shiftCards}
     </div>`;
-  }).join('');
+  }).join('') + (Object.keys(weeklyEmpMins).length ? `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-top:4px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📊 Week Summary</div>
+      ${Object.entries(weeklyEmpMins).sort((a,b)=>b[1]-a[1]).map(([name,mins])=>{
+        const c = empColor(name);
+        const pct = Math.min(100, Math.round(mins/2400*100)); // 40hr week = 100%
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <div style="font-size:13px;font-weight:600;color:${c}">${name}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${minsToHrStr(mins)}</div>
+          </div>
+          <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+            <div style="background:${c};width:${pct}%;height:100%;border-radius:4px;transition:width .3s"></div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;justify-content:space-between">
+        <div style="font-size:12px;color:var(--text2)">Total scheduled</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${minsToHrStr(Object.values(weeklyEmpMins).reduce((a,b)=>a+b,0))}</div>
+      </div>
+    </div>` : '');
+}
+
+async function populateShiftEmpDropdown(selectedName){
+  const sel = document.getElementById('sm-emp');
+  if(!sel) return;
+  try{
+    const snap = await window.F.getDocs(window.F.collection(window.db,'empLogins'));
+    const names = snap.docs.map(d=>d.data().name).filter(Boolean).sort();
+    sel.innerHTML = '<option value="">— Select employee —</option>' +
+      names.map(n=>`<option value="${n}"${n===selectedName?' selected':''}>${n}</option>`).join('');
+  }catch(e){ console.error('emp dropdown',e); }
 }
 
 function openAddShift(){
   editingShiftId = null;
   document.getElementById('shiftModalTitle').textContent = 'Add Shift';
-  document.getElementById('sm-emp').value = '';
   document.getElementById('sm-date').value = localDate();
   document.getElementById('sm-start').value = '';
   document.getElementById('sm-end').value = '';
@@ -4869,6 +4926,7 @@ function openAddShift(){
   document.getElementById('sm-note').value = '';
   document.getElementById('sm-delete-wrap').style.display = 'none';
   document.getElementById('shiftModal').style.display = 'flex';
+  populateShiftEmpDropdown('');
 }
 
 function openAddShiftOnDay(date){
@@ -4881,7 +4939,6 @@ function openEditShift(id){
   if(!s) return;
   editingShiftId = id;
   document.getElementById('shiftModalTitle').textContent = 'Edit Shift';
-  document.getElementById('sm-emp').value = s.employee||'';
   document.getElementById('sm-date').value = s.date||'';
   document.getElementById('sm-start').value = s.startTime||'';
   document.getElementById('sm-end').value = s.endTime||'';
@@ -4889,6 +4946,7 @@ function openEditShift(id){
   document.getElementById('sm-note').value = s.note||'';
   document.getElementById('sm-delete-wrap').style.display = 'block';
   document.getElementById('shiftModal').style.display = 'flex';
+  populateShiftEmpDropdown(s.employee||'');
 }
 
 function closeShiftModal(){
