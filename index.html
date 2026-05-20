@@ -2200,7 +2200,6 @@ async function loadDashboard(){
 
     // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
     const latestCountDoc = scrAll.length ? scrAll[0] : null;
-    const scrVal = latestCountDoc?.totalValue || 0;
     const latestCount = latestCountDoc; // used in sub-line display
 
     // Activations
@@ -2209,6 +2208,13 @@ async function loadDashboard(){
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+(a.bookValue||0),0);
+
+    // Add any activations logged AFTER the latest count doc — they increased inventory but aren't reflected in the count yet
+    const latestCountTs = latestCountDoc?.timestamp?.toMillis?.() || 0;
+    const postCountActValue = allActs
+      .filter(a => (a.timestamp?.toMillis?.() || a._ts || 0) > latestCountTs)
+      .reduce((s,a) => s + (a.bookValue||0), 0);
+    const scrVal = (latestCountDoc?.totalValue || 0) + postCountActValue;
 
     // MTD sold revenue — sum all count docs for the month that have soldBySlot data
     // Docs are saved with type:'count' (not 'closing'). Only docs with soldBySlot had a baseline and recorded shift revenue.
