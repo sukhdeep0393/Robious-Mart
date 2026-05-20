@@ -641,8 +641,7 @@
     </div>
     <button class="btn bprimary" id="fuelBtn" onclick="subFuel()">Save fuel report</button>
 
-    <!-- Fuel Deliveries (hidden for employees) -->
-    <div id="fuelDeliverySection">
+    <!-- Fuel Deliveries -->
     <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
     <div class="card" id="fuelDeliveryForm">
       <div class="ct">Log a fuel delivery</div>
@@ -676,7 +675,6 @@
       <button class="btn bprimary" onclick="subFuelDelivery()">Save fuel delivery</button>
     </div>
     <div id="fuelDeliveryList"><div class="empty"><div class="ei">⏳</div>Loading deliveries...</div></div>
-    </div><!-- end fuelDeliverySection -->
 
     <div class="ct" style="margin:20px 0 10px">Fuel inventory photos</div>
     <div class="filter-bar">
@@ -1169,10 +1167,10 @@
     </div>
 
     <!-- Delivery list -->
-    <div class="card" id="dlHistoryCard">
+    <div class="card">
       <div class="sh2" style="margin-bottom:10px">
         <div class="ct" style="margin:0">Delivery history</div>
-        <div style="display:flex;gap:8px;align-items:center" id="dlFilterControls">
+        <div style="display:flex;gap:8px;align-items:center">
           <input type="month" id="dlMonth" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto" />
           <select id="dlVendorFilter" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto">
             <option value="all">All vendors</option>
@@ -1894,7 +1892,7 @@ function fmtHours(decimalHrs){
 const TABS={
   operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
 // ---- LOGIN ----
@@ -2002,8 +2000,6 @@ function showTab(id){
       }
     }
     loadFuelPhotos();loadFuelDeliveries();
-    const fdSection=document.getElementById('fuelDeliverySection');
-    if(fdSection) fdSection.style.display = CU?.role==='employee' ? 'none' : 'block';
     const fdDate=document.getElementById('fd-date');if(fdDate&&!fdDate.value)fdDate.value=localDate();
   }
   if(id==='logs')loadLogs();
@@ -3325,24 +3321,11 @@ function renderScrRows(){
         <div>
           <div style="font-size:13px;font-weight:600">$${s.price} &mdash; ${s.name}</div>
           <div style="font-size:11px;color:var(--text3)">${s.gameNum?'#'+s.gameNum+' &middot; ':''}${s.totalTickets?s.totalTickets+' tickets/book':''}${baselineLabel}</div>
-          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text2);cursor:pointer">
-            <input type="checkbox" id="sc-nb-${s.slotIdx}" onchange="toggleNewBook(${s.slotIdx},this.checked)" style="width:16px;height:16px;cursor:pointer" />
-            New book opened this shift
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--red,#e53e3e);cursor:pointer">
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--red,#e53e3e);cursor:pointer">
             <input type="checkbox" id="sc-so-${s.slotIdx}" onchange="toggleSoldOut(${s.slotIdx},this.checked)" style="width:16px;height:16px;cursor:pointer" />
             Book sold out this shift
           </label>
-          <div id="sc-nb-fields-${s.slotIdx}" style="display:none;margin-top:8px;background:var(--amber-light);border-radius:8px;padding:10px 12px">
-            <div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:6px">Where did the old book end?</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <label style="font-size:12px;color:var(--text2);white-space:nowrap;margin:0">Old book ended at #</label>
-              <input type="number" min="0" max="999" placeholder="000" id="sc-ob-${s.slotIdx}"
-                oninput="updScrTot()"
-                style="text-align:center;padding:6px;font-size:15px;font-weight:700;width:76px;border-radius:8px;border:1px solid var(--border)" />
-            </div>
-            <div style="font-size:11px;color:var(--amber);margin-top:6px">Revenue = (old book end &minus; baseline) + new book current#</div>
-          </div>
+
           <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:6px;min-height:16px" id="sc-sold-${s.slotIdx}"></div>
         </div>
         <div>
@@ -5976,7 +5959,6 @@ async function loadFuelPhotos(){
   try{
     const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
     let docs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.photoUrl&&d.photoUrl!='');
-    if(CU?.role==='employee')docs=docs.filter(d=>d.employee===CU.name);
     if(dateFilter)docs=docs.filter(d=>d.date===dateFilter);
     if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>No fuel photos'+(dateFilter?' for this date':' yet')+'</div>';return;}
     el.innerHTML=docs.map(d=>`<div class="card" style="margin-bottom:10px">
@@ -7967,15 +7949,9 @@ async function initDeliveries(){
   // Set default month
   const dm = document.getElementById('dlMonth');
   if(dm && !dm.value) dm.value = new Date().toISOString().slice(0,7);
-  // Show vendor management card for operators only
+  // Show vendor management card for operators
   const mgmt = document.getElementById('dlVendorMgmtCard');
   if(mgmt && CU?.role==='operator') mgmt.style.display='block';
-  // For employees: hide history card; for others: show it
-  const histCard = document.getElementById('dlHistoryCard');
-  const filterControls = document.getElementById('dlFilterControls');
-  const isEmployee = CU?.role==='employee';
-  if(histCard) histCard.style.display = isEmployee ? 'none' : 'block';
-  if(filterControls) filterControls.style.display = isEmployee ? 'none' : 'flex';
   await loadDlVendors();
   loadDeliveries();
 }
@@ -8181,10 +8157,9 @@ async function loadDeliveries(){
   const sumEl  = document.getElementById('dlMTDSummary');
   if(!el) return;
 
-  const isEmployee = CU?.role === 'employee';
   const month  = document.getElementById('dlMonth')?.value || new Date().toISOString().slice(0,7);
-  const start  = isEmployee ? new Date().toISOString().slice(0,10) : month+'-01';
-  const end    = isEmployee ? new Date().toISOString().slice(0,10) : month+'-31';
+  const start  = month+'-01';
+  const end    = month+'-31';
   const fVendor= document.getElementById('dlVendorFilter')?.value||'all';
 
   try{
