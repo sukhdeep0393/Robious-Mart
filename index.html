@@ -1040,9 +1040,11 @@
       <div class="g2" style="margin-bottom:10px">
         <div>
           <label>Employee</label>
-          <select id="sm-emp">
+          <select id="sm-emp" onchange="handleShiftEmpChange(this)">
             <option value="">— Select employee —</option>
           </select>
+          <input id="sm-emp-manual" placeholder="Type employee name..." style="display:none;margin-top:6px" />
+          <button id="sm-emp-back" onclick="cancelManualEmp()" style="display:none;font-size:11px;background:none;border:none;color:var(--blue);padding:2px 0;cursor:pointer;margin-top:2px">← Back to list</button>
         </div>
         <div>
           <label>Date</label>
@@ -4907,13 +4909,64 @@ function renderSchedule(startStr, endStr){
 
 async function populateShiftEmpDropdown(selectedName){
   const sel = document.getElementById('sm-emp');
+  const manual = document.getElementById('sm-emp-manual');
+  const backBtn = document.getElementById('sm-emp-back');
   if(!sel) return;
+
+  // Reset to dropdown mode first
+  sel.style.display = '';
+  if(manual){ manual.style.display='none'; manual.value=''; }
+  if(backBtn) backBtn.style.display='none';
+
   try{
     const snap = await window.F.getDocs(window.F.collection(window.db,'empLogins'));
     const names = snap.docs.map(d=>d.data().name).filter(Boolean).sort();
+
+    // Check if selectedName is NOT in the list (was manually entered)
+    const inList = names.includes(selectedName);
+
     sel.innerHTML = '<option value="">— Select employee —</option>' +
-      names.map(n=>`<option value="${n}"${n===selectedName?' selected':''}>${n}</option>`).join('');
-  }catch(e){ console.error('emp dropdown',e); }
+      names.map(n=>`<option value="${n}"${n===selectedName&&inList?' selected':''}>${n}</option>`).join('') +
+      '<option value="__manual__">✏️ Type manually...</option>';
+
+    if(selectedName && !inList){
+      // Switch to manual mode for this name
+      sel.style.display = 'none';
+      if(manual){ manual.style.display=''; manual.value=selectedName; }
+      if(backBtn) backBtn.style.display='';
+    }
+  }catch(e){
+    sel.innerHTML = '<option value="">— Select employee —</option><option value="__manual__">✏️ Type manually...</option>';
+    console.error('emp dropdown',e);
+  }
+}
+
+function handleShiftEmpChange(sel){
+  if(sel.value === '__manual__'){
+    sel.style.display = 'none';
+    const manual = document.getElementById('sm-emp-manual');
+    const backBtn = document.getElementById('sm-emp-back');
+    if(manual){ manual.style.display=''; manual.value=''; manual.focus(); }
+    if(backBtn) backBtn.style.display='';
+  }
+}
+
+function cancelManualEmp(){
+  const sel = document.getElementById('sm-emp');
+  const manual = document.getElementById('sm-emp-manual');
+  const backBtn = document.getElementById('sm-emp-back');
+  if(sel){ sel.style.display=''; sel.value=''; }
+  if(manual){ manual.style.display='none'; manual.value=''; }
+  if(backBtn) backBtn.style.display='none';
+}
+
+function getShiftEmpValue(){
+  const sel = document.getElementById('sm-emp');
+  const manual = document.getElementById('sm-emp-manual');
+  if(manual && manual.style.display !== 'none'){
+    return manual.value.trim();
+  }
+  return sel ? sel.value.trim() : '';
 }
 
 function openAddShift(){
@@ -4955,7 +5008,7 @@ function closeShiftModal(){
 }
 
 async function saveShift(){
-  const emp   = document.getElementById('sm-emp').value.trim();
+  const emp   = getShiftEmpValue();
   const date  = document.getElementById('sm-date').value;
   const start = document.getElementById('sm-start').value;
   const end   = document.getElementById('sm-end').value;
