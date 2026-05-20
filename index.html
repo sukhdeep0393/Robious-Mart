@@ -641,7 +641,8 @@
     </div>
     <button class="btn bprimary" id="fuelBtn" onclick="subFuel()">Save fuel report</button>
 
-    <!-- Fuel Deliveries -->
+    <!-- Fuel Deliveries (hidden for employees) -->
+    <div id="fuelDeliverySection">
     <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
     <div class="card" id="fuelDeliveryForm">
       <div class="ct">Log a fuel delivery</div>
@@ -675,6 +676,7 @@
       <button class="btn bprimary" onclick="subFuelDelivery()">Save fuel delivery</button>
     </div>
     <div id="fuelDeliveryList"><div class="empty"><div class="ei">⏳</div>Loading deliveries...</div></div>
+    </div><!-- end fuelDeliverySection -->
 
     <div class="ct" style="margin:20px 0 10px">Fuel inventory photos</div>
     <div class="filter-bar">
@@ -2000,6 +2002,8 @@ function showTab(id){
       }
     }
     loadFuelPhotos();loadFuelDeliveries();
+    const fdSection=document.getElementById('fuelDeliverySection');
+    if(fdSection) fdSection.style.display = CU?.role==='employee' ? 'none' : 'block';
     const fdDate=document.getElementById('fd-date');if(fdDate&&!fdDate.value)fdDate.value=localDate();
   }
   if(id==='logs')loadLogs();
