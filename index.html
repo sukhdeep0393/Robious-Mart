@@ -3375,6 +3375,7 @@ function toggleSoldOut(slotIdx, checked){
   const inp = document.getElementById('sc-slot-'+slotIdx);
   if(checked && s && s.totalTickets && inp){
     // Auto-fill closing number = totalTickets - 1 (last ticket index, 0-based)
+    // This is just for display — revenue calc uses totalTickets - baseline
     inp.value = String(s.totalTickets - 1).padStart(3, '0');
     inp.disabled = true;
     // Uncheck new book if sold out is checked
@@ -3410,7 +3411,11 @@ function updScrTot(){
     const soldEl   = document.getElementById('sc-sold-'+s.slotIdx);
     if(baseline !== undefined){
       let ticketsSold;
-      if(scrNewBook[s.slotIdx]){
+      if(scrSoldOut[s.slotIdx] && s.totalTickets){
+        // Sold out: all tickets from baseline to end of book were sold this shift
+        // e.g. baseline=038, totalTickets=40 → only tickets 038 & 039 sold = 2 tickets
+        ticketsSold = Math.max(0, s.totalTickets - baseline);
+      } else if(scrNewBook[s.slotIdx]){
         // New book: revenue = (oldBookEnd - baseline) + newBookCurrent
         const obEl = document.getElementById('sc-ob-'+s.slotIdx);
         const oldBookEnd = obEl && obEl.value !== '' ? (parseInt(obEl.value)||0) : null;
@@ -3498,7 +3503,11 @@ async function subScratch(){
     const baseline = scrBaseline?.counts?.[key];
     if(baseline !== undefined){
       let ticketsSold;
-      if(scrNewBook[s.slotIdx]){
+      if(scrSoldOut[s.slotIdx] && s.totalTickets){
+        // Sold out: tickets sold = all remaining from baseline to end of book
+        // e.g. baseline=038, totalTickets=40 → 2 tickets sold ($10 on a $5 book)
+        ticketsSold = Math.max(0, s.totalTickets - baseline);
+      } else if(scrNewBook[s.slotIdx]){
         const oldBookEnd   = newBookData[s.slotIdx];
         const fromOldBook  = Math.max(0, oldBookEnd - baseline);
         const fromNewBook  = ticketNum;
