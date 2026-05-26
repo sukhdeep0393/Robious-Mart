@@ -1894,9 +1894,9 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'tobacco',l:'🚬 Cigarettes'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
 // ---- LOGIN ----
@@ -8274,7 +8274,6 @@ async function loadDeliveries(){
   const sumEl  = document.getElementById('dlMTDSummary');
   if(!el) return;
 
-  const isOp   = CU?.role === 'operator';
   const month  = document.getElementById('dlMonth')?.value || new Date().toISOString().slice(0,7);
   const start  = month+'-01';
   const end    = month+'-31';
@@ -8286,8 +8285,6 @@ async function loadDeliveries(){
       window.F.orderBy('date','desc')
     ));
     let all = snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=start&&x.date<=end);
-    // Non-operators only see their own logged entries
-    if(!isOp) all = all.filter(x=>x.employee === CU?.name);
     if(fVendor!=='all') all = all.filter(x=>x.vendor===fVendor);
 
     // MTD summary
@@ -8315,6 +8312,7 @@ async function loadDeliveries(){
 
     if(!all.length){ el.innerHTML='<div class="empty"><div class="ei">🚚</div>No deliveries this month</div>'; return; }
 
+    const isOp = CU?.role==='operator';
     el.innerHTML = all.map(x=>{
       const fmtDate = new Date(x.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
       const isPending = x.status==='pending';
