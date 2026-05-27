@@ -2638,12 +2638,52 @@ async function loadDashboard(){
                 <div style="font-size:17px;font-weight:800;color:${hasFuelMargins?'var(--green)':'var(--text3)'}">
                   ${hasFuelMargins ? '$'+mtdFuelProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}
                 </div>
-                ${hasFuelMargins ? `<div style="font-size:11px;color:var(--text3)">`
-                  + (fuelProfitReg>0  ? `Reg ${mtdDelRegGal.toLocaleString()}g · $${fuelProfitReg.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '')
-                  + (fuelProfitPrem>0 ? ` · Prem ${mtdDelPremGal.toLocaleString()}g · $${fuelProfitPrem.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '')
-                  + (fuelProfitDies>0 ? ` · Diesel ${mtdDelDiesGal.toLocaleString()}g · $${fuelProfitDies.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '')
-                  + (window.marginHistory&&window.marginHistory.length>1 ? ` <span style="color:var(--text3);font-style:italic">(${window.marginHistory.filter(e=>e.date<=mtdEnd&&(!mtdFuelDl.length||e.date>=mtdStart)).length} rate periods)</span>` : '')
-                  + `</div>` : `<div style="font-size:11px;color:var(--amber)">Go to ⛽ Fuel tab → add margin entries</div>`}
+                ${hasFuelMargins ? (()=>{
+                  // Build per-period breakdown
+                  const mh = (window.marginHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+                  // Build periods: [{start, end, regular, premium, diesel}]
+                  const periods = mh.map((e,i)=>({
+                    start: e.date,
+                    end:   i<mh.length-1 ? mh[i+1].date : '9999-12-31',
+                    regular: e.regular||0, premium: e.premium||0, diesel: e.diesel||0
+                  }));
+                  // For each period, sum mtdR gallons that fall within it
+                  const rows = periods.map(p=>{
+                    const reportsInPeriod = mtdR.filter(r=>r.date>=p.start && r.date<p.end);
+                    if(!reportsInPeriod.length) return null;
+                    const rg = reportsInPeriod.reduce((s,r)=>s+(parseFloat(r.regularGal)||0),0);
+                    const pg = reportsInPeriod.reduce((s,r)=>s+(parseFloat(r.premiumGal)||0),0);
+                    const dg = reportsInPeriod.reduce((s,r)=>s+(parseFloat(r.dieselGal)||0),0);
+                    const rp = rg*p.regular, pp = pg*p.premium, dp = dg*p.diesel;
+                    const total = rp+pp+dp;
+                    if(!total) return null;
+                    const fmt2 = v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+                    const endLabel = p.end==='9999-12-31' ? 'present' : p.end;
+                    let gradeLines = [];
+                    if(rg>0) gradeLines.push(`Reg ${rg.toLocaleString()}g × $${p.regular.toFixed(3)} = ${fmt2(rp)}`);
+                    if(pg>0) gradeLines.push(`Prem ${pg.toLocaleString()}g × $${p.premium.toFixed(3)} = ${fmt2(pp)}`);
+                    if(dg>0) gradeLines.push(`Diesel ${dg.toLocaleString()}g × $${p.diesel.toFixed(3)} = ${fmt2(dp)}`);
+                    return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
+                      <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-size:11px;font-weight:700;color:var(--text2)">${p.start} – ${endLabel}</span>
+                        <span style="font-size:12px;font-weight:800;color:var(--green)">${fmt2(total)}</span>
+                      </div>
+                      <div style="font-size:11px;color:var(--text3);margin-top:2px">${gradeLines.join(' &nbsp;·&nbsp; ')}</div>
+                    </div>`;
+                  }).filter(Boolean);
+                  const toggleId = 'fuelPeriodBreakdown_'+mtdStart;
+                  return `<div style="font-size:11px;color:var(--text3);margin-top:4px">
+                    Reg ${mtdDelRegGal.toLocaleString()}g · ${(()=>{const f=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return f(fuelProfitReg)})()}
+                    ${fuelProfitPrem>0?' · Prem '+mtdDelPremGal.toLocaleString()+'g · $'+fuelProfitPrem.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):''}
+                    ${fuelProfitDies>0?' · Diesel '+mtdDelDiesGal.toLocaleString()+'g · $'+fuelProfitDies.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):''}
+                  </div>`
+                  + (rows.length>1 ? `<div style="margin-top:6px">
+                    <button onclick="(()=>{const el=document.getElementById('${toggleId}');el.style.display=el.style.display==='none'?'block':'none'})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0">▸ Show breakdown by rate period</button>
+                    <div id="${toggleId}" style="display:none;margin-top:6px;background:var(--bg2);border-radius:var(--r);padding:8px 12px">
+                      ${rows.join('')}
+                    </div>
+                  </div>` : '');
+                })() : `<div style="font-size:11px;color:var(--amber)">Go to ⛽ Fuel tab → add margin entries</div>`}
               </div>
             </div>
             <div style="border-bottom:1px solid var(--border)">
