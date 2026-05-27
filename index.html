@@ -2168,17 +2168,17 @@ async function loadDashboard(){
     const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
-    // Fuel profit — each delivery uses the margin active on its date
+    // Fuel profit — use daily sold gallons (from shift reports) x margin active on that date
     let fuelProfitReg=0, fuelProfitPrem=0, fuelProfitDies=0;
-    mtdFuelDl.forEach(d=>{
-      const m = marginForDate(d.date);
-      fuelProfitReg  += (d.regularGal||0) * (m.regular||0);
-      fuelProfitPrem += (d.premiumGal||0) * (m.premium||0);
-      fuelProfitDies += (d.dieselGal||0)  * (m.diesel||0);
+    mtdR.forEach(r=>{
+      const m = marginForDate(r.date);
+      fuelProfitReg  += (parseFloat(r.regularGal)||0) * (m.regular||0);
+      fuelProfitPrem += (parseFloat(r.premiumGal)||0) * (m.premium||0);
+      fuelProfitDies += (parseFloat(r.dieselGal)||0)  * (m.diesel||0);
     });
-    const mtdDelRegGal  = mtdFuelDl.reduce((s,x)=>s+(x.regularGal||0),0);
-    const mtdDelPremGal = mtdFuelDl.reduce((s,x)=>s+(x.premiumGal||0),0);
-    const mtdDelDiesGal = mtdFuelDl.reduce((s,x)=>s+(x.dieselGal||0),0);
+    const mtdDelRegGal  = mtdRegGal;
+    const mtdDelPremGal = mtdPremGal;
+    const mtdDelDiesGal = mtdDiesGal;
     const mtdFuelProfit = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
     const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
     const hasFuelMargins = window.marginHistory && window.marginHistory.length > 0;
