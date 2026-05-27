@@ -2135,13 +2135,7 @@ async function loadDashboard(){
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // Fuel profit — margin per gallon x MTD gallons sold
-    const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
-    const fuelProfitReg  = mtdRegGal  * (mgn.regular||0);
-    const fuelProfitPrem = mtdPremGal * (mgn.premium||0);
-    const fuelProfitDies = mtdDiesGal * (mgn.diesel ||0);
-    const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
-    const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
+    // Fuel profit — computed after fuelDeliveries fetch below
 
     // Other revenue for selected month
     const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('date','desc')));
@@ -2170,6 +2164,16 @@ async function loadDashboard(){
     const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
+    // Fuel profit — margin x MTD gallons delivered (by grade) — correct source
+    const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
+    const mtdDelRegGal  = mtdFuelDl.reduce((s,x)=>s+(x.regularGal||0),0);
+    const mtdDelPremGal = mtdFuelDl.reduce((s,x)=>s+(x.premiumGal||0),0);
+    const mtdDelDiesGal = mtdFuelDl.reduce((s,x)=>s+(x.dieselGal||0),0);
+    const fuelProfitReg  = mtdDelRegGal  * (mgn.regular||0);
+    const fuelProfitPrem = mtdDelPremGal * (mgn.premium||0);
+    const fuelProfitDies = mtdDelDiesGal * (mgn.diesel||0);
+    const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
+    const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
     // Check fuel alerts using most recent fuel report
     if(!window._latestFuelReport){
       try{
@@ -2627,9 +2631,9 @@ async function loadDashboard(){
                   ${hasFuelMargins ? '$'+mtdFuelProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}
                 </div>
                 ${hasFuelMargins ? `<div style="font-size:11px;color:var(--text3)">`
-                  + (fuelProfitReg>0  ? `Reg ${mtdRegGal.toLocaleString()}g · $${fuelProfitReg.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} ` : '')
-                  + (fuelProfitPrem>0 ? `· Prem ${mtdPremGal.toLocaleString()}g · $${fuelProfitPrem.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} ` : '')
-                  + (fuelProfitDies>0 ? `· Diesel ${mtdDiesGal.toLocaleString()}g · $${fuelProfitDies.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '')
+                  + (fuelProfitReg>0  ? `Reg ${mtdDelRegGal.toLocaleString()}g × $${mgn.regular.toFixed(3)}` : '')
+                  + (fuelProfitPrem>0 ? ` · Prem ${mtdDelPremGal.toLocaleString()}g × $${mgn.premium.toFixed(3)}` : '')
+                  + (fuelProfitDies>0 ? ` · Diesel ${mtdDelDiesGal.toLocaleString()}g × $${mgn.diesel.toFixed(3)}` : '')
                   + `</div>` : `<div style="font-size:11px;color:var(--amber)">Go to ⛽ Fuel tab → set margins</div>`}
               </div>
             </div>
