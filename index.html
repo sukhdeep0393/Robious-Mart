@@ -3145,22 +3145,12 @@ function previewFuelMargin(){
   const prem = parseFloat(document.getElementById('fm-prem')?.value) || 0;
   const dies = parseFloat(document.getElementById('fm-dies')?.value) || 0;
   if(!reg && !prem && !dies){ el.style.display='none'; return; }
-  // Use dashboard MTD gals if available, otherwise show placeholder
-  const regGal  = window._dashMtdRegGal  || 0;
-  const premGal = window._dashMtdPremGal || 0;
-  const diesGal = window._dashMtdDiesGal || 0;
-  const month   = window._dashMonthLabel || 'this month';
-  const regProfit  = regGal  * reg;
-  const premProfit = premGal * prem;
-  const diesProfit = diesGal * dies;
-  const total = regProfit + premProfit + diesProfit;
   el.style.display = 'block';
-  el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Est. fuel profit — ${month}</div>`
-    + (regGal  ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>⛽ Regular (${regGal.toLocaleString()} gal × $${reg.toFixed(3)})</span><span style="font-weight:700;color:var(--green)">$${regProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '')
-    + (premGal ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>⛽ Premium (${premGal.toLocaleString()} gal × $${prem.toFixed(3)})</span><span style="font-weight:700;color:var(--green)">$${premProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '')
-    + (diesGal ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>⛽ Diesel (${diesGal.toLocaleString()} gal × $${dies.toFixed(3)})</span><span style="font-weight:700;color:var(--green)">$${diesProfit.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '')
-    + (!regGal && !premGal && !diesGal ? `<div style="color:var(--text3)">Go to Dashboard to see monthly gallons, then return here for the live preview.</div>` : '')
-    + (total ? `<div style="display:flex;justify-content:space-between;font-weight:800;border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span>Total fuel profit</span><span style="color:var(--green)">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : '');
+  el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Margin rates — will apply to new reports from today</div>`
+    + (reg  ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>⛽ Regular</span><span style="font-weight:700;color:var(--green)">$${reg.toFixed(3)}/gal</span></div>` : '')
+    + (prem ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>⛽ Premium</span><span style="font-weight:700;color:var(--green)">$${prem.toFixed(3)}/gal</span></div>` : '')
+    + (dies ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>⛽ Diesel</span><span style="font-weight:700;color:var(--green)">$${dies.toFixed(3)}/gal</span></div>` : '')
+    + `<div style="font-size:11px;color:var(--text3);margin-top:6px;border-top:1px solid var(--border);padding-top:6px">Each daily fuel report will snapshot these rates. The dashboard calculates actual profit using each report's own saved rate — so mid-month changes apply correctly going forward.</div>`;
 }
 
 // Used by dashboard and fuel tab to show banners
