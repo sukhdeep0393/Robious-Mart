@@ -2135,23 +2135,13 @@ async function loadDashboard(){
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // Fuel profit — use per-report margin snapshot so mid-month rate changes are handled correctly
-    // Falls back to current global margin for older reports that pre-date snapshot storage
+    // Fuel profit — margin per gallon x MTD gallons sold
     const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
-    const frSnap2=await getDocs(query(collection(window.db,'fuelReports'),orderBy('date','desc')));
-    const mtdFuelReports=frSnap2.docs.map(d=>d.data()).filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
-    let fuelProfitReg=0, fuelProfitPrem=0, fuelProfitDies=0;
-    mtdFuelReports.forEach(r=>{
-      const mReg  = r.marginRegular!=null ? r.marginRegular : (mgn.regular||0);
-      const mPrem = r.marginPremium!=null ? r.marginPremium : (mgn.premium||0);
-      const mDies = r.marginDiesel !=null ? r.marginDiesel  : (mgn.diesel||0);
-      fuelProfitReg  += (r.regularGal||0) * mReg;
-      fuelProfitPrem += (r.premiumGal||0) * mPrem;
-      fuelProfitDies += (r.dieselGal||0)  * mDies;
-    });
-    const mtdFuelProfit = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
-    const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0
-      || mtdFuelReports.some(r=>r.marginRegular||r.marginPremium||r.marginDiesel);
+    const fuelProfitReg  = mtdRegGal  * (mgn.regular||0);
+    const fuelProfitPrem = mtdPremGal * (mgn.premium||0);
+    const fuelProfitDies = mtdDiesGal * (mgn.diesel ||0);
+    const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
+    const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
 
     // Other revenue for selected month
     const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('date','desc')));
