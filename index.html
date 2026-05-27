@@ -598,26 +598,31 @@
       <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="saveFuelThresholds()">Save thresholds</button>
     </div>
 
-    <!-- Fuel margin settings (operator only) -->
+    <!-- Fuel margin history (operator only) -->
     <div class="card" id="fuelMarginCard" style="display:none">
       <div class="ct">⛽ Fuel Profit Margins</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Enter your margin per gallon for each grade. The dashboard will auto-calculate fuel profit from your MTD gallons sold.</div>
-      <div class="g3" style="margin-bottom:8px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Set your margin per gallon for a specific effective date. The dashboard uses each delivery's date to find the right margin automatically.</div>
+      <div style="margin-bottom:10px">
+        <label>Effective date</label>
+        <input type="date" id="fm-date" />
+      </div>
+      <div class="g3" style="margin-bottom:10px">
         <div>
           <label>Regular ($/gal)</label>
-          <input type="number" step="0.001" id="fm-reg" placeholder="e.g. 0.200" oninput="previewFuelMargin()" />
+          <input type="number" step="0.001" id="fm-reg" placeholder="e.g. 0.200" />
         </div>
         <div>
           <label>Premium ($/gal)</label>
-          <input type="number" step="0.001" id="fm-prem" placeholder="e.g. 0.200" oninput="previewFuelMargin()" />
+          <input type="number" step="0.001" id="fm-prem" placeholder="e.g. 0.200" />
         </div>
         <div>
           <label>Diesel ($/gal)</label>
-          <input type="number" step="0.001" id="fm-dies" placeholder="e.g. 0.200" oninput="previewFuelMargin()" />
+          <input type="number" step="0.001" id="fm-dies" placeholder="e.g. 0.200" />
         </div>
       </div>
-      <div id="fm-preview" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--text2)"></div>
-      <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="saveFuelMargins()">Save margins</button>
+      <button class="btn bsecondary" style="font-size:13px;padding:10px;margin-bottom:16px" onclick="saveMarginEntry()">Save margin entry</button>
+      <div class="ct" style="margin-bottom:8px">Margin history</div>
+      <div id="marginHistoryList"><div class="empty"><div class="ei">📋</div>No margin entries yet</div></div>
     </div>
     <div class="card"><div class="ct">Upload fuel printout</div>
       <div class="uzone" onclick="document.getElementById('fuelPic').click()">
@@ -1994,13 +1999,12 @@ function showTab(id){
         document.getElementById('ft-prem').value=thr.premium;
         document.getElementById('ft-dies').value=thr.diesel;
       }
-      // Show margin settings card and populate current values
+      // Show margin history card
       const mc=document.getElementById('fuelMarginCard');
       if(mc){ mc.style.display='block';
-        const mgn=window.fuelMargins||{regular:0,premium:0,diesel:0};
-        document.getElementById('fm-reg').value=mgn.regular||'';
-        document.getElementById('fm-prem').value=mgn.premium||'';
-        document.getElementById('fm-dies').value=mgn.diesel||'';
+        const di=document.getElementById('fm-date');
+        if(di && !di.value) di.value=localDate();
+        renderMarginHistory();
       }
     }
     loadFuelPhotos();loadFuelDeliveries();
@@ -2164,16 +2168,20 @@ async function loadDashboard(){
     const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
-    // Fuel profit — margin x MTD gallons delivered (by grade) — correct source
-    const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
+    // Fuel profit — each delivery uses the margin active on its date
+    let fuelProfitReg=0, fuelProfitPrem=0, fuelProfitDies=0;
+    mtdFuelDl.forEach(d=>{
+      const m = marginForDate(d.date);
+      fuelProfitReg  += (d.regularGal||0) * (m.regular||0);
+      fuelProfitPrem += (d.premiumGal||0) * (m.premium||0);
+      fuelProfitDies += (d.dieselGal||0)  * (m.diesel||0);
+    });
     const mtdDelRegGal  = mtdFuelDl.reduce((s,x)=>s+(x.regularGal||0),0);
     const mtdDelPremGal = mtdFuelDl.reduce((s,x)=>s+(x.premiumGal||0),0);
     const mtdDelDiesGal = mtdFuelDl.reduce((s,x)=>s+(x.dieselGal||0),0);
-    const fuelProfitReg  = mtdDelRegGal  * (mgn.regular||0);
-    const fuelProfitPrem = mtdDelPremGal * (mgn.premium||0);
-    const fuelProfitDies = mtdDelDiesGal * (mgn.diesel||0);
-    const mtdFuelProfit  = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
-    const hasFuelMargins = (mgn.regular||0)>0 || (mgn.premium||0)>0 || (mgn.diesel||0)>0;
+    const mtdFuelProfit = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
+    const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
+    const hasFuelMargins = window.marginHistory && window.marginHistory.length > 0;
     // Check fuel alerts using most recent fuel report
     if(!window._latestFuelReport){
       try{
@@ -3095,57 +3103,109 @@ async function saveFuelThresholds(){
   }catch(e){ toast('Error saving thresholds'); console.error(e); }
 }
 
+// ── Margin History ────────────────────────────────────────────────────────────
+window.marginHistory = []; // [{id, date, regular, premium, diesel}] sorted desc
+
 async function loadFuelMargins(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'settings'),
-      window.F.limit(30)
+      window.F.collection(window.db,'marginHistory'),
+      window.F.orderBy('date','desc')
     ));
-    const doc = snap.docs.find(d=>d.data()._type==='fuelMargins');
-    if(doc){
-      const data = doc.data();
-      window.fuelMargins = {
-        regular: parseFloat(data.regular)||0,
-        premium: parseFloat(data.premium)||0,
-        diesel:  parseFloat(data.diesel) ||0
-      };
+    window.marginHistory = snap.docs.map(d=>({id:d.id,...d.data()}));
+    // Set window.fuelMargins to the most recent entry for backward compat
+    if(window.marginHistory.length){
+      const latest = window.marginHistory[0];
+      window.fuelMargins = {regular:latest.regular||0, premium:latest.premium||0, diesel:latest.diesel||0};
     }
-  }catch(e){ console.log('Could not load fuel margins', e); }
+    renderMarginHistory();
+    // Pre-fill date input to today
+    const di = document.getElementById('fm-date');
+    if(di && !di.value) di.value = localDate();
+  }catch(e){ console.log('Could not load margin history', e); }
 }
 
-async function saveFuelMargins(){
+// Returns the margin object active for a given date string (YYYY-MM-DD)
+function marginForDate(dateStr){
+  if(!window.marginHistory || !window.marginHistory.length)
+    return window.fuelMargins||{regular:0,premium:0,diesel:0};
+  // Find the latest entry whose date <= dateStr
+  const entry = window.marginHistory.find(e=>e.date <= dateStr);
+  if(entry) return {regular:entry.regular||0, premium:entry.premium||0, diesel:entry.diesel||0};
+  // dateStr is before all entries — use the oldest
+  return window.marginHistory[window.marginHistory.length-1];
+}
+
+async function saveMarginEntry(){
+  const date = document.getElementById('fm-date').value;
   const reg  = parseFloat(document.getElementById('fm-reg').value)  || 0;
   const prem = parseFloat(document.getElementById('fm-prem').value) || 0;
   const dies = parseFloat(document.getElementById('fm-dies').value) || 0;
+  if(!date){ toast('Please pick an effective date'); return; }
+  if(!reg && !prem && !dies){ toast('Please enter at least one margin rate'); return; }
   try{
-    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(30)));
-    const existing = snap.docs.find(d=>d.data()._type==='fuelMargins');
-    const data = { regular: reg, premium: prem, diesel: dies, updatedAt: new Date().toISOString(), _type: 'fuelMargins' };
+    // Check if an entry already exists for this exact date — update it
+    const existing = window.marginHistory.find(e=>e.date===date);
     if(existing){
-      await window.F.updateDoc(window.F.doc(window.db,'settings', existing.id), data);
+      await window.F.updateDoc(window.F.doc(window.db,'marginHistory',existing.id),
+        {regular:reg, premium:prem, diesel:dies, updatedAt:new Date().toISOString()});
     } else {
-      await window.F.addDoc(window.F.collection(window.db,'settings'), data);
+      await window.F.addDoc(window.F.collection(window.db,'marginHistory'),
+        {date, regular:reg, premium:prem, diesel:dies, createdAt:new Date().toISOString()});
     }
-    window.fuelMargins = { regular: reg, premium: prem, diesel: dies };
-    toast('✓ Fuel margins saved!');
-    previewFuelMargin();
-  }catch(e){ toast('Error saving margins'); console.error(e); }
+    toast('✓ Margin entry saved!');
+    document.getElementById('fm-reg').value='';
+    document.getElementById('fm-prem').value='';
+    document.getElementById('fm-dies').value='';
+    document.getElementById('fm-date').value=localDate();
+    await loadFuelMargins();
+  }catch(e){ toast('Error saving margin entry'); console.error(e); }
 }
 
-function previewFuelMargin(){
-  const el = document.getElementById('fm-preview');
-  if(!el) return;
-  const reg  = parseFloat(document.getElementById('fm-reg')?.value)  || 0;
-  const prem = parseFloat(document.getElementById('fm-prem')?.value) || 0;
-  const dies = parseFloat(document.getElementById('fm-dies')?.value) || 0;
-  if(!reg && !prem && !dies){ el.style.display='none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Margin rates — will apply to new reports from today</div>`
-    + (reg  ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>⛽ Regular</span><span style="font-weight:700;color:var(--green)">$${reg.toFixed(3)}/gal</span></div>` : '')
-    + (prem ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>⛽ Premium</span><span style="font-weight:700;color:var(--green)">$${prem.toFixed(3)}/gal</span></div>` : '')
-    + (dies ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>⛽ Diesel</span><span style="font-weight:700;color:var(--green)">$${dies.toFixed(3)}/gal</span></div>` : '')
-    + `<div style="font-size:11px;color:var(--text3);margin-top:6px;border-top:1px solid var(--border);padding-top:6px">Each daily fuel report will snapshot these rates. The dashboard calculates actual profit using each report's own saved rate — so mid-month changes apply correctly going forward.</div>`;
+async function deleteMarginEntry(id){
+  if(!confirm('Delete this margin entry?')) return;
+  try{
+    await window.F.deleteDoc(window.F.doc(window.db,'marginHistory',id));
+    toast('Entry deleted');
+    await loadFuelMargins();
+  }catch(e){ toast('Error deleting entry'); console.error(e); }
 }
+
+function editMarginEntry(id){
+  const entry = window.marginHistory.find(e=>e.id===id);
+  if(!entry) return;
+  document.getElementById('fm-date').value = entry.date;
+  document.getElementById('fm-reg').value  = entry.regular||'';
+  document.getElementById('fm-prem').value = entry.premium||'';
+  document.getElementById('fm-dies').value = entry.diesel||'';
+  document.getElementById('fm-date').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function renderMarginHistory(){
+  const el = document.getElementById('marginHistoryList');
+  if(!el) return;
+  if(!window.marginHistory.length){
+    el.innerHTML='<div class="empty"><div class="ei">📋</div>No margin entries yet</div>';
+    return;
+  }
+  el.innerHTML = window.marginHistory.map((e,i)=>{
+    const isActive = i===0 ? '<span style="background:var(--green-light);color:var(--green);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px">active</span>' : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:8px">
+      <div>
+        <div style="font-size:13px;font-weight:600">${e.date}${isActive}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">
+          Reg $${(e.regular||0).toFixed(3)} &nbsp;·&nbsp; Prem $${(e.premium||0).toFixed(3)} &nbsp;·&nbsp; Diesel $${(e.diesel||0).toFixed(3)}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="bsm" onclick="editMarginEntry('${e.id}')">✏️</button>
+        <button class="bsm" style="color:var(--red)" onclick="deleteMarginEntry('${e.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function previewFuelMargin(){ /* no-op — preview replaced by margin history */ }
 
 // Used by dashboard and fuel tab to show banners
 function checkFuelAlerts(){
