@@ -6030,9 +6030,10 @@ async function loadFuelDeliveries(){
       window.F.orderBy('timestamp','desc'),
       window.F.limit(50)
     ));
-    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(!docs.length){ el.innerHTML='<div class="empty"><div class="ei">⛽</div>No fuel deliveries logged yet</div>'; return; }
+    let docs = snap.docs.map(d=>({id:d.id,...d.data()}));
     const isOp = CU?.role==='operator';
+    if(!isOp) docs = docs.filter(d => (d.loggedBy||'') === CU?.name);
+    if(!docs.length){ el.innerHTML='<div class="empty"><div class="ei">⛽</div>No fuel deliveries logged yet</div>'; return; }
     el.innerHTML = docs.map(d=>{
       const fmtD = dt => new Date(dt+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
       const totalGal = (d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0);
