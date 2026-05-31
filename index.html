@@ -2098,7 +2098,25 @@ async function loadDashboard(){
   try{
     const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('date','desc')));
+    // ── Fire all independent Firestore fetches in parallel ──────────────────
+    const [
+      snap, expSnap, orSnap, lcSnap, dlSnap, fdSnap,
+      scrSnap, actSnapAll, invSnap, tobBrandSnap
+    ] = await Promise.all([
+      getDocs(query(collection(window.db,'dailyReports'),  orderBy('date','desc'))),
+      getDocs(query(collection(window.db,'overheadExpenses'),orderBy('date','desc'))),
+      getDocs(query(collection(window.db,'otherRevenue'),  orderBy('date','desc'))),
+      getDocs(query(collection(window.db,'lotteryReports'),orderBy('weekEnd','desc'))),
+      getDocs(query(collection(window.db,'deliveries'),    orderBy('date','desc'))),
+      getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('date','desc'))),
+      getDocs(query(collection(window.db,'scratchCounts'), orderBy('timestamp','desc'),limit(120))),
+      getDocs(query(collection(window.db,'scratchActivations'),orderBy('date','desc'),limit(60))),
+      getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100))).catch(()=>({docs:[]})),
+      getDocs(query(collection(window.db,'tobaccoBrands'), orderBy('name','asc'))).catch(()=>({docs:[]})),
+    ]);
+    // ────────────────────────────────────────────────────────────────────────
+
+    // Daily reports
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdR=allReports.filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
     window._dashMtdR = mtdR;
@@ -2132,43 +2150,34 @@ async function loadDashboard(){
     const yestSales=sum(yestR,'totalSales');
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
-    // Overhead expenses for selected month
-    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('date','desc')));
+    // Overhead expenses
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // Fuel profit — computed after fuelDeliveries fetch below
-
-    // Other revenue for selected month
-    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('date','desc')));
+    // Other revenue
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
-    // Group by source for dashboard breakdown
     const orBySource={};
     mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
-    // Lottery commission for selected month
-    const lcSnap=await getDocs(window.F.query(window.F.collection(window.db,'lotteryReports'),window.F.orderBy('weekEnd','desc')));
+    // Lottery commission
     const allLC=lcSnap.docs.map(d=>({id:d.id,...d.data()}));
-    // Filter by weekEnd falling within the selected month
     const mtdLC=allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(selMonth));
     const mtdLCTotal=mtdLC.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
 
-    // Deliveries for selected month
-    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('date','desc')));
+    // Deliveries
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
     // Fuel deliveries
-    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('date','desc')));
     const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
-    const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
+    const recentFuelDl=allFuelDeliveries.slice(0,5);
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
-    // Fuel profit — use daily sold gallons (from shift reports) x margin active on that date
+    // Fuel profit
     let fuelProfitReg=0, fuelProfitPrem=0, fuelProfitDies=0;
     mtdR.forEach(r=>{
       const m = marginForDate(r.date);
@@ -2182,7 +2191,7 @@ async function loadDashboard(){
     const mtdFuelProfit = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
     const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
     const hasFuelMargins = window.marginHistory && window.marginHistory.length > 0;
-    // Check fuel alerts using most recent fuel report
+    // Fuel alerts (only fetch if not already cached)
     if(!window._latestFuelReport){
       try{
         const frSnap=await getDocs(query(collection(window.db,'fuelReports'),orderBy('timestamp','desc'),limit(1)));
@@ -2209,45 +2218,30 @@ async function loadDashboard(){
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
     // ---- SCRATCH-OFF DASHBOARD DATA ----
-    // Counts use type:'count'. Revenue per count = totalRevenue (shift-scoped, from soldBySlot).
-    // Value on hand = most recent count's totalValue (the board value at that moment).
-    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc')));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
-
-    // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
     const latestCountDoc = scrAll.length ? scrAll[0] : null;
-    const latestCount = latestCountDoc; // used in sub-line display
+    const latestCount = latestCountDoc;
 
     // Activations
-    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('date','desc')));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+(a.bookValue||0),0);
-
-    // Add any activations logged AFTER the latest count doc — they increased inventory but aren't reflected in the count yet
     const latestCountTs = latestCountDoc?.timestamp?.toMillis?.() || 0;
     const postCountActValue = allActs
       .filter(a => (a.timestamp?.toMillis?.() || a._ts || 0) > latestCountTs)
       .reduce((s,a) => s + (a.bookValue||0), 0);
     const scrVal = (latestCountDoc?.totalValue || 0) + postCountActValue;
-
-    // MTD sold revenue — sum all count docs for the month that have soldBySlot data
-    // Docs are saved with type:'count' (not 'closing'). Only docs with soldBySlot had a baseline and recorded shift revenue.
     const scrMTD = scrAll.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=mtdStart&&d.date<=mtdEnd);
     const scrRevenue = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // Inventory flags
+    // Inventory flags (already fetched in parallel, with .catch fallback)
     let openFlags=0;
-    try{
-      const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
-      openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
-    }catch(e2){}
+    try{ openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length; }catch(e2){}
 
-    // Tobacco low stock + discrepancies
+    // Tobacco low stock + discrepancies (brands already fetched; counts depend on brands so fetched after)
     let lowTobacco=[], tobDiscrepancies=[];
     try{
-      const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
       const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
       if(tobBrandsAll.length){
         const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
@@ -5250,7 +5244,7 @@ async function loadLogs(){
           const rows = d.slots.map(s=>{
             const key='slot_'+(s.slot-1);
             const closeNum = d.counts&&d.counts[key]!==undefined ? d.counts[key] : '—';
-            const baseNum  = d.baselineEmployee ? ((window._logCache||[]).find(x=>x.employee===d.baselineEmployee&&x.col==='scratchCounts'&&x.type!=='closing')?.counts?.[key]??'—') : '—';
+            const baseNum  = d.baselineEmployee ? (scrAll.find(x=>x.employee===d.baselineEmployee)?.counts?.[key]??'—') : '—';
             const sb = d.soldBySlot&&d.soldBySlot[key] ? d.soldBySlot[key] : null;
             const tixSold = sb ? sb.ticketsSold : null;
             const rev = sb ? sb.revenue : null;
@@ -5283,7 +5277,7 @@ async function loadLogs(){
         ${extraDetail}
       </div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';console.error('loadLogs error:',e);}
+  }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';}
 }
 
 function openDailyBreakdown(){
