@@ -563,9 +563,29 @@
       </div>
     </div>
     <div class="card"><div class="ct">Lottery</div>
-      <div class="g2" style="margin-bottom:10px">
+      <div class="g2" style="margin-bottom:12px">
         <div><label>Lottery total ($)</label><input type="number" id="d-ltot" placeholder="0.00" oninput="updLot()" /></div>
-        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" oninput="updLot()" /></div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Total payout</div>
+          <div id="d-lpay-display" style="font-size:18px;font-weight:800;color:var(--red)">$0.00</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Payouts breakdown</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center">
+            <label style="margin:0;font-size:13px;font-weight:500;color:var(--text)">🖥 Online payout</label>
+            <input type="number" id="d-lpay-online" placeholder="0.00" oninput="updLot()" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center">
+            <label style="margin:0;font-size:13px;font-weight:500;color:var(--text)">🎟 Scratcher payout</label>
+            <input type="number" id="d-lpay-scratch" placeholder="0.00" oninput="updLot()" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center">
+            <label style="margin:0;font-size:13px;font-weight:500;color:var(--text)">✕ Cancels</label>
+            <input type="number" id="d-lpay-cancel" placeholder="0.00" oninput="updLot()" />
+          </div>
+        </div>
       </div>
       <div id="lotNet"></div>
     </div>
@@ -2098,25 +2118,7 @@ async function loadDashboard(){
   try{
     const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    // ── Fire all independent Firestore fetches in parallel ──────────────────
-    const [
-      snap, expSnap, orSnap, lcSnap, dlSnap, fdSnap,
-      scrSnap, actSnapAll, invSnap, tobBrandSnap
-    ] = await Promise.all([
-      getDocs(query(collection(window.db,'dailyReports'),  orderBy('date','desc'))),
-      getDocs(query(collection(window.db,'overheadExpenses'),orderBy('date','desc'))),
-      getDocs(query(collection(window.db,'otherRevenue'),  orderBy('date','desc'))),
-      getDocs(query(collection(window.db,'lotteryReports'),orderBy('weekEnd','desc'))),
-      getDocs(query(collection(window.db,'deliveries'),    orderBy('date','desc'))),
-      getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('date','desc'))),
-      getDocs(query(collection(window.db,'scratchCounts'), orderBy('timestamp','desc'),limit(120))),
-      getDocs(query(collection(window.db,'scratchActivations'),orderBy('date','desc'),limit(60))),
-      getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100))).catch(()=>({docs:[]})),
-      getDocs(query(collection(window.db,'tobaccoBrands'), orderBy('name','asc'))).catch(()=>({docs:[]})),
-    ]);
-    // ────────────────────────────────────────────────────────────────────────
-
-    // Daily reports
+    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('date','desc')));
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdR=allReports.filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
     window._dashMtdR = mtdR;
@@ -2137,6 +2139,10 @@ async function loadDashboard(){
     // Cache for fuel margin preview widget on Fuel tab
     window._dashMtdRegGal=mtdRegGal; window._dashMtdPremGal=mtdPremGal; window._dashMtdDiesGal=mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
+    const mtdLotPayOnline=sum(mtdR,'lotteryPayoutOnline');
+    const mtdLotPayScratch=sum(mtdR,'lotteryPayoutScratch');
+    const mtdLotPayCancel=sum(mtdR,'lotteryPayoutCancel');
+    const mtdLotTotalPayout=sum(mtdR,'lotteryPayout');
 
     // Cash discrepancy summary
     const cashDiscReports=mtdR.filter(r=>r.cashStatus&&r.cashStatus!=='exact'&&r.cashDifference!=null);
@@ -2150,34 +2156,43 @@ async function loadDashboard(){
     const yestSales=sum(yestR,'totalSales');
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
-    // Overhead expenses
+    // Overhead expenses for selected month
+    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('date','desc')));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // Other revenue
+    // Fuel profit — computed after fuelDeliveries fetch below
+
+    // Other revenue for selected month
+    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('date','desc')));
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+    // Group by source for dashboard breakdown
     const orBySource={};
     mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
-    // Lottery commission
+    // Lottery commission for selected month
+    const lcSnap=await getDocs(window.F.query(window.F.collection(window.db,'lotteryReports'),window.F.orderBy('weekEnd','desc')));
     const allLC=lcSnap.docs.map(d=>({id:d.id,...d.data()}));
+    // Filter by weekEnd falling within the selected month
     const mtdLC=allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(selMonth));
     const mtdLCTotal=mtdLC.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
 
-    // Deliveries
+    // Deliveries for selected month
+    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('date','desc')));
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
     // Fuel deliveries
+    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('date','desc')));
     const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
-    const recentFuelDl=allFuelDeliveries.slice(0,5);
+    const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
     const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
     const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
-    // Fuel profit
+    // Fuel profit — use daily sold gallons (from shift reports) x margin active on that date
     let fuelProfitReg=0, fuelProfitPrem=0, fuelProfitDies=0;
     mtdR.forEach(r=>{
       const m = marginForDate(r.date);
@@ -2191,7 +2206,7 @@ async function loadDashboard(){
     const mtdFuelProfit = fuelProfitReg + fuelProfitPrem + fuelProfitDies;
     const mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
     const hasFuelMargins = window.marginHistory && window.marginHistory.length > 0;
-    // Fuel alerts (only fetch if not already cached)
+    // Check fuel alerts using most recent fuel report
     if(!window._latestFuelReport){
       try{
         const frSnap=await getDocs(query(collection(window.db,'fuelReports'),orderBy('timestamp','desc'),limit(1)));
@@ -2218,30 +2233,45 @@ async function loadDashboard(){
     const totalOverdue=Object.values(dlByVendor).reduce((s,v)=>s+v.overdue,0);
 
     // ---- SCRATCH-OFF DASHBOARD DATA ----
+    // Counts use type:'count'. Revenue per count = totalRevenue (shift-scoped, from soldBySlot).
+    // Value on hand = most recent count's totalValue (the board value at that moment).
+    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc')));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
+
+    // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
     const latestCountDoc = scrAll.length ? scrAll[0] : null;
-    const latestCount = latestCountDoc;
+    const latestCount = latestCountDoc; // used in sub-line display
 
     // Activations
+    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('date','desc')));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
     const mtdActValue=mtdActs.reduce((s,a)=>s+(a.bookValue||0),0);
+
+    // Add any activations logged AFTER the latest count doc — they increased inventory but aren't reflected in the count yet
     const latestCountTs = latestCountDoc?.timestamp?.toMillis?.() || 0;
     const postCountActValue = allActs
       .filter(a => (a.timestamp?.toMillis?.() || a._ts || 0) > latestCountTs)
       .reduce((s,a) => s + (a.bookValue||0), 0);
     const scrVal = (latestCountDoc?.totalValue || 0) + postCountActValue;
+
+    // MTD sold revenue — sum all count docs for the month that have soldBySlot data
+    // Docs are saved with type:'count' (not 'closing'). Only docs with soldBySlot had a baseline and recorded shift revenue.
     const scrMTD = scrAll.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=mtdStart&&d.date<=mtdEnd);
     const scrRevenue = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
 
-    // Inventory flags (already fetched in parallel, with .catch fallback)
+    // Inventory flags
     let openFlags=0;
-    try{ openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length; }catch(e2){}
+    try{
+      const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
+      openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
+    }catch(e2){}
 
-    // Tobacco low stock + discrepancies (brands already fetched; counts depend on brands so fetched after)
+    // Tobacco low stock + discrepancies
     let lowTobacco=[], tobDiscrepancies=[];
     try{
+      const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
       const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
       if(tobBrandsAll.length){
         const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
@@ -2370,7 +2400,13 @@ async function loadDashboard(){
           <div class="dash-kpi-accent" style="background:${mtdLotNet>=0?'var(--green)':'var(--red)'}"></div>
           <div class="dash-kpi-label">Net lottery</div>
           <div class="dash-kpi-val" style="color:${mtdLotNet>=0?'var(--green)':'var(--red)'};font-size:17px">${mtdLotNet>=0?'+':''}$${mtdLotNet.toFixed(0)}</div>
-          <div class="dash-kpi-sub">${monthName}</div>
+          <div class="dash-kpi-sub" style="margin-top:5px;line-height:1.6">
+            ${mtdLotTotalPayout>0?`<span style="display:block;font-size:10px;color:var(--text3)">Payouts: $${mtdLotTotalPayout.toFixed(0)}</span>`:''}
+            ${mtdLotPayOnline>0?`<span style="display:block;font-size:10px;color:var(--text3)">🖥 Online $${mtdLotPayOnline.toFixed(0)}</span>`:''}
+            ${mtdLotPayScratch>0?`<span style="display:block;font-size:10px;color:var(--text3)">🎟 Scratch $${mtdLotPayScratch.toFixed(0)}</span>`:''}
+            ${mtdLotPayCancel>0?`<span style="display:block;font-size:10px;color:var(--text3)">✕ Cancels $${mtdLotPayCancel.toFixed(0)}</span>`:''}
+            ${mtdLotTotalPayout===0?`<span>${monthName}</span>`:''}
+          </div>
         </div>
       </div>
 
@@ -2923,10 +2959,27 @@ function calcShortOver(){
   else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
 }
 function updLot(){
-  const net=(parseFloat(document.getElementById('d-ltot').value)||0)-(parseFloat(document.getElementById('d-lpay').value)||0);
+  const total=parseFloat(document.getElementById('d-ltot').value)||0;
+  const online=parseFloat(document.getElementById('d-lpay-online').value)||0;
+  const scratch=parseFloat(document.getElementById('d-lpay-scratch').value)||0;
+  const cancel=parseFloat(document.getElementById('d-lpay-cancel').value)||0;
+  const totalPayout=online+scratch+cancel;
+  const net=total-totalPayout;
+  const dispEl=document.getElementById('d-lpay-display');
+  if(dispEl) dispEl.textContent='$'+totalPayout.toFixed(2);
   const el=document.getElementById('lotNet'),v=document.getElementById('d-ltot').value;
-  if(!v){el.innerHTML='';return;}
-  el.innerHTML=`<div class="metric" style="display:inline-block"><div class="mlab">Net lottery</div><div class="mval" style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</div></div>`;
+  if(!v && totalPayout===0){el.innerHTML='';return;}
+  el.innerHTML=`<div style="margin-top:4px;background:var(--bg2);border-radius:8px;padding:10px 12px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+      <span style="color:var(--text2)">Lottery total</span><span style="font-weight:600">$${total.toFixed(2)}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+      <span style="color:var(--text2)">− Total payout</span><span style="color:var(--red);font-weight:600">$${totalPayout.toFixed(2)}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
+      <span>Net lottery</span><span style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</span>
+    </div>
+  </div>`;
 }
 async function subDaily(){
   const btn=document.getElementById('dailyBtn');btn.innerHTML='<span class="spinner"></span>Saving...';btn.disabled=true;
@@ -2960,7 +3013,10 @@ async function subDaily(){
       premiumGal:parseFloat(document.getElementById('d-prem').value)||0,
       dieselGal:parseFloat(document.getElementById('d-dies').value)||0,
       lotteryTotal:parseFloat(document.getElementById('d-ltot').value)||0,
-      lotteryPayout:parseFloat(document.getElementById('d-lpay').value)||0,
+      lotteryPayoutOnline:parseFloat(document.getElementById('d-lpay-online').value)||0,
+      lotteryPayoutScratch:parseFloat(document.getElementById('d-lpay-scratch').value)||0,
+      lotteryPayoutCancel:parseFloat(document.getElementById('d-lpay-cancel').value)||0,
+      lotteryPayout:(parseFloat(document.getElementById('d-lpay-online').value)||0)+(parseFloat(document.getElementById('d-lpay-scratch').value)||0)+(parseFloat(document.getElementById('d-lpay-cancel').value)||0),
       incidents:document.getElementById('d-inc').value,
       notes:document.getElementById('d-notes').value,
       shiftComment:document.getElementById('d-comment').value,
@@ -2976,7 +3032,8 @@ async function subDaily(){
   }catch(e){toast('Error saving');console.error(e);btn.innerHTML='Submit shift report';btn.disabled=false;return;}
   // Post-save cleanup (outside try/catch so errors here don't show "Error saving")
   try{
-    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay-online','d-lpay-scratch','d-lpay-cancel','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const lpayDisp=document.getElementById('d-lpay-display');if(lpayDisp)lpayDisp.textContent='$0.00';;
     document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
@@ -5384,7 +5441,9 @@ function openEditModal(id,col,d){
       <div class="edit-field"><label>Cash sales ($)</label><input type="number" id="ef-cashSales" value="${d.cashSales||0}" /></div>
       <div class="edit-field"><label>Credit sales ($)</label><input type="number" id="ef-creditSales" value="${d.creditSales||0}" /></div>
       <div class="edit-field"><label>Lottery total ($)</label><input type="number" id="ef-lotteryTotal" value="${d.lotteryTotal||0}" /></div>
-      <div class="edit-field"><label>Lottery payout ($)</label><input type="number" id="ef-lotteryPayout" value="${d.lotteryPayout||0}" /></div>
+      <div class="edit-field"><label>Lottery payout — Online ($)</label><input type="number" id="ef-lotteryPayoutOnline" value="${d.lotteryPayoutOnline||0}" /></div>
+      <div class="edit-field"><label>Lottery payout — Scratch ($)</label><input type="number" id="ef-lotteryPayoutScratch" value="${d.lotteryPayoutScratch||0}" /></div>
+      <div class="edit-field"><label>Lottery payout — Cancels ($)</label><input type="number" id="ef-lotteryPayoutCancel" value="${d.lotteryPayoutCancel||0}" /></div>
       <div class="edit-field"><label>Regular gal</label><input type="number" id="ef-regularGal" value="${d.regularGal||0}" /></div>
       <div class="edit-field"><label>Premium gal</label><input type="number" id="ef-premiumGal" value="${d.premiumGal||0}" /></div>
       <div class="edit-field"><label>Diesel gal</label><input type="number" id="ef-dieselGal" value="${d.dieselGal||0}" /></div>
@@ -5460,7 +5519,12 @@ async function saveLogEdit(){
     if(f('cashSales')!==null)updates.cashSales=parseFloat(f('cashSales'))||0;
     if(f('creditSales')!==null)updates.creditSales=parseFloat(f('creditSales'))||0;
     if(f('lotteryTotal')!==null)updates.lotteryTotal=parseFloat(f('lotteryTotal'))||0;
-    if(f('lotteryPayout')!==null)updates.lotteryPayout=parseFloat(f('lotteryPayout'))||0;
+    if(f('lotteryPayoutOnline')!==null)updates.lotteryPayoutOnline=parseFloat(f('lotteryPayoutOnline'))||0;
+    if(f('lotteryPayoutScratch')!==null)updates.lotteryPayoutScratch=parseFloat(f('lotteryPayoutScratch'))||0;
+    if(f('lotteryPayoutCancel')!==null)updates.lotteryPayoutCancel=parseFloat(f('lotteryPayoutCancel'))||0;
+    if(f('lotteryPayoutOnline')!==null||f('lotteryPayoutScratch')!==null||f('lotteryPayoutCancel')!==null){
+      updates.lotteryPayout=(parseFloat(f('lotteryPayoutOnline'))||0)+(parseFloat(f('lotteryPayoutScratch'))||0)+(parseFloat(f('lotteryPayoutCancel'))||0);
+    }
     if(f('regularGal')!==null)updates.regularGal=parseFloat(f('regularGal'))||0;
     if(f('premiumGal')!==null)updates.premiumGal=parseFloat(f('premiumGal'))||0;
     if(f('dieselGal')!==null)updates.dieselGal=parseFloat(f('dieselGal'))||0;
