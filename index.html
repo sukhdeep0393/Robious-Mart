@@ -5250,7 +5250,7 @@ async function loadLogs(){
           const rows = d.slots.map(s=>{
             const key='slot_'+(s.slot-1);
             const closeNum = d.counts&&d.counts[key]!==undefined ? d.counts[key] : '—';
-            const baseNum  = d.baselineEmployee ? (scrAll.find(x=>x.employee===d.baselineEmployee)?.counts?.[key]??'—') : '—';
+            const baseNum  = d.baselineEmployee ? ((window._logCache||[]).find(x=>x.employee===d.baselineEmployee&&x.col==='scratchCounts'&&x.type!=='closing')?.counts?.[key]??'—') : '—';
             const sb = d.soldBySlot&&d.soldBySlot[key] ? d.soldBySlot[key] : null;
             const tixSold = sb ? sb.ticketsSold : null;
             const rev = sb ? sb.revenue : null;
@@ -5283,7 +5283,7 @@ async function loadLogs(){
         ${extraDetail}
       </div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';}
+  }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';console.error('loadLogs error:',e);}
 }
 
 function openDailyBreakdown(){
@@ -6030,10 +6030,9 @@ async function loadFuelDeliveries(){
       window.F.orderBy('timestamp','desc'),
       window.F.limit(50)
     ));
-    let docs = snap.docs.map(d=>({id:d.id,...d.data()}));
-    const isOp = CU?.role==='operator';
-    if(!isOp) docs = docs.filter(d => (d.loggedBy||'') === CU?.name);
+    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
     if(!docs.length){ el.innerHTML='<div class="empty"><div class="ei">⛽</div>No fuel deliveries logged yet</div>'; return; }
+    const isOp = CU?.role==='operator';
     el.innerHTML = docs.map(d=>{
       const fmtD = dt => new Date(dt+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
       const totalGal = (d.regularGal||0)+(d.premiumGal||0)+(d.dieselGal||0);
