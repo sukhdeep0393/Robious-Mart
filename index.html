@@ -563,29 +563,9 @@
       </div>
     </div>
     <div class="card"><div class="ct">Lottery</div>
-      <div class="g2" style="margin-bottom:12px">
+      <div class="g2" style="margin-bottom:10px">
         <div><label>Lottery total ($)</label><input type="number" id="d-ltot" placeholder="0.00" oninput="updLot()" /></div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Total payout</div>
-          <div id="d-lpay-display" style="font-size:18px;font-weight:800;color:var(--red)">$0.00</div>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Payouts breakdown</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center">
-            <label style="margin:0;font-size:13px;font-weight:500;color:var(--text)">🖥 Online payout</label>
-            <input type="number" id="d-lpay-online" placeholder="0.00" oninput="updLot()" />
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center">
-            <label style="margin:0;font-size:13px;font-weight:500;color:var(--text)">🎟 Scratcher payout</label>
-            <input type="number" id="d-lpay-scratch" placeholder="0.00" oninput="updLot()" />
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center">
-            <label style="margin:0;font-size:13px;font-weight:500;color:var(--text)">✕ Cancels</label>
-            <input type="number" id="d-lpay-cancel" placeholder="0.00" oninput="updLot()" />
-          </div>
-        </div>
+        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" oninput="updLot()" /></div>
       </div>
       <div id="lotNet"></div>
     </div>
@@ -1755,6 +1735,35 @@
 
   </div><!-- /page-bankdeposits -->
 
+  <!-- MONTHLY COMPARISON PAGE -->
+  <div class="page" id="page-monthlycomp">
+    <div class="ph" style="margin-bottom:18px">
+      <div class="pt">📈 Monthly Compare</div>
+      <div class="ps">Side-by-side view of all months</div>
+    </div>
+
+    <!-- Controls -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+      <div style="flex:1;min-width:140px;">
+        <label>Year</label>
+        <select id="mc-year" onchange="loadMonthlyComparison()" style=""></select>
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <label>Months to show</label>
+        <select id="mc-count" onchange="loadMonthlyComparison()">
+          <option value="3">Last 3 months</option>
+          <option value="6">Last 6 months</option>
+          <option value="12" selected>Full year</option>
+        </select>
+      </div>
+      <button onclick="loadMonthlyComparison()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:10px 18px;font-size:13px;font-weight:600;white-space:nowrap;">↻ Refresh</button>
+    </div>
+
+    <!-- Loading / content -->
+    <div id="mc-loading" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:13px;">Loading monthly data…</div>
+    <div id="mc-content"></div>
+  </div><!-- /page-monthlycomp -->
+
 <!-- UPC BARCODE SCANNER MODAL -->
 <div id="upcScannerModal">
   <div style="position:relative;flex:1;overflow:hidden;background:#000;">
@@ -1919,7 +1928,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
@@ -2052,6 +2061,7 @@ function showTab(id){
   if(id==='lotterycomm'){const lm=document.getElementById('lc-filter-month');if(lm&&!lm.value)lm.value=new Date().toISOString().slice(0,7);loadLotteryReports();}
   if(id==='todo')loadTodos();
   if(id==='bankdeposits'){const bm=document.getElementById('bd-filter-month');if(bm&&!bm.value)bm.value=new Date().toISOString().slice(0,7);const dd=document.getElementById('bd-deposit-date');if(dd&&!dd.value)dd.value=localDate();bdInit();}
+  if(id==='monthlycomp'){initMonthlyComp();loadMonthlyComparison();}
 }
 
 
@@ -2139,10 +2149,6 @@ async function loadDashboard(){
     // Cache for fuel margin preview widget on Fuel tab
     window._dashMtdRegGal=mtdRegGal; window._dashMtdPremGal=mtdPremGal; window._dashMtdDiesGal=mtdDiesGal;
     const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
-    const mtdLotPayOnline=sum(mtdR,'lotteryPayoutOnline');
-    const mtdLotPayScratch=sum(mtdR,'lotteryPayoutScratch');
-    const mtdLotPayCancel=sum(mtdR,'lotteryPayoutCancel');
-    const mtdLotTotalPayout=sum(mtdR,'lotteryPayout');
 
     // Cash discrepancy summary
     const cashDiscReports=mtdR.filter(r=>r.cashStatus&&r.cashStatus!=='exact'&&r.cashDifference!=null);
@@ -2400,13 +2406,7 @@ async function loadDashboard(){
           <div class="dash-kpi-accent" style="background:${mtdLotNet>=0?'var(--green)':'var(--red)'}"></div>
           <div class="dash-kpi-label">Net lottery</div>
           <div class="dash-kpi-val" style="color:${mtdLotNet>=0?'var(--green)':'var(--red)'};font-size:17px">${mtdLotNet>=0?'+':''}$${mtdLotNet.toFixed(0)}</div>
-          <div class="dash-kpi-sub" style="margin-top:5px;line-height:1.6">
-            ${mtdLotTotalPayout>0?`<span style="display:block;font-size:10px;color:var(--text3)">Payouts: $${mtdLotTotalPayout.toFixed(0)}</span>`:''}
-            ${mtdLotPayOnline>0?`<span style="display:block;font-size:10px;color:var(--text3)">🖥 Online $${mtdLotPayOnline.toFixed(0)}</span>`:''}
-            ${mtdLotPayScratch>0?`<span style="display:block;font-size:10px;color:var(--text3)">🎟 Scratch $${mtdLotPayScratch.toFixed(0)}</span>`:''}
-            ${mtdLotPayCancel>0?`<span style="display:block;font-size:10px;color:var(--text3)">✕ Cancels $${mtdLotPayCancel.toFixed(0)}</span>`:''}
-            ${mtdLotTotalPayout===0?`<span>${monthName}</span>`:''}
-          </div>
+          <div class="dash-kpi-sub">${monthName}</div>
         </div>
       </div>
 
@@ -2959,27 +2959,10 @@ function calcShortOver(){
   else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
 }
 function updLot(){
-  const total=parseFloat(document.getElementById('d-ltot').value)||0;
-  const online=parseFloat(document.getElementById('d-lpay-online').value)||0;
-  const scratch=parseFloat(document.getElementById('d-lpay-scratch').value)||0;
-  const cancel=parseFloat(document.getElementById('d-lpay-cancel').value)||0;
-  const totalPayout=online+scratch+cancel;
-  const net=total-totalPayout;
-  const dispEl=document.getElementById('d-lpay-display');
-  if(dispEl) dispEl.textContent='$'+totalPayout.toFixed(2);
+  const net=(parseFloat(document.getElementById('d-ltot').value)||0)-(parseFloat(document.getElementById('d-lpay').value)||0);
   const el=document.getElementById('lotNet'),v=document.getElementById('d-ltot').value;
-  if(!v && totalPayout===0){el.innerHTML='';return;}
-  el.innerHTML=`<div style="margin-top:4px;background:var(--bg2);border-radius:8px;padding:10px 12px">
-    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-      <span style="color:var(--text2)">Lottery total</span><span style="font-weight:600">$${total.toFixed(2)}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-      <span style="color:var(--text2)">− Total payout</span><span style="color:var(--red);font-weight:600">$${totalPayout.toFixed(2)}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
-      <span>Net lottery</span><span style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</span>
-    </div>
-  </div>`;
+  if(!v){el.innerHTML='';return;}
+  el.innerHTML=`<div class="metric" style="display:inline-block"><div class="mlab">Net lottery</div><div class="mval" style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</div></div>`;
 }
 async function subDaily(){
   const btn=document.getElementById('dailyBtn');btn.innerHTML='<span class="spinner"></span>Saving...';btn.disabled=true;
@@ -3013,10 +2996,7 @@ async function subDaily(){
       premiumGal:parseFloat(document.getElementById('d-prem').value)||0,
       dieselGal:parseFloat(document.getElementById('d-dies').value)||0,
       lotteryTotal:parseFloat(document.getElementById('d-ltot').value)||0,
-      lotteryPayoutOnline:parseFloat(document.getElementById('d-lpay-online').value)||0,
-      lotteryPayoutScratch:parseFloat(document.getElementById('d-lpay-scratch').value)||0,
-      lotteryPayoutCancel:parseFloat(document.getElementById('d-lpay-cancel').value)||0,
-      lotteryPayout:(parseFloat(document.getElementById('d-lpay-online').value)||0)+(parseFloat(document.getElementById('d-lpay-scratch').value)||0)+(parseFloat(document.getElementById('d-lpay-cancel').value)||0),
+      lotteryPayout:parseFloat(document.getElementById('d-lpay').value)||0,
       incidents:document.getElementById('d-inc').value,
       notes:document.getElementById('d-notes').value,
       shiftComment:document.getElementById('d-comment').value,
@@ -3032,8 +3012,7 @@ async function subDaily(){
   }catch(e){toast('Error saving');console.error(e);btn.innerHTML='Submit shift report';btn.disabled=false;return;}
   // Post-save cleanup (outside try/catch so errors here don't show "Error saving")
   try{
-    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay-online','d-lpay-scratch','d-lpay-cancel','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    const lpayDisp=document.getElementById('d-lpay-display');if(lpayDisp)lpayDisp.textContent='$0.00';;
+    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
@@ -5441,9 +5420,7 @@ function openEditModal(id,col,d){
       <div class="edit-field"><label>Cash sales ($)</label><input type="number" id="ef-cashSales" value="${d.cashSales||0}" /></div>
       <div class="edit-field"><label>Credit sales ($)</label><input type="number" id="ef-creditSales" value="${d.creditSales||0}" /></div>
       <div class="edit-field"><label>Lottery total ($)</label><input type="number" id="ef-lotteryTotal" value="${d.lotteryTotal||0}" /></div>
-      <div class="edit-field"><label>Lottery payout — Online ($)</label><input type="number" id="ef-lotteryPayoutOnline" value="${d.lotteryPayoutOnline||0}" /></div>
-      <div class="edit-field"><label>Lottery payout — Scratch ($)</label><input type="number" id="ef-lotteryPayoutScratch" value="${d.lotteryPayoutScratch||0}" /></div>
-      <div class="edit-field"><label>Lottery payout — Cancels ($)</label><input type="number" id="ef-lotteryPayoutCancel" value="${d.lotteryPayoutCancel||0}" /></div>
+      <div class="edit-field"><label>Lottery payout ($)</label><input type="number" id="ef-lotteryPayout" value="${d.lotteryPayout||0}" /></div>
       <div class="edit-field"><label>Regular gal</label><input type="number" id="ef-regularGal" value="${d.regularGal||0}" /></div>
       <div class="edit-field"><label>Premium gal</label><input type="number" id="ef-premiumGal" value="${d.premiumGal||0}" /></div>
       <div class="edit-field"><label>Diesel gal</label><input type="number" id="ef-dieselGal" value="${d.dieselGal||0}" /></div>
@@ -5519,12 +5496,7 @@ async function saveLogEdit(){
     if(f('cashSales')!==null)updates.cashSales=parseFloat(f('cashSales'))||0;
     if(f('creditSales')!==null)updates.creditSales=parseFloat(f('creditSales'))||0;
     if(f('lotteryTotal')!==null)updates.lotteryTotal=parseFloat(f('lotteryTotal'))||0;
-    if(f('lotteryPayoutOnline')!==null)updates.lotteryPayoutOnline=parseFloat(f('lotteryPayoutOnline'))||0;
-    if(f('lotteryPayoutScratch')!==null)updates.lotteryPayoutScratch=parseFloat(f('lotteryPayoutScratch'))||0;
-    if(f('lotteryPayoutCancel')!==null)updates.lotteryPayoutCancel=parseFloat(f('lotteryPayoutCancel'))||0;
-    if(f('lotteryPayoutOnline')!==null||f('lotteryPayoutScratch')!==null||f('lotteryPayoutCancel')!==null){
-      updates.lotteryPayout=(parseFloat(f('lotteryPayoutOnline'))||0)+(parseFloat(f('lotteryPayoutScratch'))||0)+(parseFloat(f('lotteryPayoutCancel'))||0);
-    }
+    if(f('lotteryPayout')!==null)updates.lotteryPayout=parseFloat(f('lotteryPayout'))||0;
     if(f('regularGal')!==null)updates.regularGal=parseFloat(f('regularGal'))||0;
     if(f('premiumGal')!==null)updates.premiumGal=parseFloat(f('premiumGal'))||0;
     if(f('dieselGal')!==null)updates.dieselGal=parseFloat(f('dieselGal'))||0;
@@ -8775,6 +8747,232 @@ function updateOnlineStatus() {
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
+
+// ============================================================
+// MONTHLY COMPARISON
+// ============================================================
+function initMonthlyComp(){
+  const sel = document.getElementById('mc-year');
+  if(!sel) return;
+  const curYear = new Date().getFullYear();
+  if(sel.options.length === 0){
+    for(let y = curYear; y >= curYear - 3; y--){
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      if(y === curYear) o.selected = true;
+      sel.appendChild(o);
+    }
+  }
+}
+
+async function loadMonthlyComparison(){
+  const loading = document.getElementById('mc-loading');
+  const content = document.getElementById('mc-content');
+  const yearSel = document.getElementById('mc-year');
+  const countSel = document.getElementById('mc-count');
+  if(!loading||!content) return;
+
+  const year = parseInt(yearSel?.value || new Date().getFullYear());
+  const numMonths = parseInt(countSel?.value || 12);
+
+  loading.style.display = 'block';
+  content.innerHTML = '';
+
+  try {
+    // Build list of YYYY-MM strings to pull — from most recent backwards
+    const now = new Date();
+    const months = [];
+    for(let m = 11; m >= 0; m--){
+      const d = new Date(year, m, 1);
+      if(d <= now){ // don't show future months
+        months.unshift(d.toISOString().slice(0,7)); // YYYY-MM ascending
+      }
+    }
+    const slicedMonths = months.slice(-numMonths);
+
+    // ---- Fetch all collections once ----
+    const {getDocs, query, collection, orderBy} = window.F;
+    const db = window.db;
+
+    const [drSnap, expSnap, orSnap, fdSnap, dlSnap, lcSnap, scrSnap, actSnap] = await Promise.all([
+      getDocs(query(collection(db,'dailyReports'), orderBy('date','asc'))),
+      getDocs(query(collection(db,'overheadExpenses'), orderBy('date','asc'))),
+      getDocs(query(collection(db,'otherRevenue'), orderBy('date','asc'))),
+      getDocs(query(collection(db,'fuelDeliveries'), orderBy('date','asc'))),
+      getDocs(query(collection(db,'deliveries'), orderBy('date','asc'))),
+      getDocs(query(collection(db,'lotteryComm'), orderBy('weekEnd','asc'))),
+      getDocs(query(collection(db,'scratchCounts'), orderBy('timestamp','desc'))),
+      getDocs(query(collection(db,'scratchActivations'), orderBy('date','asc'))),
+    ]);
+
+    const allDR   = drSnap.docs.map(d=>d.data());
+    const allExp  = expSnap.docs.map(d=>d.data());
+    const allOR   = orSnap.docs.map(d=>d.data());
+    const allFD   = fdSnap.docs.map(d=>d.data());
+    const allDL   = dlSnap.docs.map(d=>d.data());
+    const allLC   = lcSnap.docs.map(d=>d.data());
+    const allScr  = scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
+    const allActs = actSnap.docs.map(d=>d.data());
+
+    // ---- Per-month aggregation ----
+    const rows = slicedMonths.map(ym => {
+      const start = ym+'-01', end = ym+'-31';
+      const dr = allDR.filter(r=>r.date>=start&&r.date<=end);
+      const exp= allExp.filter(x=>x.date>=start&&x.date<=end);
+      const or = allOR.filter(x=>x.date>=start&&x.date<=end);
+      const fd = allFD.filter(x=>x.date>=start&&x.date<=end);
+      const dl = allDL.filter(x=>x.date>=start&&x.date<=end);
+      const lc = allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(ym));
+      const scrMTD = allScr.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=start&&d.date<=end);
+      const acts = allActs.filter(a=>a.date>=start&&a.date<=end);
+
+      const insideSales = dr.reduce((s,r)=>s+(r.totalSales||0),0);
+      const fuelGal     = dr.reduce((s,r)=>s+(r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0),0);
+
+      // Fuel profit: sold gallons × margin active on that date
+      let fuelProfit = 0;
+      dr.forEach(r=>{
+        const m = (typeof marginForDate === 'function') ? marginForDate(r.date) : (window.fuelMargins||{regular:0,premium:0,diesel:0});
+        fuelProfit += (parseFloat(r.regularGal)||0)*(m.regular||0)
+                    + (parseFloat(r.premiumGal)||0)*(m.premium||0)
+                    + (parseFloat(r.dieselGal)||0)*(m.diesel||0);
+      });
+
+      const fuelDeliveryCost = fd.reduce((s,x)=>s+(x.totalCost||0),0);
+      const overheadTotal    = exp.reduce((s,x)=>s+(x.amount||0),0);
+      const otherRevTotal    = or.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+      const storeDeliveries  = dl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+      const lotteryComm      = lc.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
+      const scratchRevenue   = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
+      const lotNet           = dr.reduce((s,r)=>s+(r.lotteryTotal||0)-(r.lotteryPayout||0),0);
+
+      const netProfit = insideSales + otherRevTotal + fuelProfit + lotteryComm
+                      - storeDeliveries - overheadTotal;
+
+      return {
+        ym, dr:dr.length,
+        insideSales, fuelGal, fuelProfit, fuelDeliveryCost,
+        overheadTotal, otherRevTotal, storeDeliveries, lotteryComm,
+        scratchRevenue, lotNet, netProfit
+      };
+    });
+
+    loading.style.display = 'none';
+    content.innerHTML = renderMonthlyCompTable(rows);
+
+  } catch(err){
+    loading.style.display = 'none';
+    content.innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px;">Error loading data: ${err.message}</div>`;
+    console.error('Monthly comparison error:', err);
+  }
+}
+
+function renderMonthlyCompTable(rows){
+  if(!rows.length) return '<div style="padding:20px;font-size:13px;color:var(--text3);text-align:center;">No data found.</div>';
+
+  const fmt  = (v,dec=0) => '$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  const fmtN = (v,dec=0) => {
+    const s = Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+    return v < 0 ? '<span style="color:var(--red)">-$'+s+'</span>' : '<span style="color:var(--green)">$'+s+'</span>';
+  };
+  const fmtGal = v => v>=1000 ? (v/1000).toFixed(1)+'k gal' : Math.round(v)+' gal';
+  const monthName = ym => {
+    const [y,m] = ym.split('-');
+    return new Date(parseInt(y),parseInt(m)-1,1).toLocaleString('en-US',{month:'short',year:'2-digit'});
+  };
+
+  // Find best month for each metric (for highlighting)
+  const best = (key, higherIsBetter=true) => {
+    const vals = rows.map(r=>r[key]);
+    return higherIsBetter ? Math.max(...vals) : Math.min(...vals);
+  };
+  const bestSales   = best('insideSales');
+  const bestFuelGal = best('fuelGal');
+  const bestProfit  = best('netProfit');
+  const lowestOH    = best('overheadTotal', false);
+  const lowestFD    = best('fuelDeliveryCost', false);
+
+  // ---- METRICS DEFINITION ----
+  const metrics = [
+    { key:'insideSales',      label:'Inside Sales',          icon:'🏪', fmt:fmt,  best:bestSales,   hi:true,  note:'' },
+    { key:'fuelGal',          label:'Fuel Sold (gal)',        icon:'⛽', fmtFn: r=>'<span style="color:var(--text2)">'+fmtGal(r.fuelGal)+'</span>',  best:bestFuelGal, hi:true },
+    { key:'fuelProfit',       label:'Fuel Profit',           icon:'💹', fmt:fmt,  best:best('fuelProfit'), hi:true },
+    { key:'fuelDeliveryCost', label:'Fuel Delivery Cost',    icon:'🚛', fmt:fmt,  best:lowestFD,    hi:false, invert:true },
+    { key:'scratchRevenue',   label:'Scratch-off Revenue',   icon:'🎟', fmt:fmt,  best:best('scratchRevenue'), hi:true },
+    { key:'lotNet',           label:'Lottery Net',           icon:'🎰', fmtFn: r=>fmtN(r.lotNet), best:best('lotNet'), hi:true },
+    { key:'lotteryComm',      label:'Lottery Commission',    icon:'🏆', fmt:fmt,  best:best('lotteryComm'), hi:true },
+    { key:'otherRevTotal',    label:'Other Revenue',         icon:'💰', fmt:fmt,  best:best('otherRevTotal'), hi:true },
+    { key:'storeDeliveries',  label:'Store Delivery Cost',   icon:'📦', fmt:fmt,  best:lowestFD,    hi:false, invert:true },
+    { key:'overheadTotal',    label:'Overhead Expenses',     icon:'🏢', fmt:fmt,  best:lowestOH,    hi:false, invert:true },
+    { key:'netProfit',        label:'Est. Net Profit',       icon:'📈', fmtFn: r=>fmtN(r.netProfit), best:bestProfit, hi:true, bold:true },
+  ];
+
+  // Column headers
+  const headerCells = rows.map(r=>`<th style="padding:10px 12px;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;text-align:center;min-width:90px;">${monthName(r.ym)}<div style="font-size:10px;font-weight:400;color:var(--text3)">${r.dr} shift${r.dr!==1?'s':''}</div></th>`).join('');
+
+  // Metric rows
+  const metricRows = metrics.map(m=>{
+    const cells = rows.map(r=>{
+      const val = r[m.key];
+      const isBest = m.hi ? val === m.best : (val === m.best && val > 0);
+      const highlight = isBest && rows.length > 1;
+      const cellBg = highlight ? (m.bold ? 'rgba(59,109,17,.10)' : 'rgba(26,92,168,.06)') : '';
+      const cellBorder = highlight ? (m.bold ? '1px solid rgba(59,109,17,.25)' : '1px solid rgba(26,92,168,.15)') : '1px solid transparent';
+      const display = m.fmtFn ? m.fmtFn(r) : m.fmt(val);
+      const badge = highlight && rows.length > 1 ? '<div style="font-size:9px;color:var(--blue);font-weight:700;letter-spacing:.5px;margin-top:1px">BEST</div>' : '';
+      return `<td style="padding:9px 12px;text-align:center;font-size:${m.bold?'14':'13'}px;font-weight:${m.bold?'700':'400'};background:${cellBg};border:${cellBorder};border-radius:6px;transition:background .2s;">${display}${badge}</td>`;
+    }).join('');
+
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-size:12px;font-weight:${m.bold?'700':'500'};color:var(--text);white-space:nowrap;min-width:160px;">${m.icon} ${m.label}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  // Trend sparklines (inline mini-bar chart using inline divs)
+  const sparkRows = [
+    {key:'insideSales', label:'Inside Sales trend', color:'var(--blue)'},
+    {key:'netProfit',   label:'Net Profit trend',   color:'var(--green)'},
+  ].map(sp=>{
+    const vals = rows.map(r=>r[sp.key]);
+    const maxV = Math.max(...vals.map(Math.abs), 1);
+    const bars = rows.map((r,i)=>{
+      const v = r[sp.key];
+      const pct = Math.round(Math.abs(v)/maxV*100);
+      const col = v < 0 ? 'var(--red)' : sp.color;
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0;">
+        <div style="font-size:9px;color:var(--text3);white-space:nowrap;">${monthName(r.ym)}</div>
+        <div style="width:100%;background:var(--bg2);border-radius:4px;overflow:hidden;height:36px;display:flex;align-items:flex-end;">
+          <div style="width:100%;height:${Math.max(pct,4)}%;background:${col};border-radius:3px 3px 0 0;transition:height .4s;"></div>
+        </div>
+        <div style="font-size:9px;font-weight:600;color:${v<0?'var(--red)':'var(--text2)'};white-space:nowrap;">${v<0?'-$'+Math.round(Math.abs(v)/1000)+'k':'$'+Math.round(v/1000)+'k'}</div>
+      </div>`;
+    }).join('');
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;">${sp.label}</div>
+      <div style="display:flex;gap:6px;align-items:flex-end;">${bars}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    ${sparkRows}
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px;">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <table style="width:100%;border-collapse:separate;border-spacing:0;">
+          <thead style="background:var(--bg2);border-bottom:2px solid var(--border);">
+            <tr>
+              <th style="padding:10px 12px;font-size:12px;font-weight:600;color:var(--text2);text-align:left;white-space:nowrap;">Metric</th>
+              ${headerCells}
+            </tr>
+          </thead>
+          <tbody>${metricRows}</tbody>
+        </table>
+      </div>
+      <div style="padding:10px 14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">
+        💡 BEST badge = highest value for income metrics, lowest for cost metrics. Net Profit = Inside Sales + Other Rev + Fuel Profit + Lottery Comm − Store Deliveries − Overhead.
+      </div>
+    </div>`;
+}
 </script>
 </body>
 </html>
