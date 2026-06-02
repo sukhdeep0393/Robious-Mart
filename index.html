@@ -8800,7 +8800,7 @@ async function loadMonthlyComparison(){
       getDocs(query(collection(db,'otherRevenue'), orderBy('date','asc'))),
       getDocs(query(collection(db,'fuelDeliveries'), orderBy('date','asc'))),
       getDocs(query(collection(db,'deliveries'), orderBy('date','asc'))),
-      getDocs(query(collection(db,'lotteryComm'), orderBy('weekEnd','asc'))),
+      getDocs(query(collection(db,'lotteryReports'), orderBy('weekEnd','asc'))),
       getDocs(query(collection(db,'scratchCounts'), orderBy('timestamp','desc'))),
       getDocs(query(collection(db,'scratchActivations'), orderBy('date','asc'))),
     ]);
