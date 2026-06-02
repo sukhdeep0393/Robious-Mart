@@ -5287,7 +5287,7 @@ async function loadLogs(){
           const rows = d.slots.map(s=>{
             const key='slot_'+(s.slot-1);
             const closeNum = d.counts&&d.counts[key]!==undefined ? d.counts[key] : '—';
-            const baseNum  = d.baselineEmployee ? (scrAll.find(x=>x.employee===d.baselineEmployee)?.counts?.[key]??'—') : '—';
+            const baseNum  = d.baselineEmployee ? ((typeof scrAll!=='undefined'?scrAll:[]).find(x=>x.employee===d.baselineEmployee)?.counts?.[key]??'—') : '—';
             const sb = d.soldBySlot&&d.soldBySlot[key] ? d.soldBySlot[key] : null;
             const tixSold = sb ? sb.ticketsSold : null;
             const rev = sb ? sb.revenue : null;
