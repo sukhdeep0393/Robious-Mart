@@ -5237,7 +5237,14 @@ async function loadLogs(){
   try{
     const cols=filt==='all'?['dailyReports','fuelReports','scratchCounts']:[filt];
     let all=[];
-    for(const col of cols){const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));snap.docs.forEach(d=>all.push({id:d.id,col,...d.data()}));}
+    for(const col of cols){
+      try{
+        const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));
+        snap.docs.forEach(d=>all.push({id:d.id,col,...d.data()}));
+      }catch(colErr){
+        console.warn(`loadLogs: skipped collection "${col}" due to error:`,colErr);
+      }
+    }
     if(df)all=all.filter(d=>d.date===df);
     all.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
     window._logCache=all; // store for edit modal
@@ -5313,7 +5320,10 @@ async function loadLogs(){
         ${extraDetail}
       </div>`;
     }).join('');
-  }catch(e){el.innerHTML='<div class="empty">Error loading.</div>';}
+  }catch(e){
+    console.error('loadLogs error:',e);
+    el.innerHTML=`<div class="empty"><div class="ei">⚠️</div><div style="margin-bottom:8px">Error loading entries</div><div style="font-size:11px;background:#f0f0f0;padding:8px;border-radius:6px;text-align:left;word-break:break-all;color:#333">${e.message||e.toString()}</div><button class="btn bsecondary" style="margin-top:10px;font-size:13px;padding:8px 16px" onclick="loadLogs()">Try again</button></div>`;
+  }
 }
 
 function openDailyBreakdown(){
