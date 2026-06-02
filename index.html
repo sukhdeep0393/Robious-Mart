@@ -1631,7 +1631,7 @@
 
       <!-- Mandatory receipt photo -->
       <div style="margin-bottom:14px">
-        <label>📄 Receipt photo <span style="color:var(--red);font-weight:700">*</span> <span style="font-size:11px;color:var(--text3);font-weight:400">(required)</span></label>
+        <label>📄 Receipt photo <span style="font-size:11px;color:var(--text3);font-weight:400">(optional — can be added later)</span></label>
         <div id="lc-photo-zone" onclick="document.getElementById('lc-photo-input').click()"
           style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:var(--bg2);transition:border-color .15s">
           <div style="font-size:28px;margin-bottom:6px">📷</div>
@@ -7547,8 +7547,8 @@ async function submitLotteryReport(){
   if(!eft && !scrComm && !dgComm && !cashBonus){
     toast('Please enter at least one amount'); return;
   }
-  if(!lcPhotoData){
-    toast('Please attach a photo of the receipt'); 
+  if(false && !lcPhotoData){
+    toast('Please attach a photo of the receipt');
     document.getElementById('lc-photo-zone').style.borderColor='var(--red)';
     return;
   }
