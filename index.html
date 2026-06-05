@@ -7143,9 +7143,15 @@ function renderMgCategories(filterText){
                   <input id="pef-cpu-${p.id}" readonly style="background:var(--bg2);font-weight:700;color:var(--blue)" placeholder="—" value="${p.units&&p.units>0?'$'+(p.cost/p.units).toFixed(4):''}" />
                 </div>
               </div>
-              <div class="g2" style="margin-bottom:10px">
+              <div class="g2" style="margin-bottom:8px">
                 <div><label>Selling price per unit ($)</label><input type="number" step="0.01" id="pef-sell-${p.id}" value="${p.sell||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 1.99" /></div>
                 <div style="display:flex;align-items:flex-end"><div id="pef-inline-mg-${p.id}" style="font-size:13px;padding:10px 0;color:var(--text2)"></div></div>
+              </div>
+              <div style="margin-bottom:10px">
+                <label>Category</label>
+                <select id="pef-cat-${p.id}" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;background:var(--bg)">
+                  ${mgCategories.map(c=>`<option value="${c.id}" ${c.id===cat.id?'selected':''}>${c.icon||'📦'} ${c.name}</option>`).join('')}
+                </select>
               </div>
               <div id="pef-result-${p.id}" style="margin-bottom:10px"></div>
               <div style="display:flex;gap:8px">
@@ -7235,9 +7241,16 @@ function renderMgCategories(filterText){
                 <div><label>Units per case / pack</label><input type="number" step="1" min="1" id="pef-units-${p.id}" value="${p.units||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 24" /></div>
                 <div><label>Cost per unit (auto)</label><input id="pef-cpu-${p.id}" readonly style="background:var(--bg2);font-weight:700;color:var(--blue)" placeholder="—" value="${p.units&&p.units>0?'$'+(p.cost/p.units).toFixed(4):''}" /></div>
               </div>
-              <div class="g2" style="margin-bottom:10px">
+              <div class="g2" style="margin-bottom:8px">
                 <div><label>Selling price per unit ($)</label><input type="number" step="0.01" id="pef-sell-${p.id}" value="${p.sell||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 1.99" /></div>
                 <div style="display:flex;align-items:flex-end"><div id="pef-inline-mg-${p.id}" style="font-size:13px;padding:10px 0;color:var(--text2)"></div></div>
+              </div>
+              <div style="margin-bottom:10px">
+                <label>Category</label>
+                <select id="pef-cat-${p.id}" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;background:var(--bg)">
+                  <option value="">— Uncategorized —</option>
+                  ${mgCategories.map(c=>`<option value="${c.id}">${c.icon||'📦'} ${c.name}</option>`).join('')}
+                </select>
               </div>
               <div id="pef-result-${p.id}" style="margin-bottom:10px"></div>
               <div style="display:flex;gap:8px">
@@ -7490,12 +7503,14 @@ async function saveMgProduct(prodId, catId){
   const cost  = parseFloat(document.getElementById('pef-cost-'+prodId)?.value)||0;
   const units = parseFloat(document.getElementById('pef-units-'+prodId)?.value)||0;
   const sell  = parseFloat(document.getElementById('pef-sell-'+prodId)?.value)||0;
+  const selectedCat = document.getElementById('pef-cat-'+prodId)?.value;
+  const finalCatId = selectedCat !== undefined ? selectedCat : catId;
   if(!name){ toast('Enter a product name'); return; }
   if(!cost || !sell){ toast('Enter cost and sell price'); return; }
   const cpu = (cost && units) ? cost/units : cost;
   try{
     await window.F.updateDoc(sd('mgProducts',prodId),{
-      name, cost, units, costPerUnit: cpu, sell,
+      name, cost, units, costPerUnit: cpu, sell, categoryId: finalCatId,
       margin:  calcMg(cpu, sell),
       markup:  calcMarkup(cpu, sell),
       updatedAt: new Date().toISOString()
