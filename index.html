@@ -1992,20 +1992,23 @@ window.dispatchEvent(new Event('fbReady'));
 <script>
 const LEAD_PIN='1111';
 let pinBuf='';
-window.currentStoreId = localStorage.getItem('storeId') || 'robious-mart';
+window.currentStoreId = localStorage.getItem('storeId') || '';
 window.storeSettings = null;
 
 // Collection + doc helpers — legacy robious-mart uses root collections; new stores use stores/{id}/
 function sc(name){
+  if(!window.currentStoreId) throw new Error('No store selected');
   if(window.currentStoreId==='robious-mart') return window.F.collection(window.db,name);
   return window.F.collection(window.db,'stores',window.currentStoreId,name);
 }
 function sd(col,id){
+  if(!window.currentStoreId) throw new Error('No store selected');
   if(window.currentStoreId==='robious-mart') return window.F.doc(window.db,col,id);
   return window.F.doc(window.db,'stores',window.currentStoreId,col,id);
 }
 
 async function loadStoreSettings(){
+  if(!window.currentStoreId){ window.storeSettings=null; return; }
   try{
     const snap=await window.F.getDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'));
     if(snap.exists()) window.storeSettings=snap.data();
