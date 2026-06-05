@@ -392,7 +392,20 @@
     <div id="opLogin">
       <!-- PIN mode (shown when storeId is known from this device) -->
       <div id="opPinMode">
-        <div style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:14px">Store: <strong id="opStoreName" style="color:var(--text)">—</strong></div>
+        <div style="text-align:center;margin-bottom:14px">
+          <div style="font-size:13px;color:var(--text2)">Store: <strong id="opStoreName" style="color:var(--text)">—</strong></div>
+          <button onclick="showStoreSwitcher()" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;margin-top:4px">Switch store</button>
+        </div>
+        <!-- Store switcher (hidden by default) -->
+        <div id="opStoreSwitcher" style="display:none;margin-bottom:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Enter store ID</div>
+          <input id="opSwitchStoreId" placeholder="e.g. corner-mart" autocomplete="off" autocapitalize="none" style="margin-bottom:8px" />
+          <div class="lerr" id="opSwitchErr" style="margin-bottom:6px"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bprimary" style="flex:1;padding:8px;font-size:13px" onclick="doSwitchStore()">Go</button>
+            <button class="btn bsecondary" style="padding:8px;font-size:13px" onclick="hideStoreSwitcher()">Cancel</button>
+          </div>
+        </div>
         <div class="pin-dots" id="opDots"><div class="pin-dot" id="opd0"></div><div class="pin-dot" id="opd1"></div><div class="pin-dot" id="opd2"></div><div class="pin-dot" id="opd3"></div></div>
         <input id="opPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
         <div class="lerr" id="opErr"></div>
@@ -2152,6 +2165,42 @@ function showOpEmailMode(){
   const backBtn=document.getElementById('opBackToPinBtn');
   if(backBtn)backBtn.style.display=(window.storeSettings&&window.storeSettings.ownerPin)?'inline':'none';
   setTimeout(()=>{const e=document.getElementById('opEmail');if(e)e.focus();},50);
+}
+
+function showStoreSwitcher(){
+  const sw=document.getElementById('opStoreSwitcher');
+  if(sw){sw.style.display='block';setTimeout(()=>document.getElementById('opSwitchStoreId')?.focus(),50);}
+}
+function hideStoreSwitcher(){
+  const sw=document.getElementById('opStoreSwitcher');
+  if(sw){sw.style.display='none';}
+  document.getElementById('opSwitchErr').textContent='';
+  document.getElementById('opSwitchStoreId').value='';
+}
+async function doSwitchStore(){
+  const input=document.getElementById('opSwitchStoreId');
+  const errEl=document.getElementById('opSwitchErr');
+  const id=(input?.value||'').trim().toLowerCase().replace(/\s+/g,'-');
+  if(!id){errEl.textContent='Enter a store ID';return;}
+  errEl.textContent='';
+  const btn=document.querySelector('#opStoreSwitcher .bprimary');
+  btn.disabled=true;btn.textContent='Loading...';
+  try{
+    const snap=await window.F.getDoc(window.F.doc(window.db,'stores',id,'settings','main'));
+    if(!snap.exists()){errEl.textContent='Store not found';btn.disabled=false;btn.textContent='Go';return;}
+    window.currentStoreId=id;
+    localStorage.setItem('storeId',id);
+    window.storeSettings=snap.data();
+    hideStoreSwitcher();
+    if(window.storeSettings.ownerPin){
+      opPinBuf='';updOpDots();
+      const nameEl=document.getElementById('opStoreName');
+      if(nameEl)nameEl.textContent=window.storeSettings.storeName||id;
+    } else {
+      showOpEmailMode();
+    }
+  }catch(e){errEl.textContent='Error: '+e.message;}
+  btn.disabled=false;btn.textContent='Go';
 }
 
 // Wire owner PIN hidden input for mobile keyboards
