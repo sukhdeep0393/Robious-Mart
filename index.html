@@ -348,6 +348,9 @@
   .inv-mode-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
   .scan-count-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;margin-left:6px;}
 
+  /* SIGNUP SCREEN */
+  #signupScreen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:30px 24px;}
+
   /* ---- Invoice Scan styles ---- */
   .inv-scan-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;}
   .inv-scan-btn:active{background:var(--blue-dark);}
@@ -379,44 +382,157 @@
 
 <!-- LOGIN -->
 <div id="loginScreen">
-  <div class="login-logo">Robious<span> Mart</span></div>
-  <div class="login-sub">Operations Platform</div>
+  <div class="login-logo" id="loginLogo">Robious<span> Mart</span></div>
+  <div class="login-sub" id="loginSub">Operations Platform</div>
   <div class="lcard">
     <div class="ltabs">
-      <button class="ltab active" onclick="switchLTab('op',this)">Operator</button>
+      <button class="ltab active" onclick="switchLTab('op',this)">Owner</button>
       <button class="ltab" onclick="switchLTab('emp',this)">Employee</button>
     </div>
     <div id="opLogin">
-      <div style="margin-bottom:12px;font-size:14px;font-weight:500;text-align:center;color:var(--text2)">Enter operator PIN</div>
-      <div class="pin-dots" id="opDots"><div class="pin-dot" id="opd0"></div><div class="pin-dot" id="opd1"></div><div class="pin-dot" id="opd2"></div><div class="pin-dot" id="opd3"></div></div>
-      <input id="opPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
-      <div class="lerr" id="opErr"></div>
-      <div class="pin-pad">
-        <button class="pk" onclick="opPk('1')">1</button><button class="pk" onclick="opPk('2')">2</button><button class="pk" onclick="opPk('3')">3</button>
-        <button class="pk" onclick="opPk('4')">4</button><button class="pk" onclick="opPk('5')">5</button><button class="pk" onclick="opPk('6')">6</button>
-        <button class="pk" onclick="opPk('7')">7</button><button class="pk" onclick="opPk('8')">8</button><button class="pk" onclick="opPk('9')">9</button>
-        <button class="pk blank" disabled></button><button class="pk" onclick="opPk('0')">0</button><button class="pk del" onclick="opPdel()">⌫</button>
+      <!-- PIN mode (shown when storeId is known from this device) -->
+      <div id="opPinMode">
+        <div style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:14px">Store: <strong id="opStoreName" style="color:var(--text)">—</strong></div>
+        <div class="pin-dots" id="opDots"><div class="pin-dot" id="opd0"></div><div class="pin-dot" id="opd1"></div><div class="pin-dot" id="opd2"></div><div class="pin-dot" id="opd3"></div></div>
+        <input id="opPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
+        <div class="lerr" id="opErr"></div>
+        <div class="pin-pad">
+          <button class="pk" onclick="opPk('1')">1</button><button class="pk" onclick="opPk('2')">2</button><button class="pk" onclick="opPk('3')">3</button>
+          <button class="pk" onclick="opPk('4')">4</button><button class="pk" onclick="opPk('5')">5</button><button class="pk" onclick="opPk('6')">6</button>
+          <button class="pk" onclick="opPk('7')">7</button><button class="pk" onclick="opPk('8')">8</button><button class="pk" onclick="opPk('9')">9</button>
+          <button class="pk blank" disabled></button><button class="pk" onclick="opPk('0')">0</button><button class="pk del" onclick="opPdel()">⌫</button>
+        </div>
+        <div style="text-align:center;margin-top:16px;display:flex;justify-content:center;gap:16px">
+          <button onclick="showOpEmailMode()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">Use email instead</button>
+          <button onclick="showSignup()" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:500;cursor:pointer">New store →</button>
+        </div>
+      </div>
+      <!-- Email mode (shown when no storeId on device, or toggled) -->
+      <div id="opEmailMode" style="display:none">
+        <div style="margin-bottom:12px">
+          <label>Email</label>
+          <input type="email" id="opEmail" placeholder="owner@example.com" autocomplete="email" />
+        </div>
+        <div style="margin-bottom:16px">
+          <label>Password</label>
+          <input type="password" id="opPassword" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <div class="lerr" id="opEmailErr"></div>
+        <button class="btn-login" onclick="doOwnerLogin()">Sign in</button>
+        <div style="text-align:center;margin-top:14px;display:flex;justify-content:center;gap:16px">
+          <button id="opBackToPinBtn" onclick="showOpPinMode()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;display:none">← Use PIN instead</button>
+          <button onclick="showSignup()" style="background:none;border:none;color:var(--blue);font-size:13px;font-weight:500;cursor:pointer">New store? Create account →</button>
+        </div>
       </div>
     </div>
     <div id="empLogin" style="display:none">
-      <div style="margin-bottom:12px"><label>Your name</label><input type="text" id="empName" placeholder="First name" /></div>
-      <div class="pin-dots"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
-      <input id="empPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
-      <div class="lerr" id="pinErr"></div>
-      <div class="pin-pad">
-        <button class="pk" onclick="pk('1')">1</button><button class="pk" onclick="pk('2')">2</button><button class="pk" onclick="pk('3')">3</button>
-        <button class="pk" onclick="pk('4')">4</button><button class="pk" onclick="pk('5')">5</button><button class="pk" onclick="pk('6')">6</button>
-        <button class="pk" onclick="pk('7')">7</button><button class="pk" onclick="pk('8')">8</button><button class="pk" onclick="pk('9')">9</button>
-        <button class="pk blank" disabled></button><button class="pk" onclick="pk('0')">0</button><button class="pk del" onclick="pdel()">⌫</button>
+      <!-- First-time setup: enter store ID (shown only when no store is known) -->
+      <div id="empSetupStore" style="display:none">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">Which store are you logging into?</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Ask your manager for the store ID. You only need to do this once on this device.</div>
+        <input id="empStoreIdInput" placeholder="e.g. robious-mart" style="margin-bottom:10px" autocomplete="off" autocapitalize="none" />
+        <div class="lerr" id="empSetupErr"></div>
+        <button class="btn-login" onclick="connectEmpStore()">Connect</button>
+      </div>
+      <!-- Normal login (shown once store is known) -->
+      <div id="empLoginForm" style="display:none">
+        <div style="background:var(--bg2);border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;font-size:12px">
+          <span style="color:var(--text2)">Store: <strong id="empStoreName" style="color:var(--text)">—</strong></span>
+          <button onclick="resetEmpStore()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0">Not your store?</button>
+        </div>
+        <div style="margin-bottom:12px"><label>Your name</label><input type="text" id="empName" placeholder="First name" /></div>
+        <div class="pin-dots"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
+        <input id="empPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
+        <div class="lerr" id="pinErr"></div>
+        <div class="pin-pad">
+          <button class="pk" onclick="pk('1')">1</button><button class="pk" onclick="pk('2')">2</button><button class="pk" onclick="pk('3')">3</button>
+          <button class="pk" onclick="pk('4')">4</button><button class="pk" onclick="pk('5')">5</button><button class="pk" onclick="pk('6')">6</button>
+          <button class="pk" onclick="pk('7')">7</button><button class="pk" onclick="pk('8')">8</button><button class="pk" onclick="pk('9')">9</button>
+          <button class="pk blank" disabled></button><button class="pk" onclick="pk('0')">0</button><button class="pk del" onclick="pdel()">⌫</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- SIGNUP WIZARD -->
+<div id="signupScreen" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:30px 24px">
+  <div class="login-logo">New<span> Store</span></div>
+  <div class="login-sub">Create your account</div>
+  <div class="lcard" style="max-width:400px">
+    <!-- Step indicators -->
+    <div style="display:flex;gap:4px;margin-bottom:20px">
+      <div class="su-step active" id="su-s1" style="flex:1;height:4px;border-radius:2px;background:var(--blue)"></div>
+      <div class="su-step" id="su-s2" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
+      <div class="su-step" id="su-s3" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
+      <div class="su-step" id="su-s4" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
+      <div class="su-step" id="su-s5" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
+    </div>
+    <!-- Step 1: Access code -->
+    <div id="su-step1">
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Enter access code</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Get this from the person who invited you</div>
+      <input id="su-code" placeholder="Access code" style="margin-bottom:12px;text-transform:uppercase;letter-spacing:2px;font-weight:600" autocomplete="off" />
+      <div class="lerr" id="su-err1"></div>
+      <button class="btn-login" onclick="suStep1()">Continue</button>
+    </div>
+    <!-- Step 2: Store + Owner info -->
+    <div id="su-step2" style="display:none">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px">About your store</div>
+      <div style="margin-bottom:12px"><label>Store name</label><input id="su-store-name" placeholder="e.g. Shell Stop" /></div>
+      <div style="margin-bottom:12px"><label>Your name (owner)</label><input id="su-owner-name" placeholder="First name" /></div>
+      <div class="lerr" id="su-err2"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bsecondary" style="flex:1;padding:11px" onclick="suBack(1)">Back</button>
+        <button class="btn bprimary" style="flex:2;padding:11px" onclick="suStep2()">Continue</button>
+      </div>
+    </div>
+    <!-- Step 3: Email + Password -->
+    <div id="su-step3" style="display:none">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px">Create login</div>
+      <div style="margin-bottom:12px"><label>Email</label><input type="email" id="su-email" placeholder="you@example.com" autocomplete="email" /></div>
+      <div style="margin-bottom:12px"><label>Password</label><input type="password" id="su-password" placeholder="At least 6 characters" autocomplete="new-password" /></div>
+      <div style="margin-bottom:12px"><label>Confirm password</label><input type="password" id="su-password2" placeholder="Repeat password" autocomplete="new-password" /></div>
+      <div class="lerr" id="su-err3"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bsecondary" style="flex:1;padding:11px" onclick="suBack(2)">Back</button>
+        <button class="btn bprimary" style="flex:2;padding:11px" onclick="suStep3()">Continue</button>
+      </div>
+    </div>
+    <!-- Step 4: Register count -->
+    <div id="su-step4" style="display:none">
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">How many registers?</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Point-of-sale terminals at your store</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        <button class="su-reg-btn bsecondary btn" style="padding:14px;font-size:15px" onclick="suSelectRegs(1,this)">1 register</button>
+        <button class="su-reg-btn bsecondary btn" style="padding:14px;font-size:15px" onclick="suSelectRegs(2,this)">2 registers</button>
+        <button class="su-reg-btn bsecondary btn" style="padding:14px;font-size:15px" onclick="suSelectRegs(3,this)">3 registers</button>
+      </div>
+      <div class="lerr" id="su-err4"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bsecondary" style="flex:1;padding:11px" onclick="suBack(3)">Back</button>
+        <button id="su-step4-next" class="btn bprimary" style="flex:2;padding:11px" onclick="suStep4()">Continue</button>
+      </div>
+    </div>
+    <!-- Step 5: Name each register -->
+    <div id="su-step5" style="display:none">
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Name your registers</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">e.g. "NRS", "Verifone", "Register 1"</div>
+      <div id="su-reg-names"></div>
+      <div class="lerr" id="su-err5"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn bsecondary" style="flex:1;padding:11px" onclick="suBack(4)">Back</button>
+        <button class="btn bprimary" style="flex:2;padding:11px" id="su-create-btn" onclick="suCreateStore()">Create store</button>
+      </div>
+    </div>
+  </div>
+  <button onclick="hideSignup()" style="margin-top:16px;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer">← Back to sign in</button>
+</div>
+
 <!-- APP -->
 <div id="appShell">
   <div class="header">
-    <div class="logo">Robious<span> Mart</span></div>
+    <div class="logo" id="appLogo">Robious<span> Mart</span></div>
     <div style="display:flex;align-items:center;gap:4px">
       <span class="ubadge" id="uBadge"></span>
       <button class="lout" onclick="doLogout()">Sign out</button>
@@ -472,115 +588,7 @@
       </div>
       <div><label>Shift comment (optional)</label><input id="d-comment" placeholder="e.g. Busy morning, delivery arrived..." /></div>
     </div>
-    <div class="card">
-      <div class="ct">C-store sales</div>
-      <!-- Column headers -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;padding:0 2px">
-        <div></div>
-        <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;text-align:center">NRS</div>
-        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;text-align:center">Verifone</div>
-      </div>
-      <!-- Total sales row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:500;color:var(--text2)">Total sales</div>
-        <input type="number" id="d-tot-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
-        <input type="number" id="d-tot-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
-      </div>
-      <!-- Cash row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:500;color:var(--text2)">Cash</div>
-        <input type="number" id="d-cash-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
-        <input type="number" id="d-cash-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
-      </div>
-      <!-- Credit row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:500;color:var(--text2)">Credit</div>
-        <input type="number" id="d-cred-nrs" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--blue)" />
-        <input type="number" id="d-cred-vfn" placeholder="0.00" oninput="calcSalesCombined()" style="border-color:var(--amber)" />
-      </div>
-
-      <!-- Deductions section -->
-      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Deductions from total sales</div>
-        <!-- Lottery deduction -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-          <div style="font-size:13px;font-weight:500;color:var(--text2)">🎟 Lottery</div>
-          <input type="number" id="d-deduct-lottery" placeholder="0.00" oninput="calcSalesCombined()" />
-        </div>
-        <!-- Other deduction -->
-        <div style="margin-bottom:6px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:6px">
-            <div style="font-size:13px;font-weight:500;color:var(--text2)">Other deduction</div>
-            <input type="number" id="d-deduct-other" placeholder="0.00" oninput="calcSalesCombined()" />
-          </div>
-          <input type="text" id="d-deduct-other-note" placeholder="What is this? e.g. Cashback, ATM fee, promo..." style="font-size:13px" />
-        </div>
-      </div>
-
-      <!-- Net sales summary -->
-      <div id="salesCombinedDisplay" style="display:none;background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:2px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Summary</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <div style="display:flex;justify-content:space-between;font-size:13px">
-            <span style="color:var(--text2)">Gross sales (NRS + Verifone)</span>
-            <span id="d-gross-display" style="font-weight:600">$0.00</span>
-          </div>
-          <div id="d-deduct-lottery-row" style="display:none;justify-content:space-between;font-size:13px">
-            <span style="color:var(--text2)">− Lottery</span>
-            <span id="d-deduct-lottery-display" style="color:var(--red)">$0.00</span>
-          </div>
-          <div id="d-deduct-other-row" style="display:none;justify-content:space-between;font-size:13px">
-            <span style="color:var(--text2)" id="d-deduct-other-label">− Other</span>
-            <span id="d-deduct-other-display" style="color:var(--red)">$0.00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
-            <span>Net sales</span>
-            <span id="d-tot-combined" style="color:var(--green)">$0.00</span>
-          </div>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
-            <div><span style="font-size:12px;color:var(--text2)">Cash </span><span id="d-cash-combined" style="font-weight:600">$0.00</span></div>
-            <div><span style="font-size:12px;color:var(--text2)">Credit </span><span id="d-cred-combined" style="font-weight:600">$0.00</span></div>
-          </div>
-        </div>
-      </div>
-      <!-- Hidden combined fields used by subDaily -->
-      <input type="hidden" id="d-tot" />
-      <input type="hidden" id="d-cash" />
-      <input type="hidden" id="d-cred" />
-
-      <!-- Cash drawer section -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div class="ct" style="margin-bottom:6px">Cash drawer — short or over</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Enter expected and actual cash from each register</div>
-        <!-- Column headers -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
-          <div></div>
-          <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;text-align:center">NRS</div>
-          <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;text-align:center">Verifone</div>
-        </div>
-        <!-- Expected row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-          <div style="font-size:13px;font-weight:500;color:var(--text2)">Expected</div>
-          <input type="number" id="d-exp-nrs" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--blue)" />
-          <input type="number" id="d-exp-vfn" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--amber)" />
-        </div>
-        <!-- Actual row — split -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-          <div style="font-size:13px;font-weight:500;color:var(--text2)">Actual counted</div>
-          <input type="number" id="d-actual-nrs" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--blue)" />
-          <input type="number" id="d-actual-vfn" placeholder="0.00" oninput="calcShortOver()" style="border-color:var(--amber)" />
-        </div>
-        <!-- Hidden combined fields -->
-        <input type="hidden" id="d-expected" />
-        <input type="hidden" id="d-actual" />
-        <div id="shortOverResult"></div>
-        <!-- Discrepancy notes -->
-        <div id="cashDiscrepancyNote" style="display:none;margin-top:10px">
-          <label>Explain the discrepancy</label>
-          <textarea id="d-cash-disc-note" rows="2" placeholder="e.g. Customer paid with broken $50, gave change from both registers..."></textarea>
-        </div>
-      </div>
-    </div>
+    <div id="dailySalesCard"></div>
     <div class="card"><div class="ct">Fuel sold (gallons)</div>
       <div class="g3">
         <div><label>Regular</label><input type="number" id="d-reg" placeholder="0.0" /></div>
@@ -1865,6 +1873,51 @@
 </div>
 
 
+  <!-- STORE SETTINGS (operator only) -->
+  <div class="page" id="page-storesettings">
+    <div class="card">
+      <div class="ct">Store info</div>
+      <div style="margin-bottom:12px"><label>Store name</label><input id="ss-name" placeholder="e.g. Robious Mart" /></div>
+      <div style="margin-bottom:16px"><label>Owner name</label><input id="ss-owner" placeholder="Your name" /></div>
+      <button class="btn bprimary" style="margin-bottom:0" onclick="saveStoreInfo()">Save store info</button>
+    </div>
+    <div class="card">
+      <div class="ct">Registers</div>
+      <div style="margin-bottom:12px">
+        <label>Number of registers</label>
+        <select id="ss-reg-count" onchange="renderRegisterNameFields()">
+          <option value="1">1 register</option>
+          <option value="2" selected>2 registers</option>
+          <option value="3">3 registers</option>
+        </select>
+      </div>
+      <div id="ss-reg-names"></div>
+      <button class="btn bprimary" style="margin-top:12px;margin-bottom:0" onclick="saveRegisterSettings()">Save register settings</button>
+    </div>
+    <div class="card">
+      <div class="ct">Quick-login PIN</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Set a 4-digit PIN so you can sign in faster without entering your email and password each time.</div>
+      <div style="margin-bottom:12px">
+        <label>New PIN <span style="font-weight:400;color:var(--text3)">(4 digits)</span></label>
+        <input id="ss-owner-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="new-password" style="letter-spacing:6px;font-size:20px;text-align:center;max-width:120px" />
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn bprimary" style="width:auto;padding:10px 20px;font-size:13px" onclick="saveOwnerPin()">Save PIN</button>
+        <button id="ss-clear-pin-btn" class="btn bsecondary" style="width:auto;padding:10px 20px;font-size:13px;display:none" onclick="clearOwnerPin()">Remove PIN</button>
+      </div>
+      <div id="ss-pin-status" style="margin-top:8px;font-size:12px;color:var(--text3)"></div>
+    </div>
+    <div class="card">
+      <div class="ct">Access codes</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Generate codes for new store owners to sign up</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="ac-code-input" placeholder="e.g. WELCOME2024" style="text-transform:uppercase;letter-spacing:1px;font-weight:600;flex:1" />
+        <button class="btn bprimary" style="padding:10px 16px;width:auto" onclick="createAccessCode()">Add</button>
+      </div>
+      <div id="ac-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+    </div>
+  </div>
+
   </div><!-- /page-area -->
   </div><!-- /app-body -->
 </div><!-- /appShell -->
@@ -1917,10 +1970,13 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,deleteField,enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage,ref,uploadString,getDownloadURL,deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+import { getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 const app=initializeApp({apiKey:"AIzaSyC5ZtJ25RB4gz_Ov8H0lPHExsggpP00Gok",authDomain:"robious-mart.firebaseapp.com",projectId:"robious-mart",storageBucket:"robious-mart.firebasestorage.app",messagingSenderId:"679205177455",appId:"1:679205177455:web:b10c4c2835f9cf2c2e259a"});
 const db=getFirestore(app);
+const auth=getAuth(app);
+window.auth=auth;
 // Enable offline persistence so writes queue when there is no network and sync automatically when connectivity returns
 enableIndexedDbPersistence(db).catch(err=>{
   if(err.code==='failed-precondition'){console.warn('Offline persistence disabled: multiple tabs open');}
@@ -1929,90 +1985,249 @@ enableIndexedDbPersistence(db).catch(err=>{
 window.db=db;
 const storage=getStorage(app);
 window.storage=storage;
-window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,storageRef:ref,uploadString,getDownloadURL,deleteObject};
+window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,deleteField,storageRef:ref,uploadString,getDownloadURL,deleteObject,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged};
 window.dispatchEvent(new Event('fbReady'));
 </script>
 
 <script>
-const OP_PIN='1024', LEAD_PIN='1111';
-let pinBuf='', opPinBuf='';
+const LEAD_PIN='1111';
+let pinBuf='';
+window.currentStoreId = localStorage.getItem('storeId') || 'robious-mart';
+window.storeSettings = null;
+
+// Collection + doc helpers — legacy robious-mart uses root collections; new stores use stores/{id}/
+function sc(name){
+  if(window.currentStoreId==='robious-mart') return window.F.collection(window.db,name);
+  return window.F.collection(window.db,'stores',window.currentStoreId,name);
+}
+function sd(col,id){
+  if(window.currentStoreId==='robious-mart') return window.F.doc(window.db,col,id);
+  return window.F.doc(window.db,'stores',window.currentStoreId,col,id);
+}
+
+async function loadStoreSettings(){
+  try{
+    const snap=await window.F.getDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'));
+    if(snap.exists()) window.storeSettings=snap.data();
+    else window.storeSettings=null;
+  }catch(e){window.storeSettings=null;}
+}
+
+window.addEventListener('fbReady',async function onFbReady(){
+  window.removeEventListener('fbReady',onFbReady);
+  await loadStoreSettings();
+  // Auto-open signup if ?signup=CODE is in the URL
+  const urlCode=new URLSearchParams(location.search).get('signup');
+  if(urlCode){
+    showSignup();
+    const input=document.getElementById('su-code');
+    if(input)input.value=urlCode.toUpperCase();
+    // Clean the URL so a refresh doesn't re-trigger
+    history.replaceState(null,'',location.pathname);
+    return;
+  }
+  _initLoginScreen();
+});
+
+function _initLoginScreen(){
+  const s=window.storeSettings;
+  // Update login logo
+  if(s&&s.storeName){
+    const loginLogo=document.getElementById('loginLogo');
+    if(loginLogo){
+      const parts=s.storeName.split(' ');
+      if(parts.length>1){loginLogo.textContent=parts.slice(0,-1).join(' ');const sp=document.createElement('span');sp.style.color='var(--blue)';sp.textContent=' '+parts[parts.length-1];loginLogo.appendChild(sp);}
+      else loginLogo.textContent=s.storeName;
+    }
+  }
+  // Show PIN mode if a PIN is set for this device's store, else email mode
+  if(s&&s.ownerPin){showOpPinMode();}
+  else{showOpEmailMode();}
+  // Update employee tab store label
+  updateEmpStoreDisplay();
+}
 
 function switchLTab(t,el){
   document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('opLogin').style.display=t==='op'?'block':'none';
   document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
-  setTimeout(()=>{
-    const h=document.getElementById(t==='op'?'opPinHidden':'empPinHidden');
-    if(h)h.focus();
-  },50);
+  if(t==='emp'){
+    updateEmpStoreDisplay();
+    setTimeout(()=>{const h=document.getElementById('empPinHidden');if(h)h.focus();},50);
+  } else {
+    if(window.storeSettings&&window.storeSettings.ownerPin)showOpPinMode();
+    else showOpEmailMode();
+  }
+}
+function updateEmpStoreDisplay(){
+  const storeKnown=!!localStorage.getItem('storeId');
+  const setupDiv=document.getElementById('empSetupStore');
+  const loginDiv=document.getElementById('empLoginForm');
+  if(!storeKnown){
+    if(setupDiv)setupDiv.style.display='block';
+    if(loginDiv)loginDiv.style.display='none';
+    return;
+  }
+  if(setupDiv)setupDiv.style.display='none';
+  if(loginDiv)loginDiv.style.display='block';
+  const nameEl=document.getElementById('empStoreName');
+  if(nameEl){
+    const s=window.storeSettings;
+    nameEl.textContent=s&&s.storeName?s.storeName:window.currentStoreId;
+  }
 }
 
-// Operator PIN
+async function connectEmpStore(){
+  const raw=(document.getElementById('empStoreIdInput')?.value||'').trim();
+  const id=raw.toLowerCase().replace(/\s+/g,'-');
+  const errEl=document.getElementById('empSetupErr');
+  errEl.textContent='';
+  if(!id){errEl.textContent='Enter a store ID';return;}
+  const btn=document.querySelector('#empSetupStore .btn-login');
+  btn.disabled=true;btn.textContent='Connecting...';
+  try{
+    // Validate the store exists (skip for robious-mart legacy)
+    if(id!=='robious-mart'){
+      const snap=await window.F.getDoc(window.F.doc(window.db,'stores',id,'settings','main'));
+      if(!snap.exists()){errEl.textContent='Store not found. Check the ID and try again.';btn.disabled=false;btn.textContent='Connect';return;}
+    }
+    window.currentStoreId=id;
+    localStorage.setItem('storeId',id);
+    await loadStoreSettings();
+    updateEmpStoreDisplay();
+    document.getElementById('empStoreIdInput').value='';
+    btn.disabled=false;btn.textContent='Connect';
+  }catch(e){errEl.textContent='Error: '+e.message;btn.disabled=false;btn.textContent='Connect';}
+}
+
+function resetEmpStore(){
+  if(!confirm('Disconnect from this store? You will need to enter a store ID again.'))return;
+  localStorage.removeItem('storeId');
+  window.currentStoreId='';
+  window.storeSettings=null;
+  updateEmpStoreDisplay();
+}
+
+// ---- OWNER PIN mode ----
+let opPinBuf='';
 function opPk(d){
   if(opPinBuf.length>=4)return;
-  opPinBuf+=d; updOpDots();
+  opPinBuf+=d;updOpDots();
   if(opPinBuf.length===4)setTimeout(chkOpPin,200);
 }
 function opPdel(){opPinBuf=opPinBuf.slice(0,-1);updOpDots();}
 function updOpDots(){for(let i=0;i<4;i++){const e=document.getElementById('opd'+i);if(e)e.classList.toggle('filled',i<opPinBuf.length);}}
 function chkOpPin(){
-  if(opPinBuf===OP_PIN){
-    loginOK({name:'Sukh',role:'operator'});
+  const entered=opPinBuf;
+  opPinBuf='';updOpDots();
+  const storedPin=window.storeSettings&&window.storeSettings.ownerPin;
+  if(storedPin&&entered===storedPin){
+    const ownerName=(window.storeSettings&&window.storeSettings.ownerName)||'Owner';
+    loginOK({name:ownerName,role:'operator'});
   } else {
-    document.getElementById('opErr').textContent='Incorrect PIN';
-    opPinBuf='';updOpDots();
-    setTimeout(()=>document.getElementById('opErr').textContent='',2500);
+    const errEl=document.getElementById('opErr');
+    errEl.textContent='Incorrect PIN';
+    setTimeout(()=>{errEl.textContent='';},2500);
   }
 }
-function doOpLogin(){}
 
-// Keyboard support for PIN pad on laptop
+function showOpPinMode(){
+  const hasPinAndStore=window.storeSettings&&window.storeSettings.ownerPin;
+  if(!hasPinAndStore){showOpEmailMode();return;}
+  document.getElementById('opPinMode').style.display='block';
+  document.getElementById('opEmailMode').style.display='none';
+  opPinBuf='';updOpDots();
+  const nameEl=document.getElementById('opStoreName');
+  if(nameEl)nameEl.textContent=(window.storeSettings&&window.storeSettings.storeName)||window.currentStoreId;
+  setTimeout(()=>{const h=document.getElementById('opPinHidden');if(h)h.focus();},50);
+}
+function showOpEmailMode(){
+  document.getElementById('opPinMode').style.display='none';
+  document.getElementById('opEmailMode').style.display='block';
+  // Show "back to PIN" only if a PIN is set
+  const backBtn=document.getElementById('opBackToPinBtn');
+  if(backBtn)backBtn.style.display=(window.storeSettings&&window.storeSettings.ownerPin)?'inline':'none';
+  setTimeout(()=>{const e=document.getElementById('opEmail');if(e)e.focus();},50);
+}
+
+// Wire owner PIN hidden input for mobile keyboards
+(function(){
+  function wireOpPin(){
+    const h=document.getElementById('opPinHidden');
+    if(!h)return;
+    h.addEventListener('input',function(){
+      const digits=this.value.replace(/\D/g,'');this.value='';
+      digits.split('').forEach(d=>opPk(d));
+    });
+    document.getElementById('opPinMode')?.addEventListener('click',function(e){
+      if(!e.target.classList.contains('pk')&&e.target.id!=='opPinHidden'){
+        const h2=document.getElementById('opPinHidden');if(h2)h2.focus();
+      }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireOpPin);
+  else wireOpPin();
+})();
+
+// Owner email+password login
+async function doOwnerLogin(){
+  const email=document.getElementById('opEmail').value.trim();
+  const pass=document.getElementById('opPassword').value;
+  const errEl=document.getElementById('opEmailErr');
+  errEl.textContent='';
+  if(!email||!pass){errEl.textContent='Enter email and password';return;}
+  const btn=document.querySelector('#opEmailMode .btn-login');
+  btn.disabled=true;btn.textContent='Signing in...';
+  try{
+    const cred=await window.F.signInWithEmailAndPassword(window.auth,email,pass);
+    const uid=cred.user.uid;
+    const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
+    if(!uSnap.exists()){errEl.textContent='No store found for this account';btn.disabled=false;btn.textContent='Sign in';return;}
+    const storeId=uSnap.data().storeId;
+    window.currentStoreId=storeId;
+    localStorage.setItem('storeId',storeId);
+    await loadStoreSettings();
+    const ownerName=(window.storeSettings&&window.storeSettings.ownerName)||'Owner';
+    loginOK({name:ownerName,role:'operator'});
+  }catch(err){
+    errEl.textContent=err.code==='auth/invalid-credential'||err.code==='auth/wrong-password'||err.code==='auth/user-not-found'?'Incorrect email or password':err.message;
+    btn.disabled=false;btn.textContent='Sign in';
+  }
+}
+
+// Keyboard support
 document.addEventListener('keydown',function(e){
   const ls=document.getElementById('loginScreen');
   if(!ls||ls.style.display==='none')return;
   const opVisible=document.getElementById('opLogin').style.display!=='none';
+  const emailMode=document.getElementById('opEmailMode')?.style.display!=='none';
+  if(opVisible&&emailMode&&e.key==='Enter'){e.preventDefault();doOwnerLogin();return;}
   if(document.activeElement===document.getElementById('empName'))return;
-  if(e.key>='0'&&e.key<='9'){e.preventDefault();opVisible?opPk(e.key):pk(e.key);}
-  else if(e.key==='Backspace'){e.preventDefault();opVisible?opPdel():pdel();}
+  if(opVisible&&!emailMode&&e.key>='0'&&e.key<='9'){e.preventDefault();opPk(e.key);}
+  else if(opVisible&&!emailMode&&e.key==='Backspace'){e.preventDefault();opPdel();}
+  else if(!opVisible&&e.key>='0'&&e.key<='9'){e.preventDefault();pk(e.key);}
+  else if(!opVisible&&e.key==='Backspace'){e.preventDefault();pdel();}
 });
 
-// Mobile numeric keyboard — hidden inputs feed the PIN functions
+// Mobile numeric keyboard — hidden input feeds employee PIN
 (function(){
   function wireHidden(){
-    const opH=document.getElementById('opPinHidden');
     const emH=document.getElementById('empPinHidden');
-    if(!opH||!emH)return;
-    opH.addEventListener('input',function(){
-      const digits=this.value.replace(/\D/g,'');
-      this.value='';
-      digits.split('').forEach(d=>opPk(d));
-    });
+    if(!emH)return;
     emH.addEventListener('input',function(){
       const digits=this.value.replace(/\D/g,'');
       this.value='';
       digits.split('').forEach(d=>pk(d));
     });
-    // tap anywhere on the pin-pad area to focus the hidden input
-    document.getElementById('opLogin').addEventListener('click',function(e){
-      if(!e.target.classList.contains('pk'))opH.focus();
-      else opH.focus();
-    });
     document.getElementById('empLogin').addEventListener('click',function(e){
-      if(e.target!==document.getElementById('empName'))emH.focus();
+      const loginForm=document.getElementById('empLoginForm');
+      if(loginForm&&loginForm.style.display!=='none'&&e.target!==document.getElementById('empName'))emH.focus();
     });
-    // auto-focus on load
-    opH.focus();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireHidden);
   else wireHidden();
 })();
-
-function focusPinInput(){
-  const opVisible=document.getElementById('opLogin').style.display!=='none';
-  const el=document.getElementById(opVisible?'opPinHidden':'empPinHidden');
-  if(el)el.focus();
-}
 
 // Employee PIN
 function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
@@ -2023,11 +2238,11 @@ async function chkPin(){
   if(!n){document.getElementById('pinErr').textContent='Enter your name first';pinBuf='';updDots();return;}
   const enteredPin=pinBuf;
   pinBuf='';updDots();
-  // First check legacy shared LEAD_PIN (keeps Tilak working)
+  // First check legacy shared LEAD_PIN
   if(enteredPin===LEAD_PIN){loginOK({name:n,role:'lead'});return;}
-  // Then check Firestore per-employee PINs
+  // Then check Firestore per-employee PINs (scoped to current store)
   try{
-    const snap=await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+    const snap=await window.F.getDocs(sc('employeeLogins'));
     const match=snap.docs.map(d=>({id:d.id,...d.data()})).find(e=>e.name.toLowerCase()===n.toLowerCase()&&e.pin===enteredPin);
     if(match){loginOK({name:match.name,role:match.role||'employee'});return;}
   }catch(err){console.error('PIN lookup error:',err);}
@@ -2052,7 +2267,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'},{id:'storesettings',l:'⚙️ Store Settings'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
@@ -2079,6 +2294,11 @@ function loginOK(u){
   const em=document.getElementById('empMonth');if(em)em.value=ym;
   const mm=document.getElementById('myHoursMonth');if(mm)mm.value=ym;
   const dm=document.getElementById('dashMonth');if(dm)dm.value=ym;
+  // Update store name in header
+  const sName=(window.storeSettings&&window.storeSettings.storeName)||'Store';
+  const logoEl=document.getElementById('appLogo');
+  if(logoEl){const parts=sName.split(' ');if(parts.length>1){logoEl.textContent=parts.slice(0,-1).join(' ');const sp=document.createElement('span');sp.style.color='var(--blue)';sp.textContent=' '+parts[parts.length-1];logoEl.appendChild(sp);}else{logoEl.textContent=sName;}}
+  renderDailySalesCard();
   buildTabs();
   if(u.role==='operator'||u.role==='lead') document.getElementById('mgmtCard').style.display='block';
   loadGames();loadInvFlags();
@@ -2097,10 +2317,204 @@ function loginOK(u){
   }catch(loginErr){console.error('loginOK error:',loginErr);alert('Login error: '+loginErr.message);}
 }
 function doLogout(){
-  CU=null;pinBuf='';
+  CU=null;pinBuf='';opPinBuf='';
+  try{window.F.signOut(window.auth);}catch(e){}
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appShell').style.display='none';
-  opPinBuf='';updOpDots();document.getElementById('empName').value='';updDots();
+  document.getElementById('empName').value='';updDots();
+  const oe=document.getElementById('opEmail');if(oe)oe.value='';
+  const op=document.getElementById('opPassword');if(op)op.value='';
+  document.getElementById('opEmailErr').textContent='';
+  document.getElementById('opErr').textContent='';
+  // Restore PIN mode if PIN is configured, else email mode
+  if(window.storeSettings&&window.storeSettings.ownerPin){showOpPinMode();}
+  else{showOpEmailMode();}
+}
+
+// ---- SIGNUP WIZARD ----
+let _suRegCount=0;
+function showSignup(){
+  document.getElementById('loginScreen').style.display='none';
+  const ss=document.getElementById('signupScreen');ss.style.display='flex';
+  suGoStep(1);
+}
+function hideSignup(){
+  document.getElementById('signupScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+function suGoStep(n){
+  for(let i=1;i<=5;i++){
+    const s=document.getElementById('su-step'+i);if(s)s.style.display=i===n?'block':'none';
+    const bar=document.getElementById('su-s'+i);if(bar)bar.style.background=i<=n?'var(--blue)':'var(--border)';
+  }
+}
+function suBack(n){suGoStep(n);}
+async function suStep1(){
+  const code=document.getElementById('su-code').value.trim().toUpperCase();
+  const errEl=document.getElementById('su-err1');errEl.textContent='';
+  if(!code){errEl.textContent='Enter an access code';return;}
+  try{
+    const snap=await window.F.getDoc(window.F.doc(window.db,'accessCodes',code));
+    if(!snap.exists()||snap.data().used){errEl.textContent='Invalid or already used code';return;}
+    window._suCode=code;suGoStep(2);
+  }catch(e){errEl.textContent='Error: '+e.message;}
+}
+function suStep2(){
+  const name=document.getElementById('su-store-name').value.trim();
+  const owner=document.getElementById('su-owner-name').value.trim();
+  const errEl=document.getElementById('su-err2');errEl.textContent='';
+  if(!name){errEl.textContent='Enter a store name';return;}
+  if(!owner){errEl.textContent='Enter your name';return;}
+  window._suStoreName=name;window._suOwnerName=owner;suGoStep(3);
+}
+function suStep3(){
+  const email=document.getElementById('su-email').value.trim();
+  const pass=document.getElementById('su-password').value;
+  const pass2=document.getElementById('su-password2').value;
+  const errEl=document.getElementById('su-err3');errEl.textContent='';
+  if(!email){errEl.textContent='Enter your email';return;}
+  if(pass.length<6){errEl.textContent='Password must be at least 6 characters';return;}
+  if(pass!==pass2){errEl.textContent='Passwords do not match';return;}
+  window._suEmail=email;window._suPass=pass;suGoStep(4);
+}
+function suSelectRegs(n,el){
+  _suRegCount=n;
+  document.querySelectorAll('.su-reg-btn').forEach(b=>{b.style.background='var(--bg2)';b.style.color='var(--text)';b.style.borderColor='var(--border)';});
+  el.style.background='var(--blue)';el.style.color='#fff';el.style.borderColor='var(--blue)';
+}
+function suStep4(){
+  if(!_suRegCount){document.getElementById('su-err4').textContent='Select number of registers';return;}
+  document.getElementById('su-err4').textContent='';
+  const defaults=['Register 1','Register 2','Register 3'];
+  let html='';
+  for(let i=0;i<_suRegCount;i++){html+=`<div style="margin-bottom:10px"><label>Register ${i+1} name</label><input id="su-reg-${i}" value="${defaults[i]}" placeholder="${defaults[i]}" /></div>`;}
+  document.getElementById('su-reg-names').innerHTML=html;suGoStep(5);
+}
+async function suCreateStore(){
+  const errEl=document.getElementById('su-err5');errEl.textContent='';
+  const regNames=[];
+  for(let i=0;i<_suRegCount;i++){const v=(document.getElementById('su-reg-'+i)?.value||'').trim();if(!v){errEl.textContent='Name all registers';return;}regNames.push(v);}
+  const btn=document.getElementById('su-create-btn');btn.disabled=true;btn.textContent='Creating...';
+  try{
+    const baseId=window._suStoreName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    let storeId=baseId;
+    const existing=await window.F.getDoc(window.F.doc(window.db,'stores',storeId,'settings','main'));
+    if(existing.exists())storeId=baseId+'-'+Math.random().toString(36).slice(2,6);
+    const cred=await window.F.createUserWithEmailAndPassword(window.auth,window._suEmail,window._suPass);
+    const uid=cred.user.uid;
+    await window.F.setDoc(window.F.doc(window.db,'users',uid),{storeId,email:window._suEmail,createdAt:new Date().toISOString()});
+    await window.F.setDoc(window.F.doc(window.db,'stores',storeId,'settings','main'),{storeName:window._suStoreName,ownerName:window._suOwnerName,ownerEmail:window._suEmail,ownerUid:uid,registerCount:_suRegCount,registerNames:regNames,createdAt:new Date().toISOString()});
+    await window.F.setDoc(window.F.doc(window.db,'accessCodes',window._suCode),{used:true,usedBy:window._suEmail,usedAt:new Date().toISOString()},{merge:true});
+    window.currentStoreId=storeId;localStorage.setItem('storeId',storeId);
+    await loadStoreSettings();hideSignup();loginOK({name:window._suOwnerName,role:'operator'});
+  }catch(e){
+    errEl.textContent=e.code==='auth/email-already-in-use'?'Email already has an account':e.message;
+    btn.disabled=false;btn.textContent='Create store';
+  }
+}
+
+// ---- STORE SETTINGS ----
+async function loadStoreSettingsPage(){
+  const s=window.storeSettings||{};
+  const ni=document.getElementById('ss-name');if(ni)ni.value=s.storeName||'';
+  const oi=document.getElementById('ss-owner');if(oi)oi.value=s.ownerName||'';
+  const rc=document.getElementById('ss-reg-count');if(rc)rc.value=s.registerCount||2;
+  renderRegisterNameFields();
+  // PIN status
+  const pinStatus=document.getElementById('ss-pin-status');
+  const clearBtn=document.getElementById('ss-clear-pin-btn');
+  const pinInput=document.getElementById('ss-owner-pin');
+  if(s.ownerPin){
+    if(pinStatus)pinStatus.textContent='✓ Quick-login PIN is set';
+    if(clearBtn)clearBtn.style.display='inline-block';
+    if(pinInput)pinInput.value='';
+  } else {
+    if(pinStatus)pinStatus.textContent='No PIN set — you sign in with email and password';
+    if(clearBtn)clearBtn.style.display='none';
+  }
+  loadAccessCodes();
+}
+async function saveOwnerPin(){
+  const pin=(document.getElementById('ss-owner-pin')?.value||'').trim();
+  if(!/^\d{4}$/.test(pin)){toast('PIN must be exactly 4 digits');return;}
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'),{ownerPin:pin},{merge:true});
+    if(!window.storeSettings)window.storeSettings={};
+    window.storeSettings.ownerPin=pin;
+    document.getElementById('ss-owner-pin').value='';
+    document.getElementById('ss-pin-status').textContent='✓ Quick-login PIN is set';
+    document.getElementById('ss-clear-pin-btn').style.display='inline-block';
+    toast('PIN saved — you can now sign in faster');
+  }catch(e){toast('Error: '+e.message);}
+}
+async function clearOwnerPin(){
+  if(!confirm('Remove your quick-login PIN? You will need to sign in with email and password.'))return;
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'),{ownerPin:window.F.deleteField()},{merge:true});
+    if(window.storeSettings)delete window.storeSettings.ownerPin;
+    document.getElementById('ss-pin-status').textContent='No PIN set — you sign in with email and password';
+    document.getElementById('ss-clear-pin-btn').style.display='none';
+    toast('PIN removed');
+  }catch(e){toast('Error: '+e.message);}
+}
+function renderRegisterNameFields(){
+  const count=parseInt(document.getElementById('ss-reg-count')?.value)||2;
+  const existing=(window.storeSettings?.registerNames)||['NRS','Verifone'];
+  let html='';
+  for(let i=0;i<count;i++){html+=`<div style="margin-bottom:10px"><label>Register ${i+1} name</label><input id="ss-reg-${i}" value="${existing[i]||''}" placeholder="Register ${i+1}" /></div>`;}
+  document.getElementById('ss-reg-names').innerHTML=html;
+}
+async function saveStoreInfo(){
+  const name=(document.getElementById('ss-name')?.value||'').trim();
+  const owner=(document.getElementById('ss-owner')?.value||'').trim();
+  if(!name){toast('Enter a store name');return;}
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'),{storeName:name,ownerName:owner},{merge:true});
+    if(!window.storeSettings)window.storeSettings={};
+    window.storeSettings.storeName=name;window.storeSettings.ownerName=owner;
+    const logoEl=document.getElementById('appLogo');
+    if(logoEl){const parts=name.split(' ');if(parts.length>1){logoEl.textContent=parts.slice(0,-1).join(' ');const sp=document.createElement('span');sp.style.color='var(--blue)';sp.textContent=' '+parts[parts.length-1];logoEl.appendChild(sp);}else{logoEl.textContent=name;}}
+    toast('Store info saved');
+  }catch(e){toast('Error: '+e.message);}
+}
+async function saveRegisterSettings(){
+  const count=parseInt(document.getElementById('ss-reg-count')?.value)||2;
+  const names=[];
+  for(let i=0;i<count;i++){const v=(document.getElementById('ss-reg-'+i)?.value||'').trim();if(!v){toast('Name all registers');return;}names.push(v);}
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'),{registerCount:count,registerNames:names},{merge:true});
+    if(!window.storeSettings)window.storeSettings={};
+    window.storeSettings.registerCount=count;window.storeSettings.registerNames=names;
+    renderDailySalesCard();toast('Register settings saved');
+  }catch(e){toast('Error: '+e.message);}
+}
+async function createAccessCode(){
+  const code=(document.getElementById('ac-code-input')?.value||'').trim().toUpperCase();
+  if(!code){toast('Enter a code');return;}
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'accessCodes',code),{used:false,createdAt:new Date().toISOString(),createdBy:CU?.name||'operator'});
+    document.getElementById('ac-code-input').value='';toast('Access code created');loadAccessCodes();
+  }catch(e){toast('Error: '+e.message);}
+}
+async function loadAccessCodes(){
+  const el=document.getElementById('ac-list');if(!el)return;
+  try{
+    const snap=await window.F.getDocs(window.F.collection(window.db,'accessCodes'));
+    if(snap.empty){el.innerHTML='<div style="color:var(--text3);font-size:13px">No codes yet</div>';return;}
+    el.innerHTML=snap.docs.map(d=>{const data=d.data();const avail=!data.used;return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px"><div style="flex:1;min-width:0"><strong style="letter-spacing:1px">${d.id}</strong><span style="margin-left:8px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;${data.used?'background:var(--red-light);color:var(--red)':'background:var(--green-light);color:var(--green)'}">${data.used?'USED':'AVAILABLE'}</span>${data.used&&data.usedBy?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${data.usedBy}</div>`:''}</div><div style="display:flex;gap:6px;flex-shrink:0">${avail?`<button onclick="copyInviteLink('${d.id}')" class="bsm" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue-light)">Copy link</button>`:''}` +
+      `<button onclick="deleteAccessCode('${d.id}')" class="bdsm">Delete</button></div></div>`;}).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--red);font-size:13px">Error loading</div>';}
+}
+function copyInviteLink(code){
+  const url=location.origin+location.pathname+'?signup='+encodeURIComponent(code);
+  navigator.clipboard.writeText(url).then(()=>toast('✓ Invite link copied!')).catch(()=>{
+    prompt('Copy this link and send it:',url);
+  });
+}
+async function deleteAccessCode(code){
+  if(!confirm('Delete access code '+code+'?'))return;
+  try{await window.F.deleteDoc(window.F.doc(window.db,'accessCodes',code));toast('Deleted');loadAccessCodes();}
+  catch(e){toast('Error: '+e.message);}
 }
 
 // ---- TABS ----
@@ -2186,6 +2600,7 @@ function showTab(id){
   if(id==='todo')loadTodos();
   if(id==='bankdeposits'){const bm=document.getElementById('bd-filter-month');if(bm&&!bm.value)bm.value=new Date().toISOString().slice(0,7);const dd=document.getElementById('bd-deposit-date');if(dd&&!dd.value)dd.value=localDate();bdInit();}
   if(id==='monthlycomp'){initMonthlyComp();loadMonthlyComparison();}
+  if(id==='storesettings')loadStoreSettingsPage();
 }
 
 
@@ -2252,7 +2667,7 @@ async function loadDashboard(){
   try{
     const {getDocs,query,collection,orderBy,limit}=window.F;
 
-    const snap=await getDocs(query(collection(window.db,'dailyReports'),orderBy('date','desc')));
+    const snap=await getDocs(query(sc('dailyReports'),orderBy('date','desc')));
     const allReports=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdR=allReports.filter(r=>r.date>=mtdStart&&r.date<=mtdEnd);
     window._dashMtdR = mtdR;
@@ -2287,7 +2702,7 @@ async function loadDashboard(){
     const salesVsYest=isCurrentMonth&&yestSales>0?((todaySales-yestSales)/yestSales*100):null;
 
     // Overhead expenses for selected month
-    const expSnap=await getDocs(query(collection(window.db,'overheadExpenses'),orderBy('date','desc')));
+    const expSnap=await getDocs(query(sc('overheadExpenses'),orderBy('date','desc')));
     const mtdExp=expSnap.docs.map(d=>d.data()).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdExpTotal=mtdExp.reduce((s,x)=>s+(x.amount||0),0);
     const mtdExpByCategory={};
@@ -2296,7 +2711,7 @@ async function loadDashboard(){
     // Fuel profit — computed after fuelDeliveries fetch below
 
     // Other revenue for selected month
-    const orSnap=await getDocs(query(collection(window.db,'otherRevenue'),orderBy('date','desc')));
+    const orSnap=await getDocs(query(sc('otherRevenue'),orderBy('date','desc')));
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdORTotal=mtdOR.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
     // Group by source for dashboard breakdown
@@ -2304,19 +2719,19 @@ async function loadDashboard(){
     mtdOR.forEach(x=>{const src=x.source||'Other';if(!orBySource[src])orBySource[src]=0;orBySource[src]+=parseFloat(x.amount)||0;});
 
     // Lottery commission for selected month
-    const lcSnap=await getDocs(window.F.query(window.F.collection(window.db,'lotteryReports'),window.F.orderBy('weekEnd','desc')));
+    const lcSnap=await getDocs(window.F.query(sc('lotteryReports'),window.F.orderBy('weekEnd','desc')));
     const allLC=lcSnap.docs.map(d=>({id:d.id,...d.data()}));
     // Filter by weekEnd falling within the selected month
     const mtdLC=allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(selMonth));
     const mtdLCTotal=mtdLC.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
 
     // Deliveries for selected month
-    const dlSnap=await getDocs(query(collection(window.db,'deliveries'),orderBy('date','desc')));
+    const dlSnap=await getDocs(query(sc('deliveries'),orderBy('date','desc')));
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
     // Fuel deliveries
-    const fdSnap=await getDocs(query(collection(window.db,'fuelDeliveries'),orderBy('date','desc')));
+    const fdSnap=await getDocs(query(sc('fuelDeliveries'),orderBy('date','desc')));
     const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
     const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
@@ -2339,7 +2754,7 @@ async function loadDashboard(){
     // Check fuel alerts using most recent fuel report
     if(!window._latestFuelReport){
       try{
-        const frSnap=await getDocs(query(collection(window.db,'fuelReports'),orderBy('timestamp','desc'),limit(1)));
+        const frSnap=await getDocs(query(sc('fuelReports'),orderBy('timestamp','desc'),limit(1)));
         if(!frSnap.empty){
           const fr=frSnap.docs[0].data();
           window._latestFuelReport={regularGal:fr.regularGal||0,premiumGal:fr.premiumGal||0,dieselGal:fr.dieselGal||0,date:fr.date,employee:fr.employee};
@@ -2365,7 +2780,7 @@ async function loadDashboard(){
     // ---- SCRATCH-OFF DASHBOARD DATA ----
     // Counts use type:'count'. Revenue per count = totalRevenue (shift-scoped, from soldBySlot).
     // Value on hand = most recent count's totalValue (the board value at that moment).
-    const scrSnap=await getDocs(query(collection(window.db,'scratchCounts'),orderBy('timestamp','desc')));
+    const scrSnap=await getDocs(query(sc('scratchCounts'),orderBy('timestamp','desc')));
     const scrAll=scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
 
     // Value on hand: most recent count's totalValue (opening or closing, whichever is latest)
@@ -2373,7 +2788,7 @@ async function loadDashboard(){
     const latestCount = latestCountDoc; // used in sub-line display
 
     // Activations
-    const actSnapAll=await getDocs(query(collection(window.db,'scratchActivations'),orderBy('date','desc')));
+    const actSnapAll=await getDocs(query(sc('scratchActivations'),orderBy('date','desc')));
     const allActs=actSnapAll.docs.map(d=>({id:d.id,...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
     const recentActs=allActs;
     const mtdActs=allActs.filter(a=>a.date>=mtdStart&&a.date<=mtdEnd);
@@ -2394,17 +2809,17 @@ async function loadDashboard(){
     // Inventory flags
     let openFlags=0;
     try{
-      const invSnap=await getDocs(query(collection(window.db,'inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
+      const invSnap=await getDocs(query(sc('inventoryFlags'),orderBy('timestamp','desc'),limit(100)));
       openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
     }catch(e2){}
 
     // Tobacco low stock + discrepancies
     let lowTobacco=[], tobDiscrepancies=[];
     try{
-      const tobBrandSnap=await getDocs(query(collection(window.db,'tobaccoBrands'),orderBy('name','asc')));
+      const tobBrandSnap=await getDocs(query(sc('tobaccoBrands'),orderBy('name','asc')));
       const tobBrandsAll=tobBrandSnap.docs.map(d=>({id:d.id,...d.data()}));
       if(tobBrandsAll.length){
-        const tobCountSnap=await getDocs(query(collection(window.db,'tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
+        const tobCountSnap=await getDocs(query(sc('tobaccoCounts'),orderBy('timestamp','desc'),limit(1)));
         if(tobCountSnap.docs.length){
           const latestTob=tobCountSnap.docs[0].data();
           const latestCounts=latestTob.counts||{};
@@ -3020,59 +3435,131 @@ function toggleDashSection(id){
 
 
 
+function getRegisterDefs(){
+  const s=window.storeSettings;
+  const names=(s&&s.registerNames&&s.registerNames.length)?s.registerNames:['NRS','Verifone'];
+  const count=names.length;
+  const colors=['var(--blue)','var(--amber)','var(--green)'];
+  return names.slice(0,count).map((n,i)=>({name:n,color:colors[i]||colors[0]}));
+}
+
+function renderDailySalesCard(){
+  const regs=getRegisterDefs();
+  const n=regs.length;
+  const colsFr='1fr '+regs.map(()=>'1fr').join(' ');
+  const headers=regs.map(r=>`<div style="font-size:11px;font-weight:700;color:${r.color};text-transform:uppercase;letter-spacing:.5px;text-align:center">${r.name}</div>`).join('');
+  function inputRow(label,prefix,cb){
+    const inputs=regs.map((r,i)=>`<input type="number" id="${prefix}-r${i}" placeholder="0.00" oninput="${cb}()" style="border-color:${r.color}" />`).join('');
+    return `<div style="display:grid;grid-template-columns:${colsFr};gap:8px;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:500;color:var(--text2)">${label}</div>${inputs}</div>`;
+  }
+  const regNameList=regs.map(r=>r.name).join(' + ');
+  document.getElementById('dailySalesCard').innerHTML=`
+  <div class="card">
+    <div class="ct">C-store sales</div>
+    <div style="display:grid;grid-template-columns:${colsFr};gap:8px;margin-bottom:4px;padding:0 2px">
+      <div></div>${headers}
+    </div>
+    ${inputRow('Total sales','d-tot','calcSalesCombined')}
+    ${inputRow('Cash','d-cash','calcSalesCombined')}
+    ${inputRow('Credit','d-cred','calcSalesCombined')}
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Deductions from total sales</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:500;color:var(--text2)">🎟 Lottery</div>
+        <input type="number" id="d-deduct-lottery" placeholder="0.00" oninput="calcSalesCombined()" />
+      </div>
+      <div style="margin-bottom:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:500;color:var(--text2)">Other deduction</div>
+          <input type="number" id="d-deduct-other" placeholder="0.00" oninput="calcSalesCombined()" />
+        </div>
+        <input type="text" id="d-deduct-other-note" placeholder="What is this? e.g. Cashback, ATM fee, promo..." style="font-size:13px" />
+      </div>
+    </div>
+    <div id="salesCombinedDisplay" style="display:none;background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:2px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Summary</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text2)">Gross sales (${regNameList})</span>
+          <span id="d-gross-display" style="font-weight:600">$0.00</span>
+        </div>
+        <div id="d-deduct-lottery-row" style="display:none;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text2)">− Lottery</span>
+          <span id="d-deduct-lottery-display" style="color:var(--red)">$0.00</span>
+        </div>
+        <div id="d-deduct-other-row" style="display:none;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text2)" id="d-deduct-other-label">− Other</span>
+          <span id="d-deduct-other-display" style="color:var(--red)">$0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
+          <span>Net sales</span><span id="d-tot-combined" style="color:var(--green)">$0.00</span>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
+          <div><span style="font-size:12px;color:var(--text2)">Cash </span><span id="d-cash-combined" style="font-weight:600">$0.00</span></div>
+          <div><span style="font-size:12px;color:var(--text2)">Credit </span><span id="d-cred-combined" style="font-weight:600">$0.00</span></div>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="d-tot" /><input type="hidden" id="d-cash" /><input type="hidden" id="d-cred" />
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="ct" style="margin-bottom:6px">Cash drawer — short or over</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Enter expected and actual cash from each register</div>
+      <div style="display:grid;grid-template-columns:${colsFr};gap:8px;margin-bottom:4px">
+        <div></div>${headers}
+      </div>
+      ${inputRow('Expected','d-exp','calcShortOver')}
+      ${inputRow('Actual counted','d-actual','calcShortOver')}
+      <input type="hidden" id="d-expected" /><input type="hidden" id="d-actual" />
+      <div id="shortOverResult"></div>
+      <div id="cashDiscrepancyNote" style="display:none;margin-top:10px">
+        <label>Explain the discrepancy</label>
+        <textarea id="d-cash-disc-note" rows="2" placeholder="e.g. Customer paid with broken $50, gave change from both registers..."></textarea>
+      </div>
+    </div>
+  </div>`;
+}
+
 function calcSalesCombined(){
-  const totNrs=parseFloat(document.getElementById('d-tot-nrs').value)||0;
-  const totVfn=parseFloat(document.getElementById('d-tot-vfn').value)||0;
-  const cashNrs=parseFloat(document.getElementById('d-cash-nrs').value)||0;
-  const cashVfn=parseFloat(document.getElementById('d-cash-vfn').value)||0;
-  const credNrs=parseFloat(document.getElementById('d-cred-nrs').value)||0;
-  const credVfn=parseFloat(document.getElementById('d-cred-vfn').value)||0;
-  const deductLottery=parseFloat(document.getElementById('d-deduct-lottery').value)||0;
-  const deductOther=parseFloat(document.getElementById('d-deduct-other').value)||0;
-  const deductOtherNote=document.getElementById('d-deduct-other-note').value.trim();
-
-  const gross=totNrs+totVfn;
-  const net=Math.max(0, gross - deductLottery - deductOther);
-  const cash=cashNrs+cashVfn;
-  const cred=credNrs+credVfn;
-
-  // Write into hidden fields used by subDaily
+  const regs=getRegisterDefs();
+  const n=regs.length;
+  let gross=0,cash=0,cred=0,hasAny=false;
+  for(let i=0;i<n;i++){
+    const t=parseFloat(document.getElementById('d-tot-r'+i)?.value)||0;
+    const ca=parseFloat(document.getElementById('d-cash-r'+i)?.value)||0;
+    const cr=parseFloat(document.getElementById('d-cred-r'+i)?.value)||0;
+    gross+=t;cash+=ca;cred+=cr;
+    if(t||ca||cr)hasAny=true;
+  }
+  const deductLottery=parseFloat(document.getElementById('d-deduct-lottery')?.value)||0;
+  const deductOther=parseFloat(document.getElementById('d-deduct-other')?.value)||0;
+  const deductOtherNote=(document.getElementById('d-deduct-other-note')?.value||'').trim();
+  if(deductLottery||deductOther)hasAny=true;
+  const net=Math.max(0,gross-deductLottery-deductOther);
   document.getElementById('d-tot').value=net||'';
   document.getElementById('d-cash').value=cash||'';
   document.getElementById('d-cred').value=cred||'';
-
-  // Show summary when any value entered
-  const hasAny=totNrs||totVfn||cashNrs||cashVfn||credNrs||credVfn||deductLottery||deductOther;
   const disp=document.getElementById('salesCombinedDisplay');
-  disp.style.display=hasAny?'block':'none';
-
-  document.getElementById('d-gross-display').textContent='$'+gross.toFixed(2);
-  document.getElementById('d-tot-combined').textContent='$'+net.toFixed(2);
-  document.getElementById('d-cash-combined').textContent='$'+cash.toFixed(2);
-  document.getElementById('d-cred-combined').textContent='$'+cred.toFixed(2);
-
-  // Lottery deduction row
-  const lotRow=document.getElementById('d-deduct-lottery-row');
-  lotRow.style.display=deductLottery?'flex':'none';
-  document.getElementById('d-deduct-lottery-display').textContent='−$'+deductLottery.toFixed(2);
-
-  // Other deduction row
-  const otherRow=document.getElementById('d-deduct-other-row');
-  otherRow.style.display=deductOther?'flex':'none';
-  document.getElementById('d-deduct-other-display').textContent='−$'+deductOther.toFixed(2);
-  document.getElementById('d-deduct-other-label').textContent='− '+(deductOtherNote||'Other');
+  if(disp)disp.style.display=hasAny?'block':'none';
+  const gd=document.getElementById('d-gross-display');if(gd)gd.textContent='$'+gross.toFixed(2);
+  const td=document.getElementById('d-tot-combined');if(td)td.textContent='$'+net.toFixed(2);
+  const cd=document.getElementById('d-cash-combined');if(cd)cd.textContent='$'+cash.toFixed(2);
+  const rd=document.getElementById('d-cred-combined');if(rd)rd.textContent='$'+cred.toFixed(2);
+  const lotRow=document.getElementById('d-deduct-lottery-row');if(lotRow)lotRow.style.display=deductLottery?'flex':'none';
+  const lotDis=document.getElementById('d-deduct-lottery-display');if(lotDis)lotDis.textContent='−$'+deductLottery.toFixed(2);
+  const othRow=document.getElementById('d-deduct-other-row');if(othRow)othRow.style.display=deductOther?'flex':'none';
+  const othDis=document.getElementById('d-deduct-other-display');if(othDis)othDis.textContent='−$'+deductOther.toFixed(2);
+  const othLab=document.getElementById('d-deduct-other-label');if(othLab)othLab.textContent='− '+(deductOtherNote||'Other');
 }
 function calcShortOver(){
-  const expNrs=parseFloat(document.getElementById('d-exp-nrs').value)||0;
-  const expVfn=parseFloat(document.getElementById('d-exp-vfn').value)||0;
-  const exp=expNrs+expVfn;
+  const regs=getRegisterDefs();
+  const n=regs.length;
+  let exp=0,act=0;
+  for(let i=0;i<n;i++){
+    exp+=parseFloat(document.getElementById('d-exp-r'+i)?.value)||0;
+    act+=parseFloat(document.getElementById('d-actual-r'+i)?.value)||0;
+  }
   document.getElementById('d-expected').value=exp||'';
-
-  const actNrs=parseFloat(document.getElementById('d-actual-nrs').value)||0;
-  const actVfn=parseFloat(document.getElementById('d-actual-vfn').value)||0;
-  const act=actNrs+actVfn;
   document.getElementById('d-actual').value=act||'';
-
   const el=document.getElementById('shortOverResult');
   if(!exp&&!act){el.innerHTML='';document.getElementById('cashDiscrepancyNote').style.display='none';return;}
   const diff=act-exp;
@@ -3099,19 +3586,29 @@ async function subDaily(){
   const exp=parseFloat(document.getElementById('d-expected').value)||0,act=parseFloat(document.getElementById('d-actual').value)||0,cashDiff=act-exp;
   try{
     const shiftPhotoUrls = [];
-    await window.F.addDoc(window.F.collection(window.db,'dailyReports'),{
+    const regs=getRegisterDefs();
+    const perRegister=regs.map((r,i)=>({
+      name:r.name,
+      total:parseFloat(document.getElementById('d-tot-r'+i)?.value)||0,
+      cash:parseFloat(document.getElementById('d-cash-r'+i)?.value)||0,
+      credit:parseFloat(document.getElementById('d-cred-r'+i)?.value)||0,
+      expected:parseFloat(document.getElementById('d-exp-r'+i)?.value)||0,
+      actual:parseFloat(document.getElementById('d-actual-r'+i)?.value)||0,
+    }));
+    await window.F.addDoc(sc('dailyReports'),{
       type:'dailyReports',employee:CU.name,role:CU.role,
       shift:document.getElementById('d-shift').value,
       totalSales:parseFloat(document.getElementById('d-tot').value)||0,
       cashSales:parseFloat(document.getElementById('d-cash').value)||0,
       creditSales:parseFloat(document.getElementById('d-cred').value)||0,
-      grossSales:(parseFloat(document.getElementById('d-tot-nrs').value)||0)+(parseFloat(document.getElementById('d-tot-vfn').value)||0),
-      totalNrs:parseFloat(document.getElementById('d-tot-nrs').value)||0,
-      totalVfn:parseFloat(document.getElementById('d-tot-vfn').value)||0,
-      cashNrs:parseFloat(document.getElementById('d-cash-nrs').value)||0,
-      cashVfn:parseFloat(document.getElementById('d-cash-vfn').value)||0,
-      creditNrs:parseFloat(document.getElementById('d-cred-nrs').value)||0,
-      creditVfn:parseFloat(document.getElementById('d-cred-vfn').value)||0,
+      grossSales:perRegister.reduce((s,r)=>s+r.total,0),
+      perRegister,
+      totalNrs:perRegister[0]?.total||0,
+      totalVfn:perRegister[1]?.total||0,
+      cashNrs:perRegister[0]?.cash||0,
+      cashVfn:perRegister[1]?.cash||0,
+      creditNrs:perRegister[0]?.credit||0,
+      creditVfn:perRegister[1]?.credit||0,
       deductLottery:parseFloat(document.getElementById('d-deduct-lottery').value)||0,
       deductOther:parseFloat(document.getElementById('d-deduct-other').value)||0,
       deductOtherNote:document.getElementById('d-deduct-other-note').value,
@@ -3142,13 +3639,16 @@ async function subDaily(){
   }catch(e){toast('Error saving');console.error(e);btn.innerHTML='Submit shift report';btn.disabled=false;return;}
   // Post-save cleanup (outside try/catch so errors here don't show "Error saving")
   try{
-    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-lscr','d-lcan','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const regCount=(window.storeSettings?.registerNames?.length)||2;
+    const dynIds=[];
+    for(let i=0;i<regCount;i++){dynIds.push('d-tot-r'+i,'d-cash-r'+i,'d-cred-r'+i,'d-exp-r'+i,'d-actual-r'+i);}
+    [...dynIds,'d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-lscr','d-lcan','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
     document.getElementById('d-date').value=localDate();
     document.getElementById('f-date').value=localDate();
-    document.getElementById('f-emp').value=u.name;
+    document.getElementById('f-emp').value=CU?.name||'';
     try{const exM=document.getElementById('exMonth');if(exM)exM.value=localDate().slice(0,7);}catch(ex){}
     const ym=new Date().toISOString().slice(0,7);
     const em=document.getElementById('empMonth');if(em)em.value=ym;
@@ -3229,7 +3729,7 @@ async function subFuel(){
       }catch(pe){console.warn('Fuel photo upload failed, continuing without photo',pe);}
     }
     const _mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
-    await window.F.addDoc(window.F.collection(window.db,'fuelReports'),{
+    await window.F.addDoc(sc('fuelReports'),{
       type:'fuelReports',
       employee:document.getElementById('f-emp').value||CU.name,
       regularGal:parseFloat(document.getElementById('f-reg').value)||0,
@@ -3268,7 +3768,7 @@ window.fuelMargins    = { regular: 0, premium: 0, diesel: 0 };           // defa
 async function loadFuelThresholds(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'settings'),
+      sc('settings'),
       window.F.limit(20)
     ));
     const doc = snap.docs.find(d=>d.id==='fuelThresholds' || d.data()._type==='fuelThresholds');
@@ -3288,13 +3788,13 @@ async function saveFuelThresholds(){
   const prem = parseInt(document.getElementById('ft-prem').value) || 1500;
   const dies = parseInt(document.getElementById('ft-dies').value) || 1500;
   try{
-    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(20)));
+    const snap = await window.F.getDocs(window.F.query(sc('settings'),window.F.limit(20)));
     const existing = snap.docs.find(d=>d.id==='fuelThresholds' || d.data()._type==='fuelThresholds');
     const data = { regular: reg, premium: prem, diesel: dies, updatedAt: new Date().toISOString() };
     if(existing){
-      await window.F.updateDoc(window.F.doc(window.db,'settings', existing.id), data);
+      await window.F.updateDoc(sd('settings', existing.id), data);
     } else {
-      await window.F.addDoc(window.F.collection(window.db,'settings'), { ...data, _type: 'fuelThresholds' });
+      await window.F.addDoc(sc('settings'), { ...data, _type: 'fuelThresholds' });
     }
     window.fuelThresholds = { regular: reg, premium: prem, diesel: dies };
     toast('✓ Fuel alert thresholds saved!');
@@ -3310,7 +3810,7 @@ window.marginHistory = []; // [{id, date, regular, premium, diesel}] sorted desc
 async function loadFuelMargins(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'marginHistory'),
+      sc('marginHistory'),
       window.F.orderBy('date','desc')
     ));
     window.marginHistory = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -3348,10 +3848,10 @@ async function saveMarginEntry(){
     // Check if an entry already exists for this exact date — update it
     const existing = window.marginHistory.find(e=>e.date===date);
     if(existing){
-      await window.F.updateDoc(window.F.doc(window.db,'marginHistory',existing.id),
+      await window.F.updateDoc(sd('marginHistory',existing.id),
         {regular:reg, premium:prem, diesel:dies, updatedAt:new Date().toISOString()});
     } else {
-      await window.F.addDoc(window.F.collection(window.db,'marginHistory'),
+      await window.F.addDoc(sc('marginHistory'),
         {date, regular:reg, premium:prem, diesel:dies, createdAt:new Date().toISOString()});
     }
     toast('✓ Margin entry saved!');
@@ -3366,7 +3866,7 @@ async function saveMarginEntry(){
 async function deleteMarginEntry(id){
   if(!confirm('Delete this margin entry?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'marginHistory',id));
+    await window.F.deleteDoc(sd('marginHistory',id));
     toast('Entry deleted');
     await loadFuelMargins();
   }catch(e){ toast('Error deleting entry'); console.error(e); }
@@ -3448,7 +3948,7 @@ let scrSoldOut = {};
 
 async function loadGames(){
   try{
-    const snap = await window.F.getDocs(window.F.collection(window.db,'scratchSlots'));
+    const snap = await window.F.getDocs(sc('scratchSlots'));
     slots = Array(TOTAL_SLOTS).fill(null);
     snap.docs.forEach(d => {
       const x = d.data();
@@ -3507,9 +4007,9 @@ async function saveScrSlot(){
     const existing = slots[editingSlot];
     const data = {price,name,gameNum,totalTickets,updatedAt:new Date().toISOString()};
     if(existing && existing.docId)
-      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots',existing.docId),data);
+      await window.F.updateDoc(sd('scratchSlots',existing.docId),data);
     else
-      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{slot:editingSlot,...data,createdAt:new Date().toISOString()});
+      await window.F.addDoc(sc('scratchSlots'),{slot:editingSlot,...data,createdAt:new Date().toISOString()});
     toast('✓ Slot saved');
     closeScrSlotEdit();
     loadGames();
@@ -3522,7 +4022,7 @@ async function clearScrSlot(){
   if(!existing || !existing.docId){ closeScrSlotEdit(); return; }
   if(!confirm(`Clear slot ${editingSlot+1}? This removes the game assignment.`)) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'scratchSlots',existing.docId));
+    await window.F.deleteDoc(sd('scratchSlots',existing.docId));
     toast('Slot cleared');
     closeScrSlotEdit();
     loadGames();
@@ -3536,7 +4036,7 @@ async function clearScrSlot(){
 async function loadScrBaseline(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'scratchCounts'),
+      sc('scratchCounts'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(50)
     ));
@@ -3795,7 +4295,7 @@ async function subScratch(){
     // If any new books were activated, also write to scratchActivations for dashboard MTD tracking
     for(const s of activeSlots){
       if(scrNewBook[s.slotIdx] && s.totalTickets){
-        await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
+        await window.F.addDoc(sc('scratchActivations'),{
           slotNum: s.slotIdx+1, slotIdx: s.slotIdx,
           gameName: s.name, price: s.price,
           totalTickets: s.totalTickets, gameNum: s.gameNum||'',
@@ -3806,7 +4306,7 @@ async function subScratch(){
       }
     }
 
-    await window.F.addDoc(window.F.collection(window.db,'scratchCounts'), docData);
+    await window.F.addDoc(sc('scratchCounts'), docData);
 
     const soldMsg = hasBaseline && totalRevenue > 0 ? ` &middot; $${totalRevenue.toLocaleString()} sold since last count` : '';
     toast('&#10003; Count saved!' + soldMsg);
@@ -3838,7 +4338,7 @@ async function loadScrHistory(){
   if(!el) return;
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'scratchCounts'),
+      sc('scratchCounts'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(60)
     ));
@@ -3878,16 +4378,16 @@ let lics = JSON.parse(JSON.stringify(DEFAULT_LICS)); // mutable working copy
 
 async function saveLics(){
   try{
-    const ref = window.F.doc(window.db,'settings','complianceLics');
+    const ref = sd('settings','complianceLics');
     await window.F.updateDoc(ref,{lics, updatedAt:new Date().toISOString()}).catch(async ()=>{
-      await window.F.addDoc(window.F.collection(window.db,'settings'),{lics, updatedAt:new Date().toISOString()});
+      await window.F.addDoc(sc('settings'),{lics, updatedAt:new Date().toISOString()});
     });
   }catch(e){console.error('saveLics error',e);}
 }
 
 async function loadLics(){
   try{
-    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'settings'),window.F.limit(10)));
+    const snap = await window.F.getDocs(window.F.query(sc('settings'),window.F.limit(10)));
     const settingsDoc = snap.docs.find(d=>d.id==='complianceLics'||d.data().lics);
     if(settingsDoc && settingsDoc.data().lics && settingsDoc.data().lics.length){
       lics = settingsDoc.data().lics;
@@ -3900,9 +4400,9 @@ async function loadLics(){
 async function saveLicsPersist(){
   try{
     if(window._licsDocId){
-      await window.F.updateDoc(window.F.doc(window.db,'settings',window._licsDocId),{lics, updatedAt:new Date().toISOString()});
+      await window.F.updateDoc(sd('settings',window._licsDocId),{lics, updatedAt:new Date().toISOString()});
     } else {
-      const ref = await window.F.addDoc(window.F.collection(window.db,'settings'),{lics, updatedAt:new Date().toISOString()});
+      const ref = await window.F.addDoc(sc('settings'),{lics, updatedAt:new Date().toISOString()});
       window._licsDocId = ref.id;
     }
   }catch(e){console.error('saveLicsPersist error',e);}
@@ -3991,7 +4491,7 @@ async function loadTobaccoTab(){
 
 async function loadTobBrands(){
   try{
-    const snap = await window.F.getDocs(window.F.query(window.F.collection(window.db,'tobaccoBrands'),window.F.orderBy('name','asc')));
+    const snap = await window.F.getDocs(window.F.query(sc('tobaccoBrands'),window.F.orderBy('name','asc')));
     tobBrands = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderTobBrandList();
   }catch(e){ tobBrands=[]; }
@@ -4053,10 +4553,10 @@ async function saveTobrand(){
   const data = { name, category:cat, threshold:thr, distributor:dist, updatedAt:new Date().toISOString() };
   try{
     if(editId){
-      await window.F.updateDoc(window.F.doc(window.db,'tobaccoBrands',editId), data);
+      await window.F.updateDoc(sd('tobaccoBrands',editId), data);
       toast('✓ Brand updated');
     } else {
-      await window.F.addDoc(window.F.collection(window.db,'tobaccoBrands'), {...data, createdAt:new Date().toISOString()});
+      await window.F.addDoc(sc('tobaccoBrands'), {...data, createdAt:new Date().toISOString()});
       toast('✓ Brand added');
     }
     cancelTobrandEdit();
@@ -4068,7 +4568,7 @@ async function saveTobrand(){
 async function deleteTobrand(id){
   if(!confirm('Remove this brand? This will not delete historical counts.')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'tobaccoBrands',id));
+    await window.F.deleteDoc(sd('tobaccoBrands',id));
     toast('Brand removed');
     await loadTobBrands();
     renderTobCountForm();
@@ -4124,7 +4624,7 @@ async function submitTobCount(){
   const discrepancies = [];
   try{
     const prevSnap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'tobaccoCounts'),
+      sc('tobaccoCounts'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(1)
     ));
@@ -4137,12 +4637,12 @@ async function submitTobCount(){
       // 2. Get any deliveries logged between previous count and now
       // Fetch recent deliveries and filter client-side
       const delivSnap = await window.F.getDocs(window.F.query(
-        window.F.collection(window.db,'tobaccoCounts'),
+        sc('tobaccoCounts'),
         window.F.orderBy('timestamp','desc')
       ));
       // We store tobacco deliveries separately in tobaccoDeliveries collection
       const tobDelSnap = await window.F.getDocs(window.F.query(
-        window.F.collection(window.db,'tobaccoDeliveries'),
+        sc('tobaccoDeliveries'),
         window.F.orderBy('timestamp','desc')
       )).catch(()=>({docs:[]}));
       const tobDels = tobDelSnap.docs.map(d=>({...d.data(), _ts:d.data().timestamp?.toMillis?.() || 0}))
@@ -4180,7 +4680,7 @@ async function submitTobCount(){
   }catch(discErr){ console.error('Discrepancy check error:', discErr); }
 
   try{
-    await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
+    await window.F.addDoc(sc('tobaccoCounts'),{
       counts,
       discrepancies: discrepancies.length ? discrepancies : [],
       employee: CU.name,
@@ -4254,7 +4754,7 @@ async function loadTobInventory(){
   try{
     // Get most recent count
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'tobaccoCounts'),
+      sc('tobaccoCounts'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(1)
     ));
@@ -4316,7 +4816,7 @@ async function loadTobHistory(){
   const mtdStart = month+'-01', mtdEnd = month+'-31';
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'tobaccoCounts'),
+      sc('tobaccoCounts'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(60)
     ));
@@ -4404,7 +4904,7 @@ async function saveOpenedCarton(){
   if(!brand){ toast('Brand not found'); return; }
   try{
     // Log the carton open event
-    await window.F.addDoc(window.F.collection(window.db,'tobaccoCartonOpens'),{
+    await window.F.addDoc(sc('tobaccoCartonOpens'),{
       brandId,
       brandName: brand.name,
       cartonsOpened: qty,
@@ -4416,7 +4916,7 @@ async function saveOpenedCarton(){
 
     // Reduce inventory: fetch latest count for this brand and subtract cartons
     const countSnap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'tobaccoCounts'),
+      sc('tobaccoCounts'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(10)
     ));
@@ -4426,7 +4926,7 @@ async function saveOpenedCarton(){
       const currentCartons = latestWithBrand.counts[brandId] || 0;
       const newCartons = Math.max(0, currentCartons - qty);
       // Save an adjustment count doc
-      await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
+      await window.F.addDoc(sc('tobaccoCounts'),{
         counts: { [brandId]: newCartons },
         type: 'carton_open_adjustment',
         employee: CU.name,
@@ -4448,7 +4948,7 @@ async function loadOpenCartonLog(){
   if(!el) return;
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'tobaccoCartonOpens'),
+      sc('tobaccoCartonOpens'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(30)
     ));
@@ -4589,7 +5089,7 @@ async function saveTobDelivery(){
     const totalCartons = items.reduce((s,x)=>s+x.cartons,0);
 
     // Save delivery doc
-    await window.F.addDoc(window.F.collection(window.db,'tobaccoDeliveries'),{
+    await window.F.addDoc(sc('tobaccoDeliveries'),{
       vendor, invoice, cost, date,
       items,
       totalCartons,
@@ -4600,13 +5100,13 @@ async function saveTobDelivery(){
     // Update inventory: for each brand, fetch current count and add cartons
     for(const item of items){
       const countSnap = await window.F.getDocs(window.F.query(
-        window.F.collection(window.db,'tobaccoCounts'),
+        sc('tobaccoCounts'),
         window.F.orderBy('timestamp','desc'),
         window.F.limit(10)
       ));
       const latestWithBrand = countSnap.docs.map(d=>d.data()).find(d=>d.counts&&d.counts[item.brandId]!==undefined);
       const currentCartons = latestWithBrand?.counts?.[item.brandId] || 0;
-      await window.F.addDoc(window.F.collection(window.db,'tobaccoCounts'),{
+      await window.F.addDoc(sc('tobaccoCounts'),{
         counts: { [item.brandId]: currentCartons + item.cartons },
         type: 'delivery_adjustment',
         employee: CU.name,
@@ -4629,7 +5129,7 @@ async function loadTobDeliveryLog(){
   if(!el) return;
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'tobaccoDeliveries'),
+      sc('tobaccoDeliveries'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(20)
     ));
@@ -4660,7 +5160,7 @@ async function loadTobDeliveryLog(){
 async function delTobDelivery(id){
   if(!confirm('Delete this delivery record?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'tobaccoDeliveries',id));
+    await window.F.deleteDoc(sd('tobaccoDeliveries',id));
     toast('Deleted');
     loadTobDeliveryLog();
   }catch(e){ toast('Error deleting'); }
@@ -4672,7 +5172,7 @@ async function flagInv(){
   const note=document.getElementById('invNote')?.value.trim()||'';
   if(!item){toast('Enter item name');return;}
   try{
-    await window.F.addDoc(window.F.collection(window.db,'inventoryFlags'),{
+    await window.F.addDoc(sc('inventoryFlags'),{
       item, note, employee:CU.name, resolved:false,
       resolvedBy:'', operatorNote:'',
       date:localDate(),
@@ -4688,7 +5188,7 @@ async function resFlag(id){
   try{
     const noteEl=document.getElementById('opnote-'+id);
     const opNote=noteEl?noteEl.value.trim():'';
-    await window.F.updateDoc(window.F.doc(window.db,'inventoryFlags',id),{
+    await window.F.updateDoc(sd('inventoryFlags',id),{
       resolved:true,
       resolvedBy:CU.name,
       operatorNote:opNote,
@@ -4701,7 +5201,7 @@ async function resFlag(id){
 async function loadInvFlags(){
   try{
     // Fetch all flags, filter in JS to avoid Firestore index requirement
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'inventoryFlags'),window.F.orderBy('timestamp','desc'),window.F.limit(100)));
+    const snap=await window.F.getDocs(window.F.query(sc('inventoryFlags'),window.F.orderBy('timestamp','desc'),window.F.limit(100)));
     const allDocs=snap.docs.map(d=>({id:d.id,...d.data()}));
     const active=allDocs.filter(x=>x.resolved===false||x.resolved===undefined);
     const el=document.getElementById('invList'),cnt=document.getElementById('invCnt');
@@ -4814,7 +5314,7 @@ async function loadTodos(){
   el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'todos'),
+      sc('todos'),
       window.F.orderBy('timestamp','desc')
     ));
     todoItems = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -4915,12 +5415,12 @@ async function saveTodo(){
   };
   try{
     if(editingTodoId){
-      await window.F.updateDoc(window.F.doc(window.db,'todos',editingTodoId), data);
+      await window.F.updateDoc(sd('todos',editingTodoId), data);
       toast('✓ Task updated');
     } else {
       data.createdAt = new Date().toISOString();
       data.timestamp = window.F.serverTimestamp();
-      await window.F.addDoc(window.F.collection(window.db,'todos'), data);
+      await window.F.addDoc(sc('todos'), data);
       toast('✓ Task added');
     }
     closeTodoModal();
@@ -4933,7 +5433,7 @@ async function toggleTodoDone(id){
   if(!item) return;
   const nowDone = !item.done;
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'todos',id),{
+    await window.F.updateDoc(sd('todos',id),{
       done: nowDone,
       doneAt: nowDone ? new Date().toISOString() : null
     });
@@ -4948,7 +5448,7 @@ async function deleteTodo(){
   if(!editingTodoId) return;
   if(!confirm('Delete this task?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'todos',editingTodoId));
+    await window.F.deleteDoc(sd('todos',editingTodoId));
     toast('Task deleted');
     closeTodoModal();
     loadTodos();
@@ -4959,7 +5459,7 @@ async function clearDoneTodos(){
   if(!confirm('Remove all completed tasks?')) return;
   const done = todoItems.filter(t=>t.done);
   try{
-    await Promise.all(done.map(t=>window.F.deleteDoc(window.F.doc(window.db,'todos',t.id))));
+    await Promise.all(done.map(t=>window.F.deleteDoc(sd('todos',t.id))));
     toast('Cleared completed tasks');
     loadTodos();
   }catch(e){ toast('Error clearing tasks'); }
@@ -4969,7 +5469,7 @@ async function clearDoneTodos(){
 async function loadTodosForDash(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'todos'),
+      sc('todos'),
       window.F.orderBy('timestamp','desc')
     ));
     return snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>!t.done);
@@ -5031,7 +5531,7 @@ async function loadSchedule(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'schedules'),
+      sc('schedules'),
       window.F.orderBy('date','asc')
     ));
     schedShifts = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -5042,7 +5542,7 @@ async function loadSchedule(){
       const schedNames = [...new Set(schedShifts.map(s=>s.employee).filter(Boolean))];
       let loginNames = [];
       try{
-        const ls = await window.F.getDocs(window.F.collection(window.db,'empLogins'));
+        const ls = await window.F.getDocs(sc('empLogins'));
         loginNames = ls.docs.map(d=>d.data().name).filter(Boolean);
       }catch(e){}
       const names = [...new Set([...loginNames,...schedNames])].sort();
@@ -5178,7 +5678,7 @@ async function populateShiftEmpDropdown(selectedName){
   if(backBtn) backBtn.style.display='none';
 
   try{
-    const snap = await window.F.getDocs(window.F.collection(window.db,'empLogins'));
+    const snap = await window.F.getDocs(sc('empLogins'));
     const names = snap.docs.map(d=>d.data().name).filter(Boolean).sort();
 
     // Check if selectedName is NOT in the list (was manually entered)
@@ -5281,12 +5781,12 @@ async function saveShift(){
 
   try{
     if(editingShiftId){
-      await window.F.updateDoc(window.F.doc(window.db,'schedules',editingShiftId), data);
+      await window.F.updateDoc(sd('schedules',editingShiftId), data);
       toast('✓ Shift updated');
     } else {
       data.createdBy = CU.name;
       data.timestamp = window.F.serverTimestamp();
-      await window.F.addDoc(window.F.collection(window.db,'schedules'), data);
+      await window.F.addDoc(sc('schedules'), data);
       toast('✓ Shift added');
     }
     closeShiftModal();
@@ -5298,7 +5798,7 @@ async function deleteShift(){
   if(!editingShiftId) return;
   if(!confirm('Delete this shift?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'schedules',editingShiftId));
+    await window.F.deleteDoc(sd('schedules',editingShiftId));
     toast('Shift deleted');
     closeShiftModal();
     loadSchedule();
@@ -5318,7 +5818,7 @@ async function loadMySchedule(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'schedules'),
+      sc('schedules'),
       window.F.orderBy('date','asc')
     ));
     const all = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -5369,7 +5869,7 @@ async function loadLogs(){
     let all=[];
     for(const col of cols){
       try{
-        const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));
+        const snap=await window.F.getDocs(window.F.query(sc(col),window.F.orderBy('timestamp','desc'),window.F.limit(25)));
         snap.docs.forEach(d=>all.push({id:d.id,col,...d.data()}));
       }catch(colErr){
         console.warn(`loadLogs: skipped collection "${col}" due to error:`,colErr);
@@ -5668,7 +6168,7 @@ async function saveLogEdit(){
   updates.editedAt=new Date().toISOString();
 
   try{
-    await window.F.updateDoc(window.F.doc(window.db,col,id),updates);
+    await window.F.updateDoc(sd(col,id),updates);
     toast('✓ Entry updated');
     closeEditModal();
     loadLogs();
@@ -5679,7 +6179,7 @@ async function deleteLog(){
   if(!editState.id||!editState.col)return;
   if(!confirm('Delete this entry permanently? This cannot be undone.'))return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,editState.col,editState.id));
+    await window.F.deleteDoc(sd(editState.col,editState.id));
     toast('Entry deleted');
     closeEditModal();
     loadLogs();
@@ -5754,7 +6254,7 @@ async function loadPayrollStatus(month){
   // Returns map: payKey -> {paid, amount, paidAt, paidBy}
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'payrollRecords'),
+      sc('payrollRecords'),
       window.F.where('month','==',month)
     ));
     const map = {};
@@ -5764,7 +6264,7 @@ async function loadPayrollStatus(month){
     // where+no-index fallback: fetch all and filter client-side
     try{
       const snap2 = await window.F.getDocs(window.F.query(
-        window.F.collection(window.db,'payrollRecords'),
+        sc('payrollRecords'),
         window.F.orderBy('timestamp','desc')
       ));
       const map = {};
@@ -5780,7 +6280,7 @@ async function loadPayrollStatus(month){
 // ---- WAGE RATE HELPERS ----
 async function getWageRate(empName){
   try{
-    const doc = await window.F.getDoc(window.F.doc(window.db,'employeeWages',empName));
+    const doc = await window.F.getDoc(sd('employeeWages',empName));
     if(doc.exists()) return doc.data().rate||0;
   }catch(e){}
   return 0;
@@ -5789,7 +6289,7 @@ async function getWageRate(empName){
 async function saveDashWageRate(empName, rateStr){
   const rate = parseFloat(rateStr)||0;
   try{
-    await window.F.setDoc(window.F.doc(window.db,'employeeWages',empName),{rate, updatedBy:CU.name, updatedAt:new Date().toISOString()});
+    await window.F.setDoc(sd('employeeWages',empName),{rate, updatedBy:CU.name, updatedAt:new Date().toISOString()});
     toast(`✓ ${empName} wage set to $${rate.toFixed(2)}/hr`);
     loadDashboard();
   }catch(e){ toast('Error saving wage rate'); }
@@ -5802,7 +6302,7 @@ async function markWeekPaidFromDash(payKey, empName, weekLabel, month, estAmt){
   if(amtStr === null) return;
   const amount = parseFloat(amtStr)||null;
   try{
-    await window.F.addDoc(window.F.collection(window.db,'payrollRecords'),{
+    await window.F.addDoc(sc('payrollRecords'),{
       payKey, empName, weekLabel, month,
       amount, paid:true,
       paidBy: CU.name,
@@ -5823,7 +6323,7 @@ async function markWeekPaid(payKey, empName, weekLabel, month){
     // Already paid — offer to undo
     if(!confirm(`Unmark payment for ${empName} ${weekLabel}?`)) return;
     try{
-      await window.F.deleteDoc(window.F.doc(window.db,'payrollRecords',existing.docId));
+      await window.F.deleteDoc(sd('payrollRecords',existing.docId));
       toast('Payment unmarked');
       loadEmployees();
     }catch(e){ toast('Error'); }
@@ -5842,7 +6342,7 @@ async function markWeekPaid(payKey, empName, weekLabel, month){
   if(amtStr === null) return; // cancelled
   const amount = parseFloat(amtStr) || null;
   try{
-    await window.F.addDoc(window.F.collection(window.db,'payrollRecords'),{
+    await window.F.addDoc(sc('payrollRecords'),{
       payKey, empName, weekLabel, month,
       amount: amount,
       paid: true,
@@ -5864,7 +6364,7 @@ async function loadEmpLogins(){
   card.style.display='block';
   list.innerHTML='<div style="color:var(--text3);font-size:13px">Loading...</div>';
   try{
-    const snap = await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+    const snap = await window.F.getDocs(sc('employeeLogins'));
     const emps = snap.docs.map(d=>({docId:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
     if(!emps.length){
       list.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px 0">No employee logins yet. Add your first employee above.</div>';
@@ -5934,22 +6434,22 @@ async function saveEmpLogin(){
   if(!name){errEl.textContent='Please enter a name';return;}
   if(!isEdit && !/^\d{4}$/.test(pin)){errEl.textContent='PIN must be exactly 4 digits';return;}
   if(isEdit && pin && !/^\d{4}$/.test(pin)){errEl.textContent='PIN must be exactly 4 digits';return;}
-  if(pin===OP_PIN){errEl.textContent='That PIN is reserved for the operator';return;}
+  if(pin===LEAD_PIN){errEl.textContent='That PIN is reserved';return;}
   if(pin===LEAD_PIN){errEl.textContent='That PIN is reserved for the shared lead login';return;}
 
   try{
     if(isEdit){
-      const ref=window.F.doc(window.db,'employeeLogins',docId);
+      const ref=sd('employeeLogins',docId);
       const upd={role, updatedBy:CU.name, updatedAt:new Date().toISOString()};
       if(pin) upd.pin=pin;
       await window.F.updateDoc(ref,upd);
       toast('✓ Login updated for '+name);
     } else {
       // Check for duplicate name
-      const snap=await window.F.getDocs(window.F.collection(window.db,'employeeLogins'));
+      const snap=await window.F.getDocs(sc('employeeLogins'));
       const dup=snap.docs.find(d=>d.data().name.toLowerCase()===name.toLowerCase());
       if(dup){errEl.textContent='An employee login for "'+name+'" already exists';return;}
-      await window.F.addDoc(window.F.collection(window.db,'employeeLogins'),{
+      await window.F.addDoc(sc('employeeLogins'),{
         name, role, pin, createdBy:CU.name, createdAt:new Date().toISOString()
       });
       toast('✓ Login created for '+name);
@@ -5962,7 +6462,7 @@ async function saveEmpLogin(){
 async function deleteEmpLogin(docId, name){
   if(!confirm('Remove login for '+name+'? They will no longer be able to sign in.')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'employeeLogins',docId));
+    await window.F.deleteDoc(sd('employeeLogins',docId));
     toast('Login removed for '+name);
     loadEmpLogins();
   }catch(err){toast('Error removing login');console.error(err);}
@@ -5982,9 +6482,9 @@ async function loadEmployees(){
 
   try{
     const [snap, payroll, wageSnap] = await Promise.all([
-      window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('date','desc'))),
+      window.F.getDocs(window.F.query(sc('dailyReports'),window.F.orderBy('date','desc'))),
       isOp ? loadPayrollStatus(month) : Promise.resolve({}),
-      isOp ? window.F.getDocs(window.F.query(window.F.collection(window.db,'employeeWages'))) : Promise.resolve({docs:[]})
+      isOp ? window.F.getDocs(window.F.query(sc('employeeWages'))) : Promise.resolve({docs:[]})
     ]);
     window._payrollCache = payroll;
     const wageRates={};
@@ -6157,7 +6657,7 @@ async function subFuelDelivery(){
   const btn = document.querySelector('#fuelDeliveryForm .btn');
   btn.innerHTML = '<span class="spinner"></span>Saving...'; btn.disabled = true;
   try{
-    await window.F.addDoc(window.F.collection(window.db,'fuelDeliveries'),{
+    await window.F.addDoc(sc('fuelDeliveries'),{
       date:         document.getElementById('fd-date').value || localDate(),
       regularGal:   regGal,
       premiumGal:   premGal,
@@ -6196,7 +6696,7 @@ async function loadFuelDeliveries(){
   el.innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading...</div>';
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'fuelDeliveries'),
+      sc('fuelDeliveries'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(50)
     ));
@@ -6259,7 +6759,7 @@ let _fdEditId = null;
 function openFuelDeliveryEdit(id){
   _fdEditId = id;
   // Find doc from the list render — re-fetch from firestore
-  window.F.getDoc(window.F.doc(window.db,'fuelDeliveries',id)).then(snap=>{
+  window.F.getDoc(sd('fuelDeliveries',id)).then(snap=>{
     if(!snap.exists()){ toast('Could not load entry'); return; }
     const d = snap.data();
     const el = document.getElementById('editModalContent');
@@ -6319,7 +6819,7 @@ async function saveFuelDeliveryEdit(){
     editedAt:     new Date().toISOString()
   };
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'fuelDeliveries',_fdEditId), updates);
+    await window.F.updateDoc(sd('fuelDeliveries',_fdEditId), updates);
     toast('✓ Delivery updated');
     closeEditModal();
     loadFuelDeliveries();
@@ -6330,7 +6830,7 @@ async function deleteFuelDelivery(){
   if(!_fdEditId) return;
   if(!confirm('Delete this fuel delivery? This cannot be undone.')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'fuelDeliveries',_fdEditId));
+    await window.F.deleteDoc(sd('fuelDeliveries',_fdEditId));
     toast('Delivery deleted');
     closeEditModal();
     loadFuelDeliveries();
@@ -6343,7 +6843,7 @@ async function loadFuelPhotos(){
   if(!el)return;
   const dateFilter=document.getElementById('fuelPhotoDate')?.value||'';
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
+    const snap=await window.F.getDocs(window.F.query(sc('fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
     let docs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.photoUrl&&d.photoUrl!='');
     if(dateFilter)docs=docs.filter(d=>d.date===dateFilter);
     if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>No fuel photos'+(dateFilter?' for this date':' yet')+'</div>';return;}
@@ -6370,7 +6870,7 @@ async function loadMyHours(){
   const mtdEnd=month+'-31';
 
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'dailyReports'),window.F.orderBy('date','desc')));
+    const snap=await window.F.getDocs(window.F.query(sc('dailyReports'),window.F.orderBy('date','desc')));
     const myShifts=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.employee===CU.name&&r.date>=mtdStart&&r.date<=mtdEnd);
 
     const totalHours=myShifts.reduce((s,r)=>s+(parseFloat(r.hoursWorked)||0),0);
@@ -6400,7 +6900,7 @@ async function loadLatestFuel(){
   const el=document.getElementById('latestFuelContent');
   if(!card||!el)return;
   try{
-    const snap=await window.F.getDocs(window.F.query(window.F.collection(window.db,'fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(5)));
+    const snap=await window.F.getDocs(window.F.query(sc('fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(5)));
     if(snap.empty){card.style.display='none';return;}
     card.style.display='block';
     // Store most recent for alert checking
@@ -6490,14 +6990,14 @@ async function loadMargins(){
   try{
     // Load categories
     const catSnap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'mgCategories'),
+      sc('mgCategories'),
       window.F.orderBy('order','asc')
     ));
     mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
 
     // Load products
     const prodSnap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'mgProducts'),
+      sc('mgProducts'),
       window.F.orderBy('name','asc')
     ));
     mgProducts = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
@@ -6677,7 +7177,7 @@ async function addMgCategory(){
   const icon = document.getElementById('mg-cat-icon')?.value.trim() || '📦';
   if(!name){ toast('Enter a category name'); return; }
   try{
-    await window.F.addDoc(window.F.collection(window.db,'mgCategories'),{
+    await window.F.addDoc(sc('mgCategories'),{
       name, icon,
       order: mgCategories.length,
       createdAt: new Date().toISOString()
@@ -6700,9 +7200,9 @@ async function confirmDeleteMgCat(id){
   try{
     const toDelete = mgProducts.filter(p=>p.categoryId===id);
     for(const p of toDelete){
-      await window.F.deleteDoc(window.F.doc(window.db,'mgProducts',p.id));
+      await window.F.deleteDoc(sd('mgProducts',p.id));
     }
-    await window.F.deleteDoc(window.F.doc(window.db,'mgCategories',id));
+    await window.F.deleteDoc(sd('mgCategories',id));
     toast('Category deleted');
     loadMargins();
   }catch(e){ toast('Error deleting category'); }
@@ -6725,7 +7225,7 @@ async function saveMgCatEdit(id){
   const icon = document.getElementById('ce-icon-'+id)?.value.trim()||'📦';
   if(!name){ toast('Enter a category name'); return; }
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'mgCategories',id),{
+    await window.F.updateDoc(sd('mgCategories',id),{
       name, icon, updatedAt: new Date().toISOString()
     });
     toast('✓ Category updated');
@@ -6852,7 +7352,7 @@ async function addMgProduct(catId){
   if(!cost || !sell){ toast('Enter cost and sell price'); return; }
   const cpu = (cost && units) ? cost/units : cost;
   try{
-    await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
+    await window.F.addDoc(sc('mgProducts'),{
       categoryId: catId,
       name, cost, units, costPerUnit: cpu, sell,
       margin:  calcMg(cpu, sell),
@@ -6888,7 +7388,7 @@ async function saveMgProduct(prodId, catId){
   if(!cost || !sell){ toast('Enter cost and sell price'); return; }
   const cpu = (cost && units) ? cost/units : cost;
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'mgProducts',prodId),{
+    await window.F.updateDoc(sd('mgProducts',prodId),{
       name, cost, units, costPerUnit: cpu, sell,
       margin:  calcMg(cpu, sell),
       markup:  calcMarkup(cpu, sell),
@@ -6903,7 +7403,7 @@ async function saveMgProduct(prodId, catId){
 async function deleteMgProduct(prodId){
   if(!confirm('Delete this product?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'mgProducts',prodId));
+    await window.F.deleteDoc(sd('mgProducts',prodId));
     mgEditingProd = null;
     toast('Product deleted');
     loadMargins();
@@ -6974,7 +7474,7 @@ async function submitExpense(){
   if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
 
   try{
-    await window.F.addDoc(window.F.collection(window.db,'expenses'),{
+    await window.F.addDoc(sc('expenses'),{
       date:     document.getElementById('ex-date')?.value || localDate(),
       method:   document.getElementById('ex-method').value,
       amount,
@@ -7016,7 +7516,7 @@ async function loadExpenses(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'expenses'),
+      sc('expenses'),
       window.F.orderBy('timestamp','desc')
     ));
     let all = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -7087,7 +7587,7 @@ async function loadExpenses(){
 async function deleteExpense(id){
   if(!confirm('Delete this expense?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'expenses',id));
+    await window.F.deleteDoc(sd('expenses',id));
     toast('Expense deleted');
     loadExpenses();
   }catch(e){ toast('Error deleting'); }
@@ -7112,7 +7612,7 @@ async function addCustomOhCategory(){
   ohCustomCategories.push(cat);
   // Save to Firestore so it persists
   try{
-    await window.F.addDoc(window.F.collection(window.db,'ohCategories'),{name:cat,createdAt:new Date().toISOString()});
+    await window.F.addDoc(sc('ohCategories'),{name:cat,createdAt:new Date().toISOString()});
   }catch(e){ /* non-fatal */ }
   renderOhCategoryPills(cat);
 }
@@ -7135,7 +7635,7 @@ function renderOhCategoryPills(selectCat){
 async function loadOhCategories(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'ohCategories'),
+      sc('ohCategories'),
       window.F.orderBy('createdAt','asc')
     ));
     ohCustomCategories = snap.docs.map(d=>d.data().name).filter(Boolean);
@@ -7172,7 +7672,7 @@ async function submitOverhead(){
         ohPhotoUrl = await uploadPhoto(ohPhotoFile, photoStoragePath('overheadExpenses', document.getElementById('oh-date')?.value||localDate()), 1200);
       }catch(pe){ console.warn('Overhead photo upload failed', pe); }
     }
-    await window.F.addDoc(window.F.collection(window.db,'overheadExpenses'),{
+    await window.F.addDoc(sc('overheadExpenses'),{
       date:     document.getElementById('oh-date')?.value || localDate(),
       amount,
       category: cat,
@@ -7214,7 +7714,7 @@ async function loadOverhead(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'overheadExpenses'),
+      sc('overheadExpenses'),
       window.F.orderBy('date','desc')
     ));
     const all = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -7397,7 +7897,7 @@ function drawOhLegend(byCategory, total){
 async function deleteOverhead(id){
   if(!confirm('Delete this entry?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'overheadExpenses',id));
+    await window.F.deleteDoc(sd('overheadExpenses',id));
     toast('Entry deleted');
     loadOverhead();
   }catch(e){ toast('Error deleting'); }
@@ -7456,7 +7956,7 @@ async function saveOhEdit(){
   if(!updates.description){ toast('Enter a description'); return; }
   if(!updates.amount){ toast('Enter a valid amount'); return; }
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'overheadExpenses',id), updates);
+    await window.F.updateDoc(sd('overheadExpenses',id), updates);
     toast('✓ Entry updated');
     closeEditModal();
     loadOverhead();
@@ -7468,7 +7968,7 @@ async function deleteOhFromModal(){
   if(!id) return;
   if(!confirm('Delete this entry? This cannot be undone.')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'overheadExpenses',id));
+    await window.F.deleteDoc(sd('overheadExpenses',id));
     toast('Entry deleted');
     closeEditModal();
     loadOverhead();
@@ -7504,7 +8004,7 @@ async function submitOtherRev(){
   const btn = document.querySelector('#page-otherrev .bprimary');
   btn.disabled = true; btn.textContent = 'Saving...';
   try{
-    await window.F.addDoc(window.F.collection(window.db,'otherRevenue'),{
+    await window.F.addDoc(sc('otherRevenue'),{
       type: 'otherRevenue',
       date, amount, source, notes,
       employee: CU.name,
@@ -7532,7 +8032,7 @@ async function loadOtherRev(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'otherRevenue'),
+      sc('otherRevenue'),
       window.F.orderBy('date','desc')
     ));
     const all      = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -7584,7 +8084,7 @@ async function loadOtherRev(){
 async function deleteOtherRev(id){
   if(!confirm('Delete this revenue entry?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'otherRevenue',id));
+    await window.F.deleteDoc(sd('otherRevenue',id));
     toast('Entry deleted');
     loadOtherRev();
   }catch(e){ toast('Error deleting'); }
@@ -7696,7 +8196,7 @@ async function submitLotteryReport(){
         photoUrl = await uploadPhoto(lcPhotoFile, photoStoragePath('lotteryReports', weekEnd), 1600);
       }catch(pe){ console.warn('Lottery photo upload failed', pe); }
     }
-    await window.F.addDoc(window.F.collection(window.db,'lotteryReports'),{
+    await window.F.addDoc(sc('lotteryReports'),{
       weekEnd, scrComm, dgComm, cashBonus, activations, eft, sweepDate,
       totalComm, net, notes,
       photoUrl,
@@ -7727,7 +8227,7 @@ async function loadLotteryReports(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'lotteryReports'),
+      sc('lotteryReports'),
       window.F.orderBy('weekEnd','desc')
     ));
     const all      = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -7808,7 +8308,7 @@ async function loadLotteryReports(){
 async function deleteLotteryReport(id){
   if(!confirm('Delete this lottery report?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'lotteryReports',id));
+    await window.F.deleteDoc(sd('lotteryReports',id));
     toast('Report deleted');
     loadLotteryReports();
   }catch(e){ toast('Error deleting'); }
@@ -8113,7 +8613,7 @@ async function commitMgImport(){
 
       // Create category if new
       if(!catCache[catKey]){
-        const newCat = await window.F.addDoc(window.F.collection(window.db,'mgCategories'),{
+        const newCat = await window.F.addDoc(sc('mgCategories'),{
           name: catName,
           icon: getCatIcon(catName),
           order: Object.keys(catCache).length,
@@ -8124,7 +8624,7 @@ async function commitMgImport(){
 
       try{
         const mg = (row.cost&&row.sell) ? ((row.sell-row.cost)/row.sell*100) : null;
-        await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
+        await window.F.addDoc(sc('mgProducts'),{
           categoryId: catCache[catKey],
           name:   row.name,
           cost:   row.cost  || 0,
@@ -8261,7 +8761,7 @@ async function saveActivation(){
   const slotIdx = parseInt(slotVal);
   try{
     // Save activation record
-    await window.F.addDoc(window.F.collection(window.db,'scratchActivations'),{
+    await window.F.addDoc(sc('scratchActivations'),{
       slotNum: slotIdx+1,
       slotIdx,
       gameName: name,
@@ -8277,9 +8777,9 @@ async function saveActivation(){
     const existing = slots[slotIdx];
     const slotData = {price,name,gameNum,totalTickets:tix,updatedAt:new Date().toISOString()};
     if(existing && existing.docId)
-      await window.F.updateDoc(window.F.doc(window.db,'scratchSlots',existing.docId),slotData);
+      await window.F.updateDoc(sd('scratchSlots',existing.docId),slotData);
     else
-      await window.F.addDoc(window.F.collection(window.db,'scratchSlots'),{slot:slotIdx,...slotData,createdAt:new Date().toISOString()});
+      await window.F.addDoc(sc('scratchSlots'),{slot:slotIdx,...slotData,createdAt:new Date().toISOString()});
 
     toast(`✓ Book activated — $${(price*tix).toLocaleString()} added to Slot ${slotIdx+1}`);
     document.getElementById('actForm').style.display='none';
@@ -8294,7 +8794,7 @@ async function loadActLog(){
   if(!el) return;
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'scratchActivations'),
+      sc('scratchActivations'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(50)
     ));
@@ -8321,7 +8821,7 @@ async function loadActLog(){
 async function delActivation(id){
   if(!confirm('Delete this activation?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'scratchActivations',id));
+    await window.F.deleteDoc(sd('scratchActivations',id));
     toast('Deleted');
     loadActLog();
   }catch(e){ toast('Error deleting'); }
@@ -8352,7 +8852,7 @@ async function initDeliveries(){
 async function loadDlVendors(){
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'dlVendors'),
+      sc('dlVendors'),
       window.F.orderBy('name','asc')
     ));
     dlVendors = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -8409,7 +8909,7 @@ async function saveDlVendorEdit(id){
   const cat  = document.getElementById('dlve-cat-'+id)?.value.trim();
   if(!name){ toast('Enter a vendor name'); return; }
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'dlVendors',id),{
+    await window.F.updateDoc(sd('dlVendors',id),{
       name, category:cat, updatedAt:new Date().toISOString()
     });
     toast('✓ Vendor updated');
@@ -8457,7 +8957,7 @@ async function saveDlVendor(){
   const cat   = document.getElementById('dlVendorCat')?.value.trim();
   if(!name){ toast('Enter vendor name'); return; }
   try{
-    await window.F.addDoc(window.F.collection(window.db,'dlVendors'),{
+    await window.F.addDoc(sc('dlVendors'),{
       name, category:cat, createdAt:new Date().toISOString()
     });
     cancelDlVendorEdit();
@@ -8469,7 +8969,7 @@ async function saveDlVendor(){
 async function deleteDlVendor(id){
   if(!confirm('Delete this vendor?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'dlVendors',id));
+    await window.F.deleteDoc(sd('dlVendors',id));
     toast('Vendor deleted');
     loadDlVendors();
   }catch(e){ toast('Error deleting vendor'); }
@@ -8513,12 +9013,12 @@ async function submitDelivery(){
     if(newVendor && !selVendor){
       const exists = dlVendors.find(v=>v.name.toLowerCase()===newVendor.toLowerCase());
       if(!exists){
-        await window.F.addDoc(window.F.collection(window.db,'dlVendors'),{ name:newVendor, category:'other', createdAt:new Date().toISOString() });
+        await window.F.addDoc(sc('dlVendors'),{ name:newVendor, category:'other', createdAt:new Date().toISOString() });
         await loadDlVendors();
       }
     }
 
-    await window.F.addDoc(window.F.collection(window.db,'deliveries'),{
+    await window.F.addDoc(sc('deliveries'),{
       vendor,
       date,
       invoiceNumber: document.getElementById('del-invnum')?.value.trim()||'',
@@ -8661,7 +9161,7 @@ async function applyInvoice() {
 
     // Auto-save vendor if new
     if (!dlVendors.find(v=>v.name.toLowerCase()===vendor.toLowerCase())) {
-      await window.F.addDoc(window.F.collection(window.db,'dlVendors'),
+      await window.F.addDoc(sc('dlVendors'),
         {name:vendor, category:'other', createdAt:new Date().toISOString()});
       await loadDlVendors();
     }
@@ -8686,7 +9186,7 @@ async function applyInvoice() {
     const itemsSummary = inv.lineItems.map(i=>`${i.name} ×${i.unitsPerCase||1}/case @ $${(i.cost||0).toFixed(2)}`).join('; ');
 
     // Save delivery record
-    await window.F.addDoc(window.F.collection(window.db,'deliveries'),{
+    await window.F.addDoc(sc('deliveries'),{
       vendor,
       date,
       invoiceNumber: inv.invoiceNumber||'',
@@ -8701,7 +9201,7 @@ async function applyInvoice() {
     });
 
     // Save invoice scan record for history
-    await window.F.addDoc(window.F.collection(window.db,'invoiceScans'),{
+    await window.F.addDoc(sc('invoiceScans'),{
       vendor,
       date,
       invoiceNumber: inv.invoiceNumber||'',
@@ -8717,7 +9217,7 @@ async function applyInvoice() {
     for (const item of inv.lineItems) {
       if (item.priceChange && item.matchedProductId) {
         try {
-          await window.F.updateDoc(window.F.doc(window.db,'mgProducts',item.matchedProductId), {cost: item.cost});
+          await window.F.updateDoc(sd('mgProducts',item.matchedProductId), {cost: item.cost});
           const p = mgProducts.find(p=>p.id===item.matchedProductId);
           if (p) p.cost = item.cost;
           priceUpdates++;
@@ -8733,7 +9233,7 @@ async function applyInvoice() {
           const catId = item.suggestedCategoryId ||
             mgCategories.find(c=>/other/i.test(c.name))?.id ||
             mgCategories[0]?.id || '';
-          const docRef = await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
+          const docRef = await window.F.addDoc(sc('mgProducts'),{
             name: item.name,
             cost: item.cost||0,
             sell: 0,
@@ -8783,7 +9283,7 @@ async function loadDeliveries(){
 
   try{
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'deliveries'),
+      sc('deliveries'),
       window.F.orderBy('date','desc')
     ));
     let all = snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=start&&x.date<=end);
@@ -8858,7 +9358,7 @@ async function loadDeliveries(){
 async function deleteDelivery(id){
   if(!confirm('Delete this delivery log?')) return;
   try{
-    await window.F.deleteDoc(window.F.doc(window.db,'deliveries',id));
+    await window.F.deleteDoc(sd('deliveries',id));
     toast('Deleted');
     loadDeliveries();
   }catch(e){ toast('Error deleting'); }
@@ -8880,7 +9380,7 @@ function dlPaymentChanged(){
 
 async function markDeliveryPaid(id){
   try{
-    await window.F.updateDoc(window.F.doc(window.db,'deliveries',id),{
+    await window.F.updateDoc(sd('deliveries',id),{
       status: 'paid',
       paidDate: localDate(),
       paidBy: CU.name
@@ -8925,7 +9425,7 @@ async function bdSaveAccount() {
     toast('Account already exists'); return;
   }
   try {
-    await window.F.addDoc(window.F.collection(window.db, 'bankAccounts'), {
+    await window.F.addDoc(sc('bankAccounts'), {
       bank, nick, label,
       createdAt: window.F.serverTimestamp(),
       createdBy: CU ? CU.name : ''
@@ -8939,7 +9439,7 @@ async function bdSaveAccount() {
 
 async function bdLoadAccounts() {
   const snap = await window.F.getDocs(
-    window.F.query(window.F.collection(window.db, 'bankAccounts'), window.F.orderBy('createdAt', 'asc'))
+    window.F.query(sc('bankAccounts'), window.F.orderBy('createdAt', 'asc'))
   );
   bdAccounts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   bdRenderAccountsList();
@@ -8967,7 +9467,7 @@ function bdRenderAccountsList() {
 async function bdDeleteAccount(id, label) {
   if (!confirm('Remove "' + label + '"? Existing deposits will still show.')) return;
   try {
-    await window.F.deleteDoc(window.F.doc(window.db, 'bankAccounts', id));
+    await window.F.deleteDoc(sd('bankAccounts',id));
     toast('Account removed');
     await bdLoadAccounts();
     bdLoadDeposits();
@@ -9001,7 +9501,7 @@ async function bdSubmitDeposit() {
   if (!acct) { toast('Account not found'); return; }
 
   try {
-    await window.F.addDoc(window.F.collection(window.db, 'bankDeposits'), {
+    await window.F.addDoc(sc('bankDeposits'), {
       date,
       acctId,
       acctLabel: acct.label,
@@ -9029,7 +9529,7 @@ async function bdLoadDeposits() {
 
   try {
     const snap = await window.F.getDocs(
-      window.F.query(window.F.collection(window.db, 'bankDeposits'), window.F.orderBy('date', 'desc'))
+      window.F.query(sc('bankDeposits'), window.F.orderBy('date', 'desc'))
     );
     const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     // Filter by selected month client-side
@@ -9098,7 +9598,7 @@ async function bdLoadDeposits() {
 async function bdDeleteDeposit(id) {
   if (!confirm('Delete this deposit?')) return;
   try {
-    await window.F.deleteDoc(window.F.doc(window.db, 'bankDeposits', id));
+    await window.F.deleteDoc(sd('bankDeposits',id));
     toast('Deposit deleted');
     bdLoadDeposits();
   } catch(e) { toast('Error deleting deposit'); }
@@ -9169,14 +9669,14 @@ async function loadMonthlyComparison(){
     const db = window.db;
 
     const [drSnap, expSnap, orSnap, fdSnap, dlSnap, lcSnap, scrSnap, actSnap] = await Promise.all([
-      getDocs(query(collection(db,'dailyReports'), orderBy('date','asc'))),
-      getDocs(query(collection(db,'overheadExpenses'), orderBy('date','asc'))),
-      getDocs(query(collection(db,'otherRevenue'), orderBy('date','asc'))),
-      getDocs(query(collection(db,'fuelDeliveries'), orderBy('date','asc'))),
-      getDocs(query(collection(db,'deliveries'), orderBy('date','asc'))),
-      getDocs(query(collection(db,'lotteryReports'), orderBy('weekEnd','asc'))),
-      getDocs(query(collection(db,'scratchCounts'), orderBy('timestamp','desc'))),
-      getDocs(query(collection(db,'scratchActivations'), orderBy('date','asc'))),
+      getDocs(query(sc('dailyReports'), orderBy('date','asc'))),
+      getDocs(query(sc('overheadExpenses'), orderBy('date','asc'))),
+      getDocs(query(sc('otherRevenue'), orderBy('date','asc'))),
+      getDocs(query(sc('fuelDeliveries'), orderBy('date','asc'))),
+      getDocs(query(sc('deliveries'), orderBy('date','asc'))),
+      getDocs(query(sc('lotteryReports'), orderBy('weekEnd','asc'))),
+      getDocs(query(sc('scratchCounts'), orderBy('timestamp','desc'))),
+      getDocs(query(sc('scratchActivations'), orderBy('date','asc'))),
     ]);
 
     const allDR   = drSnap.docs.map(d=>d.data());
@@ -9398,7 +9898,7 @@ async function startInvoiceScan() {
   if (document.getElementById('inv-vendor-sel')?.value === '__new__') {
     const exists = dlVendors.find(v => v.name.toLowerCase() === vendor.toLowerCase());
     if (!exists) {
-      await window.F.addDoc(window.F.collection(window.db,'dlVendors'), {name:vendor, category:'other', createdAt:new Date().toISOString()});
+      await window.F.addDoc(sc('dlVendors'), {name:vendor, category:'other', createdAt:new Date().toISOString()});
       await loadDlVendors();
       populateInvVendorDropdown();
       document.getElementById('inv-vendor-sel').value = vendor;
@@ -9622,8 +10122,8 @@ async function handleInvoiceScanImages(images, vendor) {
   try {
     if (!mgProducts.length) {
       const [prodSnap, catSnap] = await Promise.all([
-        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgProducts'), window.F.orderBy('name','asc'))),
-        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgCategories'), window.F.orderBy('order','asc')))
+        window.F.getDocs(window.F.query(sc('mgProducts'), window.F.orderBy('name','asc'))),
+        window.F.getDocs(window.F.query(sc('mgCategories'), window.F.orderBy('order','asc')))
       ]);
       mgProducts   = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
       mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
@@ -9726,7 +10226,7 @@ async function loadInvoiceHistory() {
   if (!el) return;
   try {
     const snap = await window.F.getDocs(window.F.query(
-      window.F.collection(window.db,'invoiceScans'),
+      sc('invoiceScans'),
       window.F.orderBy('timestamp','desc'),
       window.F.limit(30)
     ));
