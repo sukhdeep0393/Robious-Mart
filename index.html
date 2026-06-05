@@ -348,6 +348,30 @@
   .inv-mode-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
   .scan-count-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;margin-left:6px;}
 
+  /* ---- Invoice Scan styles ---- */
+  .inv-scan-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;}
+  .inv-scan-btn:active{background:var(--blue-dark);}
+  .inv-scan-loading{text-align:center;padding:28px 0}
+  .inv-scan-spinner{width:32px;height:32px;border:3px solid rgba(26,92,168,.2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+  .inv-scan-status{font-size:14px;color:var(--text2);font-weight:500}
+  .inv-alert{padding:10px 14px;border-radius:var(--r);font-size:13px;font-weight:600;margin-bottom:8px}
+  .inv-alert-warn{background:var(--amber-light);color:var(--amber)}
+  .inv-alert-info{background:var(--blue-light);color:var(--blue)}
+  .inv-line-item{background:var(--bg2);border-radius:var(--r);padding:12px;border-left:3px solid var(--border)}
+  .inv-line-item.is-new{border-left-color:var(--blue)}
+  .inv-line-item.is-changed{border-left-color:var(--amber)}
+  .inv-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+  .inv-badge-warn{background:var(--amber-light);color:var(--amber)}
+  .inv-badge-new{background:var(--blue-light);color:var(--blue)}
+  .inv-badge-ok{background:var(--green-light);color:var(--green)}
+  .inv-metric{display:flex;flex-direction:column;gap:1px}
+  .inv-metric span{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .inv-metric strong{font-size:13px;font-weight:700;color:var(--text)}
+  .inv-header-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .inv-header-item span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
+  .inv-header-item strong{font-size:14px;font-weight:700;color:var(--text)}
+  .inv-scan-or{text-align:center;color:var(--text3);font-size:12px;font-weight:500;margin:8px 0}
+
 </style>
 </head>
 <body>
@@ -1098,9 +1122,28 @@
   <!-- DELIVERY LOG (all roles) -->
   <div class="page" id="page-deliveries">
 
+    <!-- Invoice Scan Card -->
+    <div class="card">
+      <div class="ct" style="margin-bottom:6px">📷 Scan Invoice</div>
+      <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.5">Photo your delivery invoice — AI reads the line items, flags price changes, and adds new products to Margins automatically.</p>
+      <label for="inv-scan-input" class="inv-scan-btn">
+        <span style="font-size:18px">📷</span> Scan Invoice Photo
+      </label>
+      <input type="file" id="inv-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleInvoiceScanFile(this.files[0])">
+    </div>
+
+    <!-- Invoice Scan Review Panel (shown after scan) -->
+    <div id="inv-scan-panel" style="display:none" class="card">
+      <div id="inv-scan-loading" class="inv-scan-loading" style="display:none">
+        <div class="inv-scan-spinner"></div>
+        <div class="inv-scan-status">Reading invoice...</div>
+      </div>
+      <div id="inv-scan-review"></div>
+    </div>
+
     <!-- Add delivery form -->
     <div class="card">
-      <div class="ct">Log a delivery</div>
+      <div class="ct">Log a delivery manually</div>
 
       <div class="g2" style="margin-bottom:10px">
         <div>
@@ -8467,6 +8510,304 @@ async function submitDelivery(){
     loadDeliveries();
   }catch(e){ toast('Error saving delivery'); console.error(e); }
   finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save delivery';} }
+}
+
+// ---- INVOICE SCAN ----
+let invoiceScanResult = null;
+
+// Converts image to high-contrast grayscale — makes thermal paper text much
+// crisper for Claude vision (black ink on white background, boosted contrast)
+function preprocessInvoiceImage(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      // Cap at 1800px wide — enough detail without huge payload
+      const ratio  = Math.min(1, 1800 / img.width);
+      const w = Math.round(img.width  * ratio);
+      const h = Math.round(img.height * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // Grayscale + contrast boost via pixel manipulation
+      const id = ctx.getImageData(0, 0, w, h);
+      const d  = id.data;
+      for (let i = 0; i < d.length; i += 4) {
+        // Luminance grayscale
+        const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+        // Boost contrast: push values toward 0 or 255
+        const boosted = Math.min(255, Math.max(0, (gray - 128) * 1.6 + 128));
+        d[i] = d[i+1] = d[i+2] = boosted;
+      }
+      ctx.putImageData(id, 0, 0);
+      URL.revokeObjectURL(url);
+      res(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+async function handleInvoiceScanFile(file) {
+  if (!file) return;
+  const panel   = document.getElementById('inv-scan-panel');
+  const loading = document.getElementById('inv-scan-loading');
+  const review  = document.getElementById('inv-scan-review');
+  panel.style.display   = 'block';
+  loading.style.display = 'block';
+  review.innerHTML = '';
+  loading.querySelector('.inv-scan-status').textContent = 'Processing image...';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  try {
+    loading.querySelector('.inv-scan-status').textContent = 'Enhancing image...';
+    const base64 = await preprocessInvoiceImage(file);
+
+    // Load products/categories if not yet in memory
+    if (!mgProducts.length) {
+      loading.querySelector('.inv-scan-status').textContent = 'Loading product database...';
+      const [prodSnap, catSnap] = await Promise.all([
+        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgProducts'), window.F.orderBy('name','asc'))),
+        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgCategories'), window.F.orderBy('order','asc')))
+      ]);
+      mgProducts   = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+      mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+    }
+
+    loading.querySelector('.inv-scan-status').textContent = 'Analyzing invoice...';
+
+    const productCtx = mgProducts.slice(0,400).map(p=>({
+      id: p.id, name: p.name, cost: p.cost,
+      category: mgCategories.find(c=>c.id===p.categoryId)?.name||''
+    }));
+    const catList = mgCategories.map(c=>`${c.id}:${c.name}`).join(', ');
+
+    const prompt = `You are reading a delivery invoice for Robious Mart, a gas station convenience store in Virginia. The image has been converted to high-contrast grayscale to improve readability.
+
+EXISTING PRODUCT DATABASE (${productCtx.length} items):
+${JSON.stringify(productCtx)}
+
+AVAILABLE CATEGORIES (id:name): ${catList}
+
+IMPORTANT — Read the invoice carefully using these rules:
+
+PRICING: Distributor invoices typically have multiple price columns: "List Price", "Discount", and "Net Price" (or "Your Cost" / "Invoice Price"). You MUST use the FINAL NET PRICE per case — the price after all discounts are already subtracted. Do NOT use the list/gross price. Do NOT include the discount amount as a separate line item.
+
+UNITS PER CASE: Look for pack size indicators on the same line as the product (e.g. "24/12oz", "12/16oz", "6/4pk", "1/EA"). The first number is unitsPerCase. This is separate from the quantity ordered (how many cases were ordered). Do not mix these up.
+
+SKIP these rows entirely — do not include them as line items:
+- Discount rows / off-invoice allowance rows
+- Deposit / can deposit rows
+- Tax rows
+- Delivery fee rows
+- Subtotal / total rows
+- Any row without a product name
+
+Return ONLY a valid JSON object — no markdown fences, no explanation, nothing else:
+{
+  "vendor": "distributor name from invoice header",
+  "invoiceNumber": "invoice number or empty string",
+  "date": "YYYY-MM-DD or empty string",
+  "total": 0.00,
+  "lineItems": [
+    {
+      "name": "product name as printed",
+      "cost": 0.00,
+      "unitsPerCase": 1,
+      "matchedProductId": "id from database if similar product exists, else null",
+      "matchedProductName": "matched product name or null",
+      "previousCost": null,
+      "priceChange": false,
+      "isNew": true,
+      "suggestedCategoryId": "exact id from AVAILABLE CATEGORIES or null"
+    }
+  ]
+}
+
+Additional rules:
+- priceChange = true if matchedProductId is set AND cost differs from the matched product's cost in the database
+- previousCost = the matched product's existing cost from the database (not from the invoice)
+- isNew = true if no match found in the database
+- suggestedCategoryId must be an exact id string from AVAILABLE CATEGORIES`;
+
+    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64} },
+            { type:'text', text:prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    const raw = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    invoiceScanResult = JSON.parse(raw);
+
+    loading.style.display = 'none';
+    renderInvoiceReview(invoiceScanResult);
+
+  } catch(e) {
+    console.error('Invoice scan error:', e);
+    loading.style.display = 'none';
+    panel.style.display = 'none';
+    toast('Scan failed: ' + e.message);
+    document.getElementById('inv-scan-input').value = '';
+  }
+}
+
+function renderInvoiceReview(inv) {
+  const review  = document.getElementById('inv-scan-review');
+  const changed = inv.lineItems.filter(i=>i.priceChange);
+  const added   = inv.lineItems.filter(i=>i.isNew);
+
+  let alertsHtml = '';
+  if (changed.length) alertsHtml += `<div class="inv-alert inv-alert-warn">⚠️ ${changed.length} price increase${changed.length>1?'s':''} detected</div>`;
+  if (added.length)   alertsHtml += `<div class="inv-alert inv-alert-info">✨ ${added.length} new product${added.length>1?'s':''} will be added to Margins</div>`;
+
+  const itemsHtml = inv.lineItems.map((item,i)=>{
+    const cpu = item.cost && item.unitsPerCase > 1 ? (item.cost / item.unitsPerCase).toFixed(2) : null;
+    let badge='', extraCls='';
+    if (item.priceChange) {
+      badge = `<span class="inv-badge inv-badge-warn">↑ was $${(item.previousCost||0).toFixed(2)}</span>`;
+      extraCls = ' is-changed';
+    } else if (item.isNew) {
+      badge = `<span class="inv-badge inv-badge-new">NEW</span>`;
+      extraCls = ' is-new';
+    } else {
+      badge = `<span class="inv-badge inv-badge-ok">✓</span>`;
+    }
+    const catName = item.suggestedCategoryId ? (mgCategories.find(c=>c.id===item.suggestedCategoryId)?.name||'') : '';
+    return `<div class="inv-line-item${extraCls}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.3">${item.name}</div>
+          ${catName ? `<div style="font-size:11px;color:var(--text3);margin-top:1px">${catName}</div>` : ''}
+        </div>
+        ${badge}
+      </div>
+      <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
+        <div class="inv-metric"><span>Case cost</span><strong>$${(item.cost||0).toFixed(2)}</strong></div>
+        <div class="inv-metric"><span>Units/case</span><strong>${item.unitsPerCase||1}</strong></div>
+        ${cpu ? `<div class="inv-metric"><span>Cost/unit</span><strong>$${cpu}</strong></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  review.innerHTML = `
+    <div class="ct" style="margin:0 0 12px">Invoice Review</div>
+    <div class="inv-header-grid">
+      <div class="inv-header-item"><span>Vendor</span><strong>${inv.vendor||'—'}</strong></div>
+      <div class="inv-header-item"><span>Invoice #</span><strong>${inv.invoiceNumber||'—'}</strong></div>
+      <div class="inv-header-item"><span>Date</span><strong>${inv.date||localDate()}</strong></div>
+      <div class="inv-header-item"><span>Total</span><strong style="color:var(--blue)">$${(inv.total||0).toFixed(2)}</strong></div>
+    </div>
+    ${alertsHtml}
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px">${inv.lineItems.length} Line Items</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">${itemsHtml}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bprimary" style="flex:1;padding:13px;font-size:14px;font-weight:600" onclick="applyInvoice()">Apply & Save Delivery</button>
+      <button class="btn bsecondary" style="padding:13px;font-size:13px" onclick="cancelInvoiceScan()">Cancel</button>
+    </div>`;
+}
+
+async function applyInvoice() {
+  if (!invoiceScanResult) return;
+  const inv = invoiceScanResult;
+  const btn = document.querySelector('#inv-scan-review .bprimary');
+  const orig = btn?.innerHTML;
+  if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving...'; }
+
+  try {
+    const vendor = (inv.vendor||'').trim() || 'Unknown Vendor';
+    const date   = inv.date || localDate();
+
+    // Auto-save vendor if new
+    if (!dlVendors.find(v=>v.name.toLowerCase()===vendor.toLowerCase())) {
+      await window.F.addDoc(window.F.collection(window.db,'dlVendors'),
+        {name:vendor, category:'other', createdAt:new Date().toISOString()});
+      await loadDlVendors();
+    }
+
+    const itemsSummary = inv.lineItems.map(i=>`${i.name} ×${i.unitsPerCase||1}/case @ $${(i.cost||0).toFixed(2)}`).join('; ');
+
+    await window.F.addDoc(window.F.collection(window.db,'deliveries'),{
+      vendor,
+      date,
+      invoiceNumber: inv.invoiceNumber||'',
+      amount: inv.total||0,
+      payment: 'check',
+      status: 'paid',
+      dueDate: '',
+      items: itemsSummary,
+      notes: 'Logged via invoice scan',
+      employee: CU.name,
+      timestamp: window.F.serverTimestamp()
+    });
+
+    // Update costs for price-changed products
+    let priceUpdates = 0;
+    for (const item of inv.lineItems) {
+      if (item.priceChange && item.matchedProductId) {
+        try {
+          await window.F.updateDoc(window.F.doc(window.db,'mgProducts',item.matchedProductId), {cost: item.cost});
+          const p = mgProducts.find(p=>p.id===item.matchedProductId);
+          if (p) p.cost = item.cost;
+          priceUpdates++;
+        } catch(e) { console.error('Cost update failed:', e); }
+      }
+    }
+
+    // Add new products to margins
+    let newAdded = 0;
+    for (const item of inv.lineItems) {
+      if (item.isNew && item.name) {
+        try {
+          const catId = item.suggestedCategoryId ||
+            mgCategories.find(c=>/other/i.test(c.name))?.id ||
+            mgCategories[0]?.id || '';
+          const docRef = await window.F.addDoc(window.F.collection(window.db,'mgProducts'),{
+            name: item.name,
+            cost: item.cost||0,
+            sell: 0,
+            categoryId: catId,
+            unitsPerCase: item.unitsPerCase||1,
+            createdAt: new Date().toISOString()
+          });
+          mgProducts.push({id:docRef.id, name:item.name, cost:item.cost||0, sell:0, categoryId:catId, unitsPerCase:item.unitsPerCase||1});
+          newAdded++;
+        } catch(e) { console.error('New product add failed:', e); }
+      }
+    }
+
+    loadDeliveries();
+    cancelInvoiceScan();
+
+    let msg = '✓ Delivery saved!';
+    if (priceUpdates) msg += ` ${priceUpdates} cost${priceUpdates>1?'s':''} updated in Margins.`;
+    if (newAdded) msg += ` ${newAdded} new product${newAdded>1?'s':''} added to Margins — add sell price when ready.`;
+    toast(msg);
+
+  } catch(e) {
+    toast('Error: ' + e.message);
+    console.error(e);
+    if (btn) { btn.disabled=false; btn.innerHTML=orig||'Apply & Save Delivery'; }
+  }
+}
+
+function cancelInvoiceScan() {
+  invoiceScanResult = null;
+  const panel = document.getElementById('inv-scan-panel');
+  if (panel) panel.style.display='none';
+  document.getElementById('inv-scan-input').value='';
 }
 
 async function loadDeliveries(){
