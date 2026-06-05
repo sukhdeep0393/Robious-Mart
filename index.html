@@ -9419,8 +9419,7 @@ async function startInvoiceScan() {
     const video = document.getElementById('invScanVideo');
     video.srcObject = _scanStream;
     await video.play();
-    _scanDetecting = true;
-    requestAnimationFrame(scanDetectLoop);
+    // Manual-only mode — no auto-detection loop
   } catch(e) {
     toast('Camera access denied — use upload instead');
     closeInvScanner();
@@ -9533,17 +9532,10 @@ function captureInvFrame() {
   _scanCaptures.push(base64);
   renderScanThumbs();
   updateScanDoneBtn();
+  updateScanPageCount();
 
-  // Pause detection for 2 seconds to let user move to next section
-  _scanDetecting = false;
-  cancelAnimationFrame(_scanAnimFrame);
   const hint = document.getElementById('invScanHint');
   if (hint) hint.textContent = `Page ${_scanCaptures.length} captured! Move to next section or tap Done.`;
-  setTimeout(() => {
-    _scanStableFrames = 0;
-    _scanDetecting = true;
-    requestAnimationFrame(scanDetectLoop);
-  }, 2200);
 }
 
 function manualCapture() {
@@ -9567,11 +9559,18 @@ function deleteScanCapture(i) {
   _scanCaptures.splice(i, 1);
   renderScanThumbs();
   updateScanDoneBtn();
+  updateScanPageCount();
 }
 
 function updateScanDoneBtn() {
   const btn = document.getElementById('invScanDoneBtn');
   if (btn) btn.disabled = _scanCaptures.length === 0;
+}
+
+function updateScanPageCount() {
+  const el = document.getElementById('scanPageCount');
+  if (!el) return;
+  el.textContent = _scanCaptures.length > 0 ? `${_scanCaptures.length} page${_scanCaptures.length > 1 ? 's' : ''}` : '';
 }
 
 function closeInvScanner() {
@@ -9757,26 +9756,25 @@ async function loadInvoiceHistory() {
 </script>
 
 <!-- Invoice Auto-Capture Scanner Modal -->
-<div id="invScannerModal" style="display:none;position:fixed;inset:0;background:#000;z-index:700;flex-direction:column">
-  <!-- Vendor label -->
-  <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
-    <div style="background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600">
+<div id="invScannerModal" style="display:none;position:fixed;inset:0;background:#000;z-index:700;flex-direction:column;overflow:hidden">
+  <!-- Top bar: vendor label + close button -->
+  <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:env(safe-area-inset-top,14px) 16px 0;padding-top:max(env(safe-area-inset-top),14px);display:flex;align-items:center;justify-content:space-between">
+    <div style="background:rgba(0,0,0,.6);backdrop-filter:blur(8px);border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600">
       🏪 <span id="scanVendorLabel"></span>
     </div>
-    <div id="scanPageCount" style="background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600"></div>
+    <button onclick="closeInvScanner()" style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);border:none;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
   </div>
 
   <!-- Live video -->
   <video id="invScanVideo" style="width:100%;flex:1;object-fit:cover;display:block" playsinline muted></video>
 
-  <!-- Overlay: corners + laser + flash -->
+  <!-- Overlay: corners + flash (no laser — manual mode) -->
   <div style="position:absolute;inset:0;pointer-events:none">
     <div id="invScanFrame" class="scan-frame">
       <div class="scan-corner tl"></div>
       <div class="scan-corner tr"></div>
       <div class="scan-corner bl"></div>
       <div class="scan-corner br"></div>
-      <div class="scan-laser"></div>
     </div>
     <div id="invScanFlash" class="scan-flash"></div>
   </div>
@@ -9784,15 +9782,16 @@ async function loadInvoiceHistory() {
   <!-- Hidden canvas for processing -->
   <canvas id="invScanCanvas" style="display:none"></canvas>
 
-  <!-- Bottom bar -->
-  <div class="scanner-bar">
-    <div id="invScanHint" class="scanner-hint">Position the invoice inside the frame — it will snap automatically</div>
+  <!-- Bottom bar — padded for home indicator -->
+  <div class="scanner-bar" style="padding-bottom:max(env(safe-area-inset-bottom),28px)">
+    <div id="invScanHint" class="scanner-hint">Position the invoice in the frame, then tap the button to capture</div>
     <!-- Thumbnail strip -->
     <div class="scan-captures" id="invScanThumbs"></div>
+    <!-- Actions: Done left, Shutter center, page count right -->
     <div class="scanner-actions">
-      <button class="scan-close-btn" onclick="closeInvScanner()">✕</button>
+      <button id="invScanDoneBtn" class="scan-done-btn" disabled onclick="finishInvScan()" style="min-width:64px">Done</button>
       <button class="scan-shutter" onclick="manualCapture()"><div class="scan-shutter-inner"></div></button>
-      <button id="invScanDoneBtn" class="scan-done-btn" disabled onclick="finishInvScan()">Done</button>
+      <div id="scanPageCount" style="min-width:64px;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:600"></div>
     </div>
   </div>
 </div>
