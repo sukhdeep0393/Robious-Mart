@@ -7098,7 +7098,7 @@ function renderMgCategories(filterText){
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <button onclick="event.stopPropagation();exportMgCategory('${cat.id}')" style="background:var(--green-light);border:1px solid #b8dfa0;color:var(--green);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">↓ Export</button>
           <button onclick="event.stopPropagation();openMgCatEdit('${cat.id}')" style="background:var(--blue-light);border:1px solid #b8d0f5;color:var(--blue);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
-          <button onclick="event.stopPropagation();confirmDeleteMgCat('${cat.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;padding:4px;cursor:pointer">🗑</button>
+          <button onclick="event.stopPropagation();confirmDeleteMgCat('${cat.id}')" style="background:var(--red-light);border:1px solid #f7c1c1;color:var(--red);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
           <span class="cat-chevron ${isOpen?'open':''}">▼</span>
         </div>
       </div>
@@ -9332,13 +9332,17 @@ async function applyInvoice() {
     }
 
     // Add new products to Price Book
+    // Try to match vendor name to a category name (e.g. vendor "Gold Ash" → category "Gold Ash")
+    const vendorMatchedCat = mgCategories.find(c=>
+      c.name.toLowerCase().replace(/[^a-z0-9]/g,'') === vendor.toLowerCase().replace(/[^a-z0-9]/g,'')
+    );
     let newAdded = 0;
     for (const item of inv.lineItems) {
       if (item.isNew && item.name) {
         try {
-          const catId = item.suggestedCategoryId ||
-            mgCategories.find(c=>/other/i.test(c.name))?.id ||
-            mgCategories[0]?.id || '';
+          const catId = vendorMatchedCat?.id ||
+            (mgCategories.find(c=>c.id===item.suggestedCategoryId)?.id) ||
+            '';
           const docRef = await window.F.addDoc(sc('mgProducts'),{
             name: item.name,
             cost: item.cost||0,
