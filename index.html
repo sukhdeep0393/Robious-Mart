@@ -1125,11 +1125,28 @@
     <!-- Invoice Scan Card -->
     <div class="card">
       <div class="ct" style="margin-bottom:6px">📷 Scan Invoice</div>
-      <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.5">Photo your delivery invoice — AI reads the line items, flags price changes, and adds new products to Margins automatically.</p>
-      <label for="inv-scan-input" class="inv-scan-btn">
-        <span style="font-size:18px">📷</span> Scan Invoice Photo
+      <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.5">Select the vendor, then scan the invoice — AI reads line items, flags price changes, and updates your Price Book automatically.</p>
+
+      <!-- Vendor selector -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">Vendor</label>
+        <select id="inv-vendor-sel" style="width:100%;padding:11px 12px;border-radius:var(--r);border:1px solid var(--border);font-size:14px;background:var(--bg2);color:var(--text)" onchange="onInvVendorChange()">
+          <option value="">— Select vendor —</option>
+        </select>
+        <div id="inv-vendor-new-wrap" style="display:none;margin-top:8px;display:none">
+          <input id="inv-vendor-new" placeholder="New vendor name..." style="width:100%;padding:10px 12px;border-radius:var(--r);border:1px solid var(--blue);font-size:14px;box-sizing:border-box" />
+        </div>
+      </div>
+
+      <button class="inv-scan-btn" onclick="startInvoiceScan()">
+        <span style="font-size:18px">📷</span> Scan Invoice
+      </button>
+      <!-- Fallback file upload -->
+      <div class="inv-scan-or">or</div>
+      <label for="inv-scan-input" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;box-sizing:border-box">
+        <span>🖼</span> Upload photo instead
       </label>
-      <input type="file" id="inv-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleInvoiceScanFile(this.files[0])">
+      <input type="file" id="inv-scan-input" accept="image/*" multiple style="display:none" onchange="handleInvoiceScanFiles(this.files)">
     </div>
 
     <!-- Invoice Scan Review Panel (shown after scan) -->
@@ -1139,6 +1156,15 @@
         <div class="inv-scan-status">Reading invoice...</div>
       </div>
       <div id="inv-scan-review"></div>
+    </div>
+
+    <!-- Invoice History -->
+    <div class="card" id="invHistoryCard" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ct" style="margin:0">📁 Invoice History</div>
+        <button onclick="loadInvoiceHistory()" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">Refresh</button>
+      </div>
+      <div id="invHistoryList"><div class="empty"><div class="ei">📋</div>No scanned invoices yet</div></div>
     </div>
 
     <!-- Add delivery form -->
@@ -2026,7 +2052,7 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📊 Margins'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'}],
   lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
@@ -8313,7 +8339,14 @@ async function initDeliveries(){
   const mgmt = document.getElementById('dlVendorMgmtCard');
   if(mgmt && CU?.role==='operator') mgmt.style.display='block';
   await loadDlVendors();
+  populateInvVendorDropdown();
   loadDeliveries();
+  // Show invoice history for operators/leads
+  const histCard = document.getElementById('invHistoryCard');
+  if(histCard && CU?.role!=='employee') {
+    histCard.style.display='block';
+    loadInvoiceHistory();
+  }
 }
 
 async function loadDlVendors(){
@@ -8325,6 +8358,7 @@ async function loadDlVendors(){
     dlVendors = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderDlVendorList();
     populateDlVendorDropdowns();
+    populateInvVendorDropdown();
   }catch(e){ console.error('loadDlVendors',e); }
 }
 
@@ -8550,118 +8584,13 @@ function preprocessInvoiceImage(file) {
 }
 
 async function handleInvoiceScanFile(file) {
+  // Legacy single-file path — redirect through new multi-image handler
   if (!file) return;
-  const panel   = document.getElementById('inv-scan-panel');
-  const loading = document.getElementById('inv-scan-loading');
-  const review  = document.getElementById('inv-scan-review');
-  panel.style.display   = 'block';
-  loading.style.display = 'block';
-  review.innerHTML = '';
-  loading.querySelector('.inv-scan-status').textContent = 'Processing image...';
-  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
-
-  try {
-    loading.querySelector('.inv-scan-status').textContent = 'Enhancing image...';
-    const base64 = await preprocessInvoiceImage(file);
-
-    // Load products/categories if not yet in memory
-    if (!mgProducts.length) {
-      loading.querySelector('.inv-scan-status').textContent = 'Loading product database...';
-      const [prodSnap, catSnap] = await Promise.all([
-        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgProducts'), window.F.orderBy('name','asc'))),
-        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgCategories'), window.F.orderBy('order','asc')))
-      ]);
-      mgProducts   = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
-      mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
-    }
-
-    loading.querySelector('.inv-scan-status').textContent = 'Analyzing invoice...';
-
-    const productCtx = mgProducts.slice(0,400).map(p=>({
-      id: p.id, name: p.name, cost: p.cost,
-      category: mgCategories.find(c=>c.id===p.categoryId)?.name||''
-    }));
-    const catList = mgCategories.map(c=>`${c.id}:${c.name}`).join(', ');
-
-    const prompt = `You are reading a delivery invoice for Robious Mart, a gas station convenience store in Virginia. The image has been converted to high-contrast grayscale to improve readability.
-
-EXISTING PRODUCT DATABASE (${productCtx.length} items):
-${JSON.stringify(productCtx)}
-
-AVAILABLE CATEGORIES (id:name): ${catList}
-
-IMPORTANT — Read the invoice carefully using these rules:
-
-PRICING: Distributor invoices typically have multiple price columns: "List Price", "Discount", and "Net Price" (or "Your Cost" / "Invoice Price"). You MUST use the FINAL NET PRICE per case — the price after all discounts are already subtracted. Do NOT use the list/gross price. Do NOT include the discount amount as a separate line item.
-
-UNITS PER CASE: Look for pack size indicators on the same line as the product (e.g. "24/12oz", "12/16oz", "6/4pk", "1/EA"). The first number is unitsPerCase. This is separate from the quantity ordered (how many cases were ordered). Do not mix these up.
-
-SKIP these rows entirely — do not include them as line items:
-- Discount rows / off-invoice allowance rows
-- Deposit / can deposit rows
-- Tax rows
-- Delivery fee rows
-- Subtotal / total rows
-- Any row without a product name
-
-Return ONLY a valid JSON object — no markdown fences, no explanation, nothing else:
-{
-  "vendor": "distributor name from invoice header",
-  "invoiceNumber": "invoice number or empty string",
-  "date": "YYYY-MM-DD or empty string",
-  "total": 0.00,
-  "lineItems": [
-    {
-      "name": "product name as printed",
-      "cost": 0.00,
-      "unitsPerCase": 1,
-      "matchedProductId": "id from database if similar product exists, else null",
-      "matchedProductName": "matched product name or null",
-      "previousCost": null,
-      "priceChange": false,
-      "isNew": true,
-      "suggestedCategoryId": "exact id from AVAILABLE CATEGORIES or null"
-    }
-  ]
-}
-
-Additional rules:
-- priceChange = true if matchedProductId is set AND cost differs from the matched product's cost in the database
-- previousCost = the matched product's existing cost from the database (not from the invoice)
-- isNew = true if no match found in the database
-- suggestedCategoryId must be an exact id string from AVAILABLE CATEGORIES`;
-
-    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64} },
-            { type:'text', text:prompt }
-          ]
-        }]
-      })
-    });
-
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    const raw = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
-    invoiceScanResult = JSON.parse(raw);
-
-    loading.style.display = 'none';
-    renderInvoiceReview(invoiceScanResult);
-
-  } catch(e) {
-    console.error('Invoice scan error:', e);
-    loading.style.display = 'none';
-    panel.style.display = 'none';
-    toast('Scan failed: ' + e.message);
-    document.getElementById('inv-scan-input').value = '';
-  }
+  const vendor = getInvVendor();
+  if (!vendor) { toast('Select a vendor first'); return; }
+  _scanVendor = vendor;
+  const b64 = await preprocessInvoiceImage(file);
+  await handleInvoiceScanImages([b64], vendor);
 }
 
 function renderInvoiceReview(inv) {
@@ -8671,7 +8600,7 @@ function renderInvoiceReview(inv) {
 
   let alertsHtml = '';
   if (changed.length) alertsHtml += `<div class="inv-alert inv-alert-warn">⚠️ ${changed.length} price increase${changed.length>1?'s':''} detected</div>`;
-  if (added.length)   alertsHtml += `<div class="inv-alert inv-alert-info">✨ ${added.length} new product${added.length>1?'s':''} will be added to Margins</div>`;
+  if (added.length)   alertsHtml += `<div class="inv-alert inv-alert-info">✨ ${added.length} new product${added.length>1?'s':''} will be added to Price Book</div>`;
 
   const itemsHtml = inv.lineItems.map((item,i)=>{
     const cpu = item.cost && item.unitsPerCase > 1 ? (item.cost / item.unitsPerCase).toFixed(2) : null;
@@ -8727,7 +8656,7 @@ async function applyInvoice() {
   if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving...'; }
 
   try {
-    const vendor = (inv.vendor||'').trim() || 'Unknown Vendor';
+    const vendor = (inv._vendor || inv.vendor||'').trim() || 'Unknown Vendor';
     const date   = inv.date || localDate();
 
     // Auto-save vendor if new
@@ -8737,8 +8666,26 @@ async function applyInvoice() {
       await loadDlVendors();
     }
 
+    // Upload invoice photos to Firebase Storage
+    if (btn) btn.innerHTML = '<span class="spinner"></span>Uploading photos…';
+    const photoUrls = [];
+    const images = inv._capturedImages || [];
+    const scanId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    for (let i = 0; i < images.length; i++) {
+      try {
+        const path = `invoiceScans/${date}/${scanId}/page-${i+1}.jpg`;
+        const storageRef = window.F.storageRef(window.storage, path);
+        await window.F.uploadString(storageRef, images[i], 'base64', {contentType:'image/jpeg'});
+        const url = await window.F.getDownloadURL(storageRef);
+        photoUrls.push(url);
+      } catch(e) { console.error('Photo upload failed page', i+1, e); }
+    }
+
+    if (btn) btn.innerHTML = '<span class="spinner"></span>Saving…';
+
     const itemsSummary = inv.lineItems.map(i=>`${i.name} ×${i.unitsPerCase||1}/case @ $${(i.cost||0).toFixed(2)}`).join('; ');
 
+    // Save delivery record
     await window.F.addDoc(window.F.collection(window.db,'deliveries'),{
       vendor,
       date,
@@ -8749,6 +8696,18 @@ async function applyInvoice() {
       dueDate: '',
       items: itemsSummary,
       notes: 'Logged via invoice scan',
+      employee: CU.name,
+      timestamp: window.F.serverTimestamp()
+    });
+
+    // Save invoice scan record for history
+    await window.F.addDoc(window.F.collection(window.db,'invoiceScans'),{
+      vendor,
+      date,
+      invoiceNumber: inv.invoiceNumber||'',
+      total: inv.total||0,
+      lineItemCount: inv.lineItems.length,
+      photoUrls,
       employee: CU.name,
       timestamp: window.F.serverTimestamp()
     });
@@ -8766,7 +8725,7 @@ async function applyInvoice() {
       }
     }
 
-    // Add new products to margins
+    // Add new products to Price Book
     let newAdded = 0;
     for (const item of inv.lineItems) {
       if (item.isNew && item.name) {
@@ -8789,11 +8748,13 @@ async function applyInvoice() {
     }
 
     loadDeliveries();
+    loadInvoiceHistory();
     cancelInvoiceScan();
 
     let msg = '✓ Delivery saved!';
-    if (priceUpdates) msg += ` ${priceUpdates} cost${priceUpdates>1?'s':''} updated in Margins.`;
-    if (newAdded) msg += ` ${newAdded} new product${newAdded>1?'s':''} added to Margins — add sell price when ready.`;
+    if (photoUrls.length) msg += ` ${photoUrls.length} photo${photoUrls.length>1?'s':''} stored.`;
+    if (priceUpdates) msg += ` ${priceUpdates} cost${priceUpdates>1?'s':''} updated in Price Book.`;
+    if (newAdded) msg += ` ${newAdded} new product${newAdded>1?'s':''} added to Price Book — add sell price when ready.`;
     toast(msg);
 
   } catch(e) {
@@ -8826,6 +8787,7 @@ async function loadDeliveries(){
       window.F.orderBy('date','desc')
     ));
     let all = snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=start&&x.date<=end);
+    if(CU?.role==='employee') all = all.filter(x=>x.employee===CU.name);
     if(fVendor!=='all') all = all.filter(x=>x.vendor===fVendor);
 
     // MTD summary
@@ -9385,6 +9347,455 @@ function renderMonthlyCompTable(rows){
       </div>
     </div>`;
 }
+
+// ── Invoice Auto-Capture Scanner ─────────────────────────────────────────────
+
+let _scanStream = null;
+let _scanCaptures = []; // array of base64 jpeg strings
+let _scanVendor = '';
+let _scanAutoTimer = null;
+let _scanStableFrames = 0;
+let _scanDetecting = false;
+let _scanAnimFrame = null;
+
+function onInvVendorChange() {
+  const sel = document.getElementById('inv-vendor-sel');
+  const newWrap = document.getElementById('inv-vendor-new-wrap');
+  if (sel.value === '__new__') {
+    newWrap.style.display = 'block';
+    document.getElementById('inv-vendor-new').focus();
+  } else {
+    newWrap.style.display = 'none';
+  }
+}
+
+function populateInvVendorDropdown() {
+  const sel = document.getElementById('inv-vendor-sel');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select vendor —</option>' +
+    (dlVendors||[]).map(v=>`<option value="${v.name}">${v.name}</option>`).join('') +
+    '<option value="__new__">+ Add new vendor</option>';
+  if (current) sel.value = current;
+}
+
+function getInvVendor() {
+  const sel = document.getElementById('inv-vendor-sel');
+  if (!sel) return '';
+  if (sel.value === '__new__') {
+    return (document.getElementById('inv-vendor-new')?.value || '').trim();
+  }
+  return sel.value;
+}
+
+async function startInvoiceScan() {
+  const vendor = getInvVendor();
+  if (!vendor) { toast('Select a vendor first'); return; }
+  _scanVendor = vendor;
+  _scanCaptures = [];
+
+  // If new vendor, save it now
+  if (document.getElementById('inv-vendor-sel')?.value === '__new__') {
+    const exists = dlVendors.find(v => v.name.toLowerCase() === vendor.toLowerCase());
+    if (!exists) {
+      await window.F.addDoc(window.F.collection(window.db,'dlVendors'), {name:vendor, category:'other', createdAt:new Date().toISOString()});
+      await loadDlVendors();
+      populateInvVendorDropdown();
+      document.getElementById('inv-vendor-sel').value = vendor;
+      document.getElementById('inv-vendor-new-wrap').style.display = 'none';
+    }
+  }
+
+  const modal = document.getElementById('invScannerModal');
+  modal.style.display = 'flex';
+  document.getElementById('scanVendorLabel').textContent = vendor;
+  renderScanThumbs();
+  updateScanDoneBtn();
+
+  try {
+    _scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width:{ideal:1920}, height:{ideal:1080} }
+    });
+    const video = document.getElementById('invScanVideo');
+    video.srcObject = _scanStream;
+    await video.play();
+    _scanDetecting = true;
+    requestAnimationFrame(scanDetectLoop);
+  } catch(e) {
+    toast('Camera access denied — use upload instead');
+    closeInvScanner();
+  }
+}
+
+function scanDetectLoop() {
+  if (!_scanDetecting) return;
+  const video = document.getElementById('invScanVideo');
+  const canvas = document.getElementById('invScanCanvas');
+  if (!video || !canvas || video.readyState < 2) {
+    _scanAnimFrame = requestAnimationFrame(scanDetectLoop);
+    return;
+  }
+
+  const W = video.videoWidth, H = video.videoHeight;
+  if (!W || !H) { _scanAnimFrame = requestAnimationFrame(scanDetectLoop); return; }
+
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, W, H);
+
+  const detected = detectDocumentInFrame(ctx, W, H);
+  updateScanFrameStyle(detected);
+
+  if (detected) {
+    _scanStableFrames++;
+    if (_scanStableFrames >= 18) { // ~0.6s at 30fps
+      _scanStableFrames = 0;
+      captureInvFrame();
+      return; // pause loop briefly, restart after flash
+    }
+  } else {
+    _scanStableFrames = 0;
+  }
+
+  _scanAnimFrame = requestAnimationFrame(scanDetectLoop);
+}
+
+function detectDocumentInFrame(ctx, W, H) {
+  // Sample a grid of pixels looking for a bright rectangular region
+  // Simple luminance-based heuristic: check if center region is significantly brighter than edges
+  const sampleW = Math.floor(W / 20);
+  const sampleH = Math.floor(H / 20);
+
+  let centerLum = 0, edgeLum = 0, centerCount = 0, edgeCount = 0;
+
+  for (let gy = 0; gy < 20; gy++) {
+    for (let gx = 0; gx < 20; gx++) {
+      const px = Math.floor(gx * sampleW + sampleW/2);
+      const py = Math.floor(gy * sampleH + sampleH/2);
+      const d = ctx.getImageData(px, py, 1, 1).data;
+      const lum = 0.299*d[0] + 0.587*d[1] + 0.114*d[2];
+      const isCenter = gx >= 4 && gx <= 15 && gy >= 2 && gy <= 17;
+      if (isCenter) { centerLum += lum; centerCount++; }
+      else { edgeLum += lum; edgeCount++; }
+    }
+  }
+
+  const avgCenter = centerCount ? centerLum/centerCount : 0;
+  const avgEdge   = edgeCount   ? edgeLum/edgeCount     : 0;
+  // Document detected if center is notably brighter than surroundings
+  return avgCenter > 140 && avgCenter > avgEdge + 30;
+}
+
+function updateScanFrameStyle(detected) {
+  const frame = document.getElementById('invScanFrame');
+  if (!frame) return;
+  const corners = frame.querySelectorAll('.scan-corner');
+  corners.forEach(c => {
+    c.style.borderColor = detected ? '#4ade80' : '#fff';
+  });
+  const hint = document.getElementById('invScanHint');
+  if (hint) {
+    if (detected) {
+      const pct = Math.round((_scanStableFrames / 18) * 100);
+      hint.textContent = `Document detected — hold steady… ${pct}%`;
+    } else {
+      hint.textContent = 'Position invoice inside the frame';
+    }
+  }
+}
+
+function captureInvFrame() {
+  const video = document.getElementById('invScanVideo');
+  const canvas = document.getElementById('invScanCanvas');
+  if (!video || !canvas) return;
+
+  // Flash effect
+  const flash = document.getElementById('invScanFlash');
+  if (flash) { flash.classList.remove('flash'); void flash.offsetWidth; flash.classList.add('flash'); }
+
+  // Draw full frame
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  // Crop to center document area (inner 80%)
+  const cw = Math.floor(canvas.width * 0.82);
+  const ch = Math.floor(canvas.height * 0.90);
+  const cx = Math.floor((canvas.width - cw) / 2);
+  const cy = Math.floor((canvas.height - ch) / 2);
+
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = cw; cropCanvas.height = ch;
+  cropCanvas.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+
+  const base64 = cropCanvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+  _scanCaptures.push(base64);
+  renderScanThumbs();
+  updateScanDoneBtn();
+
+  // Pause detection for 2 seconds to let user move to next section
+  _scanDetecting = false;
+  cancelAnimationFrame(_scanAnimFrame);
+  const hint = document.getElementById('invScanHint');
+  if (hint) hint.textContent = `Page ${_scanCaptures.length} captured! Move to next section or tap Done.`;
+  setTimeout(() => {
+    _scanStableFrames = 0;
+    _scanDetecting = true;
+    requestAnimationFrame(scanDetectLoop);
+  }, 2200);
+}
+
+function manualCapture() {
+  _scanStableFrames = 0;
+  captureInvFrame();
+}
+
+function renderScanThumbs() {
+  const el = document.getElementById('invScanThumbs');
+  if (!el) return;
+  if (!_scanCaptures.length) { el.innerHTML = ''; return; }
+  el.innerHTML = _scanCaptures.map((b64, i) => `
+    <div class="scan-thumb-wrap">
+      <img class="scan-thumb" src="data:image/jpeg;base64,${b64}" />
+      <button class="scan-thumb-del" onclick="deleteScanCapture(${i})">×</button>
+      <div class="scan-page-num">P${i+1}</div>
+    </div>`).join('');
+}
+
+function deleteScanCapture(i) {
+  _scanCaptures.splice(i, 1);
+  renderScanThumbs();
+  updateScanDoneBtn();
+}
+
+function updateScanDoneBtn() {
+  const btn = document.getElementById('invScanDoneBtn');
+  if (btn) btn.disabled = _scanCaptures.length === 0;
+}
+
+function closeInvScanner() {
+  _scanDetecting = false;
+  cancelAnimationFrame(_scanAnimFrame);
+  if (_scanStream) { _scanStream.getTracks().forEach(t=>t.stop()); _scanStream = null; }
+  document.getElementById('invScannerModal').style.display = 'none';
+}
+
+async function finishInvScan() {
+  if (!_scanCaptures.length) return;
+  closeInvScanner();
+  await handleInvoiceScanImages(_scanCaptures, _scanVendor);
+}
+
+async function handleInvoiceScanFiles(files) {
+  if (!files || !files.length) return;
+  const vendor = getInvVendor();
+  if (!vendor) { toast('Select a vendor first'); return; }
+  _scanVendor = vendor;
+
+  const panel   = document.getElementById('inv-scan-panel');
+  const loading = document.getElementById('inv-scan-loading');
+  loading.querySelector('.inv-scan-status').textContent = 'Processing images...';
+  panel.style.display = 'block';
+  loading.style.display = 'block';
+  document.getElementById('inv-scan-review').innerHTML = '';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  const images = [];
+  for (const file of Array.from(files)) {
+    loading.querySelector('.inv-scan-status').textContent = `Enhancing image ${images.length+1}…`;
+    const b64 = await preprocessInvoiceImage(file);
+    images.push(b64);
+  }
+  await handleInvoiceScanImages(images, vendor);
+}
+
+async function handleInvoiceScanImages(images, vendor) {
+  const panel   = document.getElementById('inv-scan-panel');
+  const loading = document.getElementById('inv-scan-loading');
+  const review  = document.getElementById('inv-scan-review');
+  panel.style.display   = 'block';
+  loading.style.display = 'block';
+  review.innerHTML = '';
+  loading.querySelector('.inv-scan-status').textContent = 'Loading product database...';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  try {
+    if (!mgProducts.length) {
+      const [prodSnap, catSnap] = await Promise.all([
+        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgProducts'), window.F.orderBy('name','asc'))),
+        window.F.getDocs(window.F.query(window.F.collection(window.db,'mgCategories'), window.F.orderBy('order','asc')))
+      ]);
+      mgProducts   = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+      mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+    }
+
+    loading.querySelector('.inv-scan-status').textContent = 'Analyzing invoice…';
+
+    const productCtx = mgProducts.slice(0,400).map(p=>({
+      id: p.id, name: p.name, cost: p.cost,
+      category: mgCategories.find(c=>c.id===p.categoryId)?.name||''
+    }));
+    const catList = mgCategories.map(c=>`${c.id}:${c.name}`).join(', ');
+
+    const prompt = `You are reading a delivery invoice for Robious Mart, a gas station convenience store in Virginia. The vendor for this invoice is: ${vendor}.
+
+EXISTING PRODUCT DATABASE (${productCtx.length} items):
+${JSON.stringify(productCtx)}
+
+AVAILABLE CATEGORIES (id:name): ${catList}
+
+IMPORTANT — Read the invoice carefully using these rules:
+
+PRICING: Distributor invoices typically have multiple price columns: "List Price", "Discount", and "Net Price" (or "Your Cost" / "Invoice Price"). You MUST use the FINAL NET PRICE per case — the price after all discounts are already subtracted. Do NOT use the list/gross price. Do NOT include the discount amount as a separate line item.
+
+UNITS PER CASE: Look for pack size indicators on the same line as the product (e.g. "24/12oz", "12/16oz", "6/4pk", "1/EA"). The first number is unitsPerCase. This is separate from the quantity ordered (how many cases were ordered). Do not mix these up.
+
+SKIP these rows entirely — do not include them as line items:
+- Discount rows / off-invoice allowance rows
+- Deposit / can deposit rows
+- Tax rows
+- Delivery fee rows
+- Subtotal / total rows
+- Any row without a product name
+
+The images may be multiple pages of the same invoice — treat them as one continuous document.
+
+Return ONLY a valid JSON object — no markdown fences, no explanation, nothing else:
+{
+  "vendor": "${vendor}",
+  "invoiceNumber": "invoice number or empty string",
+  "date": "YYYY-MM-DD or empty string",
+  "total": 0.00,
+  "lineItems": [
+    {
+      "name": "product name as printed",
+      "cost": 0.00,
+      "unitsPerCase": 1,
+      "matchedProductId": "id from database if similar product exists, else null",
+      "matchedProductName": "matched product name or null",
+      "previousCost": null,
+      "priceChange": false,
+      "isNew": true,
+      "suggestedCategoryId": "exact id from AVAILABLE CATEGORIES or null"
+    }
+  ]
+}
+
+Additional rules:
+- priceChange = true if matchedProductId is set AND cost differs from the matched product's cost in the database
+- previousCost = the matched product's existing cost from the database (not from the invoice)
+- isNew = true if no match found in the database
+- suggestedCategoryId must be an exact id string from AVAILABLE CATEGORIES`;
+
+    const content = [
+      ...images.map(b64=>({ type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64} })),
+      { type:'text', text:prompt }
+    ];
+
+    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{ role:'user', content }]
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    const raw = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    invoiceScanResult = JSON.parse(raw);
+    invoiceScanResult._capturedImages = images;
+    invoiceScanResult._vendor = vendor;
+
+    loading.style.display = 'none';
+    renderInvoiceReview(invoiceScanResult);
+
+  } catch(e) {
+    console.error('Invoice scan error:', e);
+    loading.style.display = 'none';
+    panel.style.display = 'none';
+    toast('Scan failed: ' + e.message);
+    document.getElementById('inv-scan-input').value = '';
+  }
+}
+
+async function loadInvoiceHistory() {
+  const el = document.getElementById('invHistoryList');
+  if (!el) return;
+  try {
+    const snap = await window.F.getDocs(window.F.query(
+      window.F.collection(window.db,'invoiceScans'),
+      window.F.orderBy('timestamp','desc'),
+      window.F.limit(30)
+    ));
+    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if (!docs.length) { el.innerHTML='<div class="empty"><div class="ei">📋</div>No scanned invoices yet</div>'; return; }
+    el.innerHTML = docs.map(inv=>{
+      const d = inv.date ? new Date(inv.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      const thumbs = (inv.photoUrls||[]).slice(0,3).map(url=>
+        `<img src="${url}" style="width:44px;height:58px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0" onclick="window.open('${url}')">`
+      ).join('');
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="display:flex;gap:4px;flex-shrink:0">${thumbs||'<div style="width:44px;height:58px;background:var(--bg2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">📄</div>'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700">${inv.vendor||'Unknown'}</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">${d}${inv.invoiceNumber?' · #'+inv.invoiceNumber:''}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:3px">${inv.lineItemCount||0} items · ${(inv.photoUrls||[]).length} page${(inv.photoUrls||[]).length!==1?'s':''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">By ${inv.employee||'—'}</div>
+          </div>
+          ${inv.total ? `<div style="font-size:15px;font-weight:700;color:var(--blue);flex-shrink:0">$${(inv.total||0).toFixed(2)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
 </script>
+
+<!-- Invoice Auto-Capture Scanner Modal -->
+<div id="invScannerModal" style="display:none;position:fixed;inset:0;background:#000;z-index:700;flex-direction:column">
+  <!-- Vendor label -->
+  <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600">
+      🏪 <span id="scanVendorLabel"></span>
+    </div>
+    <div id="scanPageCount" style="background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600"></div>
+  </div>
+
+  <!-- Live video -->
+  <video id="invScanVideo" style="width:100%;flex:1;object-fit:cover;display:block" playsinline muted></video>
+
+  <!-- Overlay: corners + laser + flash -->
+  <div style="position:absolute;inset:0;pointer-events:none">
+    <div id="invScanFrame" class="scan-frame">
+      <div class="scan-corner tl"></div>
+      <div class="scan-corner tr"></div>
+      <div class="scan-corner bl"></div>
+      <div class="scan-corner br"></div>
+      <div class="scan-laser"></div>
+    </div>
+    <div id="invScanFlash" class="scan-flash"></div>
+  </div>
+
+  <!-- Hidden canvas for processing -->
+  <canvas id="invScanCanvas" style="display:none"></canvas>
+
+  <!-- Bottom bar -->
+  <div class="scanner-bar">
+    <div id="invScanHint" class="scanner-hint">Position the invoice inside the frame — it will snap automatically</div>
+    <!-- Thumbnail strip -->
+    <div class="scan-captures" id="invScanThumbs"></div>
+    <div class="scanner-actions">
+      <button class="scan-close-btn" onclick="closeInvScanner()">✕</button>
+      <button class="scan-shutter" onclick="manualCapture()"><div class="scan-shutter-inner"></div></button>
+      <button id="invScanDoneBtn" class="scan-done-btn" disabled onclick="finishInvScan()">Done</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
