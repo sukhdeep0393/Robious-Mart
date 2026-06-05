@@ -565,7 +565,7 @@
     <div class="card"><div class="ct">Lottery</div>
       <div class="g2" style="margin-bottom:10px">
         <div><label>Lottery total ($)</label><input type="number" id="d-ltot" placeholder="0.00" oninput="updLot()" /></div>
-        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" readonly style="background:var(--bg2);color:var(--text2)" /></div>
+        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" oninput="updLot()" /></div>
         <div><label>Scratcher payout ($)</label><input type="number" id="d-lscr" placeholder="0.00" oninput="updLot()" /></div>
         <div><label>Cancellation ($)</label><input type="number" id="d-lcan" placeholder="0.00" oninput="updLot()" /></div>
       </div>
@@ -2961,12 +2961,11 @@ function calcShortOver(){
   else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
 }
 function updLot(){
+  const tot=parseFloat(document.getElementById('d-ltot').value)||0;
+  const pay=parseFloat(document.getElementById('d-lpay').value)||0;
   const scr=parseFloat(document.getElementById('d-lscr').value)||0;
   const can=parseFloat(document.getElementById('d-lcan').value)||0;
-  const totalPay=scr+can;
-  document.getElementById('d-lpay').value=totalPay>0?totalPay.toFixed(2):'';
-  const tot=parseFloat(document.getElementById('d-ltot').value)||0;
-  const net=tot-totalPay;
+  const net=tot-pay-scr-can;
   const el=document.getElementById('lotNet'),v=document.getElementById('d-ltot').value;
   if(!v){el.innerHTML='';return;}
   el.innerHTML=`<div class="metric" style="display:inline-block"><div class="mlab">Net lottery</div><div class="mval" style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</div></div>`;
