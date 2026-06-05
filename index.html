@@ -1904,8 +1904,8 @@ document.addEventListener('keydown',function(e){
   if(!ls||ls.style.display==='none')return;
   const opVisible=document.getElementById('opLogin').style.display!=='none';
   if(document.activeElement===document.getElementById('empName'))return;
-  if(e.key>='0'&&e.key<='9'){opVisible?opPk(e.key):pk(e.key);}
-  else if(e.key==='Backspace'){opVisible?opPdel():pdel();}
+  if(e.key>='0'&&e.key<='9'){e.preventDefault();opVisible?opPk(e.key):pk(e.key);}
+  else if(e.key==='Backspace'){e.preventDefault();opVisible?opPdel():pdel();}
 });
 
 // Mobile numeric keyboard — hidden inputs feed the PIN functions
