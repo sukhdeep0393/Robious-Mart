@@ -565,7 +565,9 @@
     <div class="card"><div class="ct">Lottery</div>
       <div class="g2" style="margin-bottom:10px">
         <div><label>Lottery total ($)</label><input type="number" id="d-ltot" placeholder="0.00" oninput="updLot()" /></div>
-        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" oninput="updLot()" /></div>
+        <div><label>Lottery payout ($)</label><input type="number" id="d-lpay" placeholder="0.00" readonly style="background:var(--bg2);color:var(--text2)" /></div>
+        <div><label>Scratcher payout ($)</label><input type="number" id="d-lscr" placeholder="0.00" oninput="updLot()" /></div>
+        <div><label>Cancellation ($)</label><input type="number" id="d-lcan" placeholder="0.00" oninput="updLot()" /></div>
       </div>
       <div id="lotNet"></div>
     </div>
@@ -2959,7 +2961,12 @@ function calcShortOver(){
   else{el.innerHTML=`<div class="short-over-box over-box">+ OVER by $${diff.toFixed(2)}</div>`;}
 }
 function updLot(){
-  const net=(parseFloat(document.getElementById('d-ltot').value)||0)-(parseFloat(document.getElementById('d-lpay').value)||0);
+  const scr=parseFloat(document.getElementById('d-lscr').value)||0;
+  const can=parseFloat(document.getElementById('d-lcan').value)||0;
+  const totalPay=scr+can;
+  document.getElementById('d-lpay').value=totalPay>0?totalPay.toFixed(2):'';
+  const tot=parseFloat(document.getElementById('d-ltot').value)||0;
+  const net=tot-totalPay;
   const el=document.getElementById('lotNet'),v=document.getElementById('d-ltot').value;
   if(!v){el.innerHTML='';return;}
   el.innerHTML=`<div class="metric" style="display:inline-block"><div class="mlab">Net lottery</div><div class="mval" style="color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}$${net.toFixed(2)}</div></div>`;
@@ -2997,6 +3004,8 @@ async function subDaily(){
       dieselGal:parseFloat(document.getElementById('d-dies').value)||0,
       lotteryTotal:parseFloat(document.getElementById('d-ltot').value)||0,
       lotteryPayout:parseFloat(document.getElementById('d-lpay').value)||0,
+      lotteryScr:parseFloat(document.getElementById('d-lscr').value)||0,
+      lotteryCan:parseFloat(document.getElementById('d-lcan').value)||0,
       incidents:document.getElementById('d-inc').value,
       notes:document.getElementById('d-notes').value,
       shiftComment:document.getElementById('d-comment').value,
@@ -3012,7 +3021,7 @@ async function subDaily(){
   }catch(e){toast('Error saving');console.error(e);btn.innerHTML='Submit shift report';btn.disabled=false;return;}
   // Post-save cleanup (outside try/catch so errors here don't show "Error saving")
   try{
-    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['d-tot-nrs','d-tot-vfn','d-cash-nrs','d-cash-vfn','d-cred-nrs','d-cred-vfn','d-deduct-lottery','d-deduct-other','d-deduct-other-note','d-exp-nrs','d-exp-vfn','d-actual-nrs','d-actual-vfn','d-cash-disc-note','d-tot','d-cash','d-cred','d-expected','d-actual','d-reg','d-prem','d-dies','d-ltot','d-lpay','d-lscr','d-lcan','d-inc','d-notes','d-start','d-end','d-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('salesCombinedDisplay').style.display='none';
     document.getElementById('cashDiscrepancyNote').style.display='none';
     document.getElementById('d-hours').value='';document.getElementById('lotNet').innerHTML='';document.getElementById('shortOverResult').innerHTML='';
