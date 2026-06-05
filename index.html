@@ -4420,13 +4420,7 @@ async function loadScrHistory(){
 
 
 // ---- COMPLIANCE ----
-const DEFAULT_LICS=[
-  {id:'abc',name:'ABC License (Alcohol)',due:'2026-09-15',ack:false},
-  {id:'deq',name:'DEQ Inspection',due:'2026-08-01',ack:false},
-  {id:'biz',name:'Business License',due:'2027-06-01',ack:true},
-  {id:'lot',name:'Lottery License',due:'2027-09-01',ack:false},
-];
-let lics = JSON.parse(JSON.stringify(DEFAULT_LICS)); // mutable working copy
+let lics = []; // loaded from Firestore per store; empty until saved
 
 async function saveLics(){
   try{
@@ -4438,6 +4432,8 @@ async function saveLics(){
 }
 
 async function loadLics(){
+  lics = [];
+  window._licsDocId = null;
   try{
     const snap = await window.F.getDocs(window.F.query(sc('settings'),window.F.limit(10)));
     const settingsDoc = snap.docs.find(d=>d.id==='complianceLics'||d.data().lics);
