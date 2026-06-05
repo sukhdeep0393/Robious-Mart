@@ -6530,7 +6530,7 @@ function renderMgCategories(filterText){
       if(!valid.length) return 0;
       return valid.reduce((s,p)=>{ const cpu=(p.units&&p.units>0)?p.cost/p.units:(p.costPerUnit||p.cost); return s+(calcMg(cpu,p.sell)||0); },0)/valid.length;
     })() : 0;
-    const isOpen = mgOpenCats[cat.id] !== false; // default open
+    const isOpen = mgOpenCats[cat.id] === true; // default collapsed
 
     const bgColors = {
       '🍺':'#fef3c7','🚬':'#f5f3ff','🥤':'#e0f2fe','🍬':'#fce7f3','🥛':'#f0fdf4',
@@ -6658,11 +6658,11 @@ function renderMgCategories(filterText){
 }
 
 function toggleMgCat(id){
-  mgOpenCats[id] = !( mgOpenCats[id] !== false );
+  mgOpenCats[id] = !(mgOpenCats[id] === true);
   const body = document.getElementById('catbody-'+id);
   const chev = document.querySelector(`#catblock-${id} .cat-chevron`);
-  if(body) body.classList.toggle('open', mgOpenCats[id] !== false);
-  if(chev) chev.classList.toggle('open', mgOpenCats[id] !== false);
+  if(body) body.classList.toggle('open', mgOpenCats[id] === true);
+  if(chev) chev.classList.toggle('open', mgOpenCats[id] === true);
 }
 
 function togMgAddCat(){
