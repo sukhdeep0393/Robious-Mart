@@ -2941,7 +2941,7 @@ async function loadDashboard(){
     el.innerHTML=`
       <!-- Greeting row — only show if current month -->
       ${isCurrentMonth?`<div style="margin-bottom:14px">
-        <div style="font-size:21px;font-weight:800;line-height:1.2">Good ${getGreeting()}, Sukh 👋</div>
+        <div style="font-size:21px;font-weight:800;line-height:1.2">Good ${getGreeting()}, ${(CU&&CU.name)?CU.name.split(' ')[0]:'there'} 👋</div>
         <div style="font-size:12px;color:var(--text3);margin-top:3px">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
       </div>`:`<div style="margin-bottom:14px">
         <div style="font-size:17px;font-weight:700;color:var(--text2)">📅 Viewing ${monthName} ${selYear}</div>
