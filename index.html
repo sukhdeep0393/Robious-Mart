@@ -7153,6 +7153,64 @@ function renderMgCategories(filterText){
     </div>`;
   }).join('');
 
+  // Show uncategorized products (e.g. added via invoice scan before categories exist)
+  const knownCatIds = new Set(mgCategories.map(c=>c.id));
+  const uncatProds = mgProducts.filter(p=>!knownCatIds.has(p.categoryId));
+  let uncatDisplay = uncatProds;
+  if(filterText) uncatDisplay = uncatProds.filter(p=>(p.name||'').toLowerCase().includes(filterText.toLowerCase()));
+  if(uncatDisplay.length) {
+    el.innerHTML += `<div class="cat-block">
+      <div class="cat-header" onclick="this.nextElementSibling.nextElementSibling.classList.toggle('open');this.querySelector('.cat-chevron').classList.toggle('open')">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <div class="cat-icon" style="background:#f5f5f4">📦</div>
+          <div>
+            <div class="cat-title">Uncategorized</div>
+            <div class="cat-meta">${uncatDisplay.length} product${uncatDisplay.length!==1?'s':''} · assign a category to organize</div>
+          </div>
+        </div>
+        <span class="cat-chevron open">▼</span>
+      </div>
+      <div style="display:none"></div>
+      <div class="cat-body open">
+        <div class="prod-head"><div>Product</div><div>Cost</div><div>Sell</div><div>Margin</div><div></div></div>
+        ${uncatDisplay.map(p=>{
+          const cpu = (p.units&&p.units>0)?p.cost/p.units:(p.costPerUnit||p.cost);
+          const mg = calcMg(cpu,p.sell);
+          if(mgEditingProd===p.id){
+            return `<div class="prod-edit-form" id="pedit-${p.id}">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Edit: ${p.name}</div>
+              <div class="g2" style="margin-bottom:8px">
+                <div><label>Product name</label><input id="pef-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}" /></div>
+                <div><label>Purchase cost ($) — total</label><input type="number" step="0.01" id="pef-cost-${p.id}" value="${p.cost||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 24.00" /></div>
+              </div>
+              <div class="g2" style="margin-bottom:8px">
+                <div><label>Units per case / pack</label><input type="number" step="1" min="1" id="pef-units-${p.id}" value="${p.units||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 24" /></div>
+                <div><label>Cost per unit (auto)</label><input id="pef-cpu-${p.id}" readonly style="background:var(--bg2);font-weight:700;color:var(--blue)" placeholder="—" value="${p.units&&p.units>0?'$'+(p.cost/p.units).toFixed(4):''}" /></div>
+              </div>
+              <div class="g2" style="margin-bottom:10px">
+                <div><label>Selling price per unit ($)</label><input type="number" step="0.01" id="pef-sell-${p.id}" value="${p.sell||''}" oninput="liveCalcMg('${p.id}')" placeholder="e.g. 1.99" /></div>
+                <div style="display:flex;align-items:flex-end"><div id="pef-inline-mg-${p.id}" style="font-size:13px;padding:10px 0;color:var(--text2)"></div></div>
+              </div>
+              <div id="pef-result-${p.id}" style="margin-bottom:10px"></div>
+              <div style="display:flex;gap:8px">
+                <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="saveMgProduct('${p.id}','')">Save</button>
+                <button class="btn bsecondary" style="padding:9px;font-size:13px" onclick="cancelMgEdit()">Cancel</button>
+                <button onclick="deleteMgProduct('${p.id}')" style="padding:9px 13px;background:var(--red-light);color:var(--red);border:1px solid #f7c1c1;border-radius:var(--r);font-size:13px;cursor:pointer">Delete</button>
+              </div>
+            </div>`;
+          }
+          return `<div class="prod-row">
+            <div class="prod-name">${p.name||'Unnamed'}${p.units?`<div style="font-size:10px;color:var(--text3);margin-top:1px">${p.units} units · $${(p.cost/p.units).toFixed(4)}/unit</div>`:''}</div>
+            <div class="prod-price">$${(p.cost||0).toFixed(2)}</div>
+            <div class="prod-price">$${(p.sell||0).toFixed(2)}</div>
+            <div>${mgPill(mg)}</div>
+            <div><button onclick="openMgEdit('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--blue)">✏️</button></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
   // Re-init live calc for any open edit forms
   if(mgEditingProd) setTimeout(()=>liveCalcMg(mgEditingProd), 50);
 }
