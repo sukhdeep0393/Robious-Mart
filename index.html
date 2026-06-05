@@ -10304,11 +10304,23 @@ async function loadInvoiceHistory() {
             <div style="font-size:12px;color:var(--text2);margin-top:3px">${inv.lineItemCount||0} items · ${(inv.photoUrls||[]).length} page${(inv.photoUrls||[]).length!==1?'s':''}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">By ${inv.employee||'—'}</div>
           </div>
-          ${inv.total ? `<div style="font-size:15px;font-weight:700;color:var(--blue);flex-shrink:0">$${(inv.total||0).toFixed(2)}</div>` : ''}
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+            ${inv.total ? `<div style="font-size:15px;font-weight:700;color:var(--blue)">$${(inv.total||0).toFixed(2)}</div>` : ''}
+            <button onclick="deleteInvoiceHistory('${inv.id}')" style="background:var(--red-light);border:1px solid #f7c1c1;color:var(--red);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
+          </div>
         </div>
       </div>`;
     }).join('');
   } catch(e) { console.error(e); }
+}
+
+async function deleteInvoiceHistory(id) {
+  if (!confirm('Delete this invoice record from history? This does not undo any price book changes.')) return;
+  try {
+    await window.F.deleteDoc(sd('invoiceScans', id));
+    loadInvoiceHistory();
+    toast('Invoice record deleted.');
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 </script>
