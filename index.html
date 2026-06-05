@@ -365,6 +365,7 @@
     <div id="opLogin">
       <div style="margin-bottom:12px;font-size:14px;font-weight:500;text-align:center;color:var(--text2)">Enter operator PIN</div>
       <div class="pin-dots" id="opDots"><div class="pin-dot" id="opd0"></div><div class="pin-dot" id="opd1"></div><div class="pin-dot" id="opd2"></div><div class="pin-dot" id="opd3"></div></div>
+      <input id="opPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
       <div class="lerr" id="opErr"></div>
       <div class="pin-pad">
         <button class="pk" onclick="opPk('1')">1</button><button class="pk" onclick="opPk('2')">2</button><button class="pk" onclick="opPk('3')">3</button>
@@ -376,6 +377,7 @@
     <div id="empLogin" style="display:none">
       <div style="margin-bottom:12px"><label>Your name</label><input type="text" id="empName" placeholder="First name" /></div>
       <div class="pin-dots"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
+      <input id="empPinHidden" inputmode="numeric" pattern="[0-9]*" maxlength="4" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" />
       <div class="lerr" id="pinErr"></div>
       <div class="pin-pad">
         <button class="pk" onclick="pk('1')">1</button><button class="pk" onclick="pk('2')">2</button><button class="pk" onclick="pk('3')">3</button>
@@ -1871,6 +1873,10 @@ function switchLTab(t,el){
   el.classList.add('active');
   document.getElementById('opLogin').style.display=t==='op'?'block':'none';
   document.getElementById('empLogin').style.display=t==='emp'?'block':'none';
+  setTimeout(()=>{
+    const h=document.getElementById(t==='op'?'opPinHidden':'empPinHidden');
+    if(h)h.focus();
+  },50);
 }
 
 // Operator PIN
@@ -1891,6 +1897,53 @@ function chkOpPin(){
   }
 }
 function doOpLogin(){}
+
+// Keyboard support for PIN pad on laptop
+document.addEventListener('keydown',function(e){
+  const ls=document.getElementById('loginScreen');
+  if(!ls||ls.style.display==='none')return;
+  const opVisible=document.getElementById('opLogin').style.display!=='none';
+  if(document.activeElement===document.getElementById('empName'))return;
+  if(e.key>='0'&&e.key<='9'){opVisible?opPk(e.key):pk(e.key);}
+  else if(e.key==='Backspace'){opVisible?opPdel():pdel();}
+});
+
+// Mobile numeric keyboard — hidden inputs feed the PIN functions
+(function(){
+  function wireHidden(){
+    const opH=document.getElementById('opPinHidden');
+    const emH=document.getElementById('empPinHidden');
+    if(!opH||!emH)return;
+    opH.addEventListener('input',function(){
+      const digits=this.value.replace(/\D/g,'');
+      this.value='';
+      digits.split('').forEach(d=>opPk(d));
+    });
+    emH.addEventListener('input',function(){
+      const digits=this.value.replace(/\D/g,'');
+      this.value='';
+      digits.split('').forEach(d=>pk(d));
+    });
+    // tap anywhere on the pin-pad area to focus the hidden input
+    document.getElementById('opLogin').addEventListener('click',function(e){
+      if(!e.target.classList.contains('pk'))opH.focus();
+      else opH.focus();
+    });
+    document.getElementById('empLogin').addEventListener('click',function(e){
+      if(e.target!==document.getElementById('empName'))emH.focus();
+    });
+    // auto-focus on load
+    opH.focus();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireHidden);
+  else wireHidden();
+})();
+
+function focusPinInput(){
+  const opVisible=document.getElementById('opLogin').style.display!=='none';
+  const el=document.getElementById(opVisible?'opPinHidden':'empPinHidden');
+  if(el)el.focus();
+}
 
 // Employee PIN
 function pk(d){if(pinBuf.length>=4)return;pinBuf+=d;updDots();if(pinBuf.length===4)setTimeout(chkPin,200);}
