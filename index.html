@@ -1931,7 +1931,8 @@
   <div style="background:var(--bg);border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100">
     <div style="font-size:17px;font-weight:700">Robious <span style="color:var(--blue)">Admin</span></div>
     <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:12px;color:var(--text2);background:var(--blue-light);color:var(--blue);padding:4px 10px;border-radius:20px;font-weight:600">Super Admin</span>
+      <span style="font-size:12px;background:var(--blue-light);color:var(--blue);padding:4px 10px;border-radius:20px;font-weight:600">Super Admin</span>
+      <button onclick="adminGoToStore()" style="font-size:12px;color:var(--blue);background:var(--blue-light);border:1px solid var(--blue-light);border-radius:20px;padding:4px 12px;cursor:pointer;font-weight:500">My Store</button>
       <button onclick="doAdminLogout()" style="font-size:12px;color:var(--text3);background:none;border:none;padding:4px 8px;cursor:pointer">Sign out</button>
     </div>
   </div>
@@ -2366,6 +2367,16 @@ async function adminDeleteCode(code){
   if(!confirm('Delete access code '+code+'?'))return;
   try{await window.F.deleteDoc(window.F.doc(window.db,'accessCodes',code));toast('Deleted');loadAdminCodes();}
   catch(e){toast('Error: '+e.message);}
+}
+
+async function adminGoToStore(){
+  const storeId=localStorage.getItem('storeId');
+  if(!storeId){toast('No store linked to this account');return;}
+  window.currentStoreId=storeId;
+  await loadStoreSettings();
+  document.getElementById('adminShell').style.display='none';
+  const ownerName=(window.storeSettings&&window.storeSettings.ownerName)||'Owner';
+  loginOK({name:ownerName,role:'operator'});
 }
 
 function doAdminLogout(){
