@@ -2260,10 +2260,7 @@ async function doOwnerLogin(){
   try{
     const cred=await window.F.signInWithEmailAndPassword(window.auth,email,pass);
     const uid=cred.user.uid;
-    const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
-    if(!uSnap.exists()){errEl.textContent='No store found for this account';btn.disabled=false;btn.textContent='Sign in';return;}
-    const userData=uSnap.data();
-    // Super-admin route — locked to a single hardcoded UID
+    // Super-admin route — locked to a single hardcoded UID, checked before anything else
     if(uid==='JWKO0QmqMJeb9bcFc1EGhhPok0h1'){
       document.getElementById('loginScreen').style.display='none';
       document.getElementById('adminShell').style.display='block';
@@ -2271,7 +2268,9 @@ async function doOwnerLogin(){
       loadAdminStores();
       return;
     }
-    const storeId=userData.storeId;
+    const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
+    if(!uSnap.exists()){errEl.textContent='No store found for this account';btn.disabled=false;btn.textContent='Sign in';return;}
+    const storeId=uSnap.data().storeId;
     window.currentStoreId=storeId;
     localStorage.setItem('storeId',storeId);
     await loadStoreSettings();
