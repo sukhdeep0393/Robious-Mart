@@ -1920,20 +1920,46 @@
       </div>
       <div id="ss-pin-status" style="margin-top:8px;font-size:12px;color:var(--text3)"></div>
     </div>
-    <div class="card">
-      <div class="ct">Access codes</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Generate codes for new store owners to sign up</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input id="ac-code-input" placeholder="e.g. WELCOME2024" style="text-transform:uppercase;letter-spacing:1px;font-weight:600;flex:1" />
-        <button class="btn bprimary" style="padding:10px 16px;width:auto" onclick="createAccessCode()">Add</button>
-      </div>
-      <div id="ac-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
-    </div>
   </div>
 
   </div><!-- /page-area -->
   </div><!-- /app-body -->
 </div><!-- /appShell -->
+
+<!-- ADMIN SHELL -->
+<div id="adminShell" style="display:none;min-height:100vh;background:var(--bg2)">
+  <div style="background:var(--bg);border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100">
+    <div style="font-size:17px;font-weight:700">Robious <span style="color:var(--blue)">Admin</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:12px;color:var(--text2);background:var(--blue-light);color:var(--blue);padding:4px 10px;border-radius:20px;font-weight:600">Super Admin</span>
+      <button onclick="doAdminLogout()" style="font-size:12px;color:var(--text3);background:none;border:none;padding:4px 8px;cursor:pointer">Sign out</button>
+    </div>
+  </div>
+  <div style="max-width:680px;margin:0 auto;padding:24px 20px 60px">
+    <!-- Tab nav -->
+    <div style="display:flex;gap:8px;margin-bottom:24px">
+      <button id="atab-stores" onclick="showAdminTab('stores')" style="padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer">Stores</button>
+      <button id="atab-codes" onclick="showAdminTab('codes')" style="padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--bg);color:var(--text2);cursor:pointer">Invite Codes</button>
+    </div>
+    <!-- Stores tab -->
+    <div id="apanel-stores">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">All Stores</div>
+      <div id="admin-stores-list"><div style="color:var(--text3);font-size:13px;padding:20px 0">Loading...</div></div>
+    </div>
+    <!-- Invite Codes tab -->
+    <div id="apanel-codes" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Invite Codes</div>
+      <div class="card" style="margin-bottom:0">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Create a code and share the link so a new store owner can sign up.</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <input id="admin-code-input" placeholder="e.g. WELCOME2024" style="text-transform:uppercase;letter-spacing:1px;font-weight:600;flex:1" oninput="this.value=this.value.toUpperCase()" />
+          <button class="btn bprimary" style="padding:10px 16px;width:auto" onclick="adminCreateCode()">Add</button>
+        </div>
+        <div id="admin-codes-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 <div id="offlineBanner">⚡ No internet connection — changes will save automatically when you reconnect</div>
@@ -2236,7 +2262,16 @@ async function doOwnerLogin(){
     const uid=cred.user.uid;
     const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
     if(!uSnap.exists()){errEl.textContent='No store found for this account';btn.disabled=false;btn.textContent='Sign in';return;}
-    const storeId=uSnap.data().storeId;
+    const userData=uSnap.data();
+    // Super-admin route — locked to a single hardcoded UID
+    if(uid==='JWKO0QmqMJeb9bcFc1EGhhPok0h1'){
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('adminShell').style.display='block';
+      showAdminTab('stores');
+      loadAdminStores();
+      return;
+    }
+    const storeId=userData.storeId;
     window.currentStoreId=storeId;
     localStorage.setItem('storeId',storeId);
     await loadStoreSettings();
@@ -2246,6 +2281,101 @@ async function doOwnerLogin(){
     errEl.textContent=err.code==='auth/invalid-credential'||err.code==='auth/wrong-password'||err.code==='auth/user-not-found'?'Incorrect email or password':err.message;
     btn.disabled=false;btn.textContent='Sign in';
   }
+}
+
+// ---- SUPER-ADMIN ----
+function showAdminTab(tab){
+  document.getElementById('apanel-stores').style.display=tab==='stores'?'':'none';
+  document.getElementById('apanel-codes').style.display=tab==='codes'?'':'none';
+  const storeBtn=document.getElementById('atab-stores');
+  const codeBtn=document.getElementById('atab-codes');
+  const activeStyle='background:var(--blue);color:#fff;border-color:var(--blue)';
+  const inactiveStyle='background:var(--bg);color:var(--text2);border-color:var(--border)';
+  storeBtn.style.cssText='padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:1px solid;'+(tab==='stores'?activeStyle:inactiveStyle);
+  codeBtn.style.cssText='padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:1px solid;'+(tab==='codes'?activeStyle:inactiveStyle);
+  if(tab==='codes') loadAdminCodes();
+}
+
+async function loadAdminStores(){
+  const el=document.getElementById('admin-stores-list');
+  try{
+    const snap=await window.F.getDocs(window.F.collection(window.db,'stores'));
+    if(snap.empty){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0">No stores yet</div>';return;}
+    const stores=[];
+    await Promise.all(snap.docs.map(async d=>{
+      const settSnap=await window.F.getDoc(window.F.doc(window.db,'stores',d.id,'settings','main'));
+      const s=settSnap.exists()?settSnap.data():{};
+      stores.push({id:d.id,...s});
+    }));
+    stores.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+    el.innerHTML=stores.map(s=>`
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:15px;margin-bottom:2px">${s.storeName||s.id}</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:1px">${s.ownerName||'—'}</div>
+            <div style="font-size:12px;color:var(--text3)">${s.ownerEmail||'—'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:11px;color:var(--text3);font-family:monospace;letter-spacing:.04em">${s.id}</div>
+            ${s.createdAt?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(s.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>`:''}
+          </div>
+        </div>
+      </div>`).join('');
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:13px">Error: ${e.message}</div>`;}
+}
+
+async function loadAdminCodes(){
+  const el=document.getElementById('admin-codes-list');if(!el)return;
+  try{
+    const snap=await window.F.getDocs(window.F.collection(window.db,'accessCodes'));
+    if(snap.empty){el.innerHTML='<div style="color:var(--text3);font-size:13px">No codes yet</div>';return;}
+    el.innerHTML=snap.docs.map(d=>{
+      const data=d.data();const avail=!data.used;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px">
+        <div style="flex:1;min-width:0">
+          <strong style="letter-spacing:1px">${d.id}</strong>
+          <span style="margin-left:8px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;${data.used?'background:var(--red-light);color:var(--red)':'background:var(--green-light);color:var(--green)'}">${data.used?'USED':'AVAILABLE'}</span>
+          ${data.used&&data.usedBy?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${data.usedBy}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${avail?`<button onclick="adminCopyLink('${d.id}')" class="bsm" style="background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-light);padding:5px 10px;border-radius:20px;font-size:12px;cursor:pointer">Copy link</button>`:''}
+          <button onclick="adminDeleteCode('${d.id}')" style="background:var(--red-light);color:var(--red);border:1px solid var(--red-light);padding:5px 10px;border-radius:20px;font-size:12px;cursor:pointer">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:13px">Error loading</div>`;}
+}
+
+async function adminCreateCode(){
+  const code=(document.getElementById('admin-code-input')?.value||'').trim().toUpperCase();
+  if(!code){toast('Enter a code');return;}
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'accessCodes',code),{used:false,createdAt:new Date().toISOString(),createdBy:'superadmin'});
+    document.getElementById('admin-code-input').value='';
+    toast('Access code created');
+    loadAdminCodes();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+function adminCopyLink(code){
+  const url=location.origin+location.pathname+'?signup='+encodeURIComponent(code);
+  navigator.clipboard.writeText(url).then(()=>toast('Invite link copied!')).catch(()=>prompt('Copy this link:',url));
+}
+
+async function adminDeleteCode(code){
+  if(!confirm('Delete access code '+code+'?'))return;
+  try{await window.F.deleteDoc(window.F.doc(window.db,'accessCodes',code));toast('Deleted');loadAdminCodes();}
+  catch(e){toast('Error: '+e.message);}
+}
+
+function doAdminLogout(){
+  try{window.F.signOut(window.auth);}catch(e){}
+  document.getElementById('adminShell').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  const oe=document.getElementById('opEmail');if(oe)oe.value='';
+  const op=document.getElementById('opPassword');if(op)op.value='';
+  document.getElementById('opEmailErr').textContent='';
 }
 
 // Keyboard support
@@ -2484,7 +2614,6 @@ async function loadStoreSettingsPage(){
     if(pinStatus)pinStatus.textContent='No PIN set — you sign in with email and password';
     if(clearBtn)clearBtn.style.display='none';
   }
-  loadAccessCodes();
 }
 async function saveOwnerPin(){
   const pin=(document.getElementById('ss-owner-pin')?.value||'').trim();
