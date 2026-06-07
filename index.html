@@ -2470,7 +2470,12 @@ function loginOK(u){
   CU=u;
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').style.display='block';
-  document.getElementById('uBadge').textContent=u.name+(u.role==='operator'?' · Operator':u.role==='lead'?' · Lead':'');
+  const badge=document.getElementById('uBadge');
+  badge.textContent=u.name+(u.role==='operator'?' · Operator':u.role==='lead'?' · Lead':'');
+  const isAdmin=window.auth?.currentUser?.uid==='FKHIlFL3taXKSuiS7zt0KZX14N32';
+  badge.style.cursor=isAdmin?'pointer':'default';
+  badge.title=isAdmin?'Switch to Admin':'';
+  badge.onclick=isAdmin?()=>{document.getElementById('appShell').style.display='none';document.getElementById('adminShell').style.display='block';showAdminTab('stores');loadAdminStores();}:null;
   document.getElementById('d-emp').value=u.name;
   document.getElementById('s-emp').value=u.name;
   const lcEb=document.getElementById('lc-enteredby');if(lcEb)lcEb.value=u.name;
