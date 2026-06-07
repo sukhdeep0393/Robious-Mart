@@ -2299,13 +2299,15 @@ function showAdminTab(tab){
 async function loadAdminStores(){
   const el=document.getElementById('admin-stores-list');
   try{
-    const snap=await window.F.getDocs(window.F.collection(window.db,'stores'));
-    if(snap.empty){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0">No stores yet</div>';return;}
+    // Query users collection to find all storeIds (store docs themselves are empty containers)
+    const usersSnap=await window.F.getDocs(window.F.collection(window.db,'users'));
+    const storeIds=[...new Set(usersSnap.docs.map(d=>d.data().storeId).filter(Boolean))];
+    if(!storeIds.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0">No stores yet</div>';return;}
     const stores=[];
-    await Promise.all(snap.docs.map(async d=>{
-      const settSnap=await window.F.getDoc(window.F.doc(window.db,'stores',d.id,'settings','main'));
+    await Promise.all(storeIds.map(async id=>{
+      const settSnap=await window.F.getDoc(window.F.doc(window.db,'stores',id,'settings','main'));
       const s=settSnap.exists()?settSnap.data():{};
-      stores.push({id:d.id,...s});
+      stores.push({id,...s});
     }));
     stores.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     el.innerHTML=stores.map(s=>`
