@@ -1100,9 +1100,13 @@
           <input id="sm-emp-manual" placeholder="Type employee name..." style="display:none;margin-top:6px" />
           <button id="sm-emp-back" onclick="cancelManualEmp()" style="display:none;font-size:11px;background:none;border:none;color:var(--blue);padding:2px 0;cursor:pointer;margin-top:2px">← Back to list</button>
         </div>
-        <div>
+        <div id="sm-date-single-wrap">
           <label>Date</label>
           <input type="date" id="sm-date" />
+        </div>
+        <div id="sm-date-multi-wrap" style="display:none;grid-column:1/-1">
+          <label style="display:block;margin-bottom:6px">Days <span style="font-weight:400;color:var(--text3);font-size:11px">(select one or more)</span></label>
+          <div id="sm-day-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         </div>
       </div>
       <div class="g2" style="margin-bottom:10px">
@@ -5922,22 +5926,46 @@ function getShiftEmpValue(){
   return sel ? sel.value.trim() : '';
 }
 
+function buildDayCheckboxes(preselect){
+  const wrap = document.getElementById('sm-day-checkboxes');
+  if(!wrap) return;
+  const mon = schedWeekStart ? new Date(schedWeekStart) : getMonday(new Date());
+  const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  wrap.innerHTML = '';
+  for(let i=0;i<7;i++){
+    const d = new Date(mon); d.setDate(d.getDate()+i);
+    const iso = d.toISOString().slice(0,10);
+    const checked = preselect===iso || (preselect===undefined && i===0) ? 'checked' : '';
+    const label = `${DAY_LABELS[i]}<br><span style="font-size:10px;color:var(--text3)">${iso.slice(5)}</span>`;
+    wrap.innerHTML += `<label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:40px">
+      <input type="checkbox" data-date="${iso}" ${checked} style="margin-bottom:3px;accent-color:var(--blue);width:16px;height:16px">
+      <span style="font-size:12px;font-weight:600;line-height:1.2;text-align:center">${label}</span>
+    </label>`;
+  }
+}
+
 function openAddShift(){
   editingShiftId = null;
-  document.getElementById('shiftModalTitle').textContent = 'Add Shift';
+  document.getElementById('shiftModalTitle').textContent = 'Add Shifts';
   document.getElementById('sm-date').value = localDate();
   document.getElementById('sm-start').value = '';
   document.getElementById('sm-end').value = '';
   document.getElementById('sm-role').value = 'Morning';
   document.getElementById('sm-note').value = '';
   document.getElementById('sm-delete-wrap').style.display = 'none';
+  document.getElementById('sm-date-single-wrap').style.display = 'none';
+  document.getElementById('sm-date-multi-wrap').style.display = 'block';
+  buildDayCheckboxes();
   document.getElementById('shiftModal').style.display = 'flex';
   populateShiftEmpDropdown('');
 }
 
 function openAddShiftOnDay(date){
   openAddShift();
-  document.getElementById('sm-date').value = date;
+  // pre-check the clicked day, uncheck others
+  document.querySelectorAll('#sm-day-checkboxes input[type=checkbox]').forEach(cb=>{
+    cb.checked = cb.dataset.date === date;
+  });
 }
 
 function openEditShift(id){
@@ -5945,6 +5973,8 @@ function openEditShift(id){
   if(!s) return;
   editingShiftId = id;
   document.getElementById('shiftModalTitle').textContent = 'Edit Shift';
+  document.getElementById('sm-date-single-wrap').style.display = '';
+  document.getElementById('sm-date-multi-wrap').style.display = 'none';
   document.getElementById('sm-date').value = s.date||'';
   document.getElementById('sm-start').value = s.startTime||'';
   document.getElementById('sm-end').value = s.endTime||'';
@@ -5962,26 +5992,29 @@ function closeShiftModal(){
 
 async function saveShift(){
   const emp   = getShiftEmpValue();
-  const date  = document.getElementById('sm-date').value;
   const start = document.getElementById('sm-start').value;
   const end   = document.getElementById('sm-end').value;
   const role  = document.getElementById('sm-role').value;
   const note  = document.getElementById('sm-note').value.trim();
 
   if(!emp){ toast('Enter employee name'); return; }
-  if(!date){ toast('Select a date'); return; }
-
-  const data = { employee:emp, date, startTime:start, endTime:end, role, note, updatedBy:CU.name, updatedAt:new Date().toISOString() };
 
   try{
     if(editingShiftId){
+      const date = document.getElementById('sm-date').value;
+      if(!date){ toast('Select a date'); return; }
+      const data = { employee:emp, date, startTime:start, endTime:end, role, note, updatedBy:CU.name, updatedAt:new Date().toISOString() };
       await window.F.updateDoc(sd('schedules',editingShiftId), data);
       toast('✓ Shift updated');
     } else {
-      data.createdBy = CU.name;
-      data.timestamp = window.F.serverTimestamp();
-      await window.F.addDoc(sc('schedules'), data);
-      toast('✓ Shift added');
+      const checked = [...document.querySelectorAll('#sm-day-checkboxes input[type=checkbox]:checked')];
+      if(!checked.length){ toast('Select at least one day'); return; }
+      const base = { employee:emp, startTime:start, endTime:end, role, note, createdBy:CU.name, updatedBy:CU.name, updatedAt:new Date().toISOString() };
+      await Promise.all(checked.map(cb => {
+        const d = { ...base, date:cb.dataset.date, timestamp:window.F.serverTimestamp() };
+        return window.F.addDoc(sc('schedules'), d);
+      }));
+      toast(`✓ ${checked.length} shift${checked.length>1?'s':''} added`);
     }
     closeShiftModal();
     loadSchedule();
