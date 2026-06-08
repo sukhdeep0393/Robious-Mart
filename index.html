@@ -6038,7 +6038,7 @@ async function saveShift(){
         const d = { ...base, date:btn.dataset.date, timestamp:window.F.serverTimestamp() };
         return window.F.addDoc(sc('schedules'), d);
       }));
-      toast(`✓ ${checked.length} shift${checked.length>1?'s':''} added`);
+      toast(`✓ ${selected.length} shift${selected.length>1?'s':''} added`);
     }
     closeShiftModal();
     loadSchedule();
