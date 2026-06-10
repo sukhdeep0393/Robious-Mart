@@ -3924,11 +3924,12 @@ async function subFuel(){
   if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
   try{
     let photoUrl='';
+    let photoFailed=false;
     const fuelPicFile=document.getElementById('fuelPic').files[0];
     if(fuelPicFile){
       try{
         photoUrl=await uploadPhoto(fuelPicFile, photoStoragePath('fuelReports', localDate()), 1200);
-      }catch(pe){console.warn('Fuel photo upload failed, continuing without photo',pe);}
+      }catch(pe){photoFailed=true;console.warn('Fuel photo upload failed, continuing without photo',pe);}
     }
     const _mgn = window.fuelMargins||{regular:0,premium:0,diesel:0};
     await window.F.addDoc(sc('fuelReports'),{
@@ -3952,12 +3953,14 @@ async function subFuel(){
       date: document.getElementById('f-date')?.value||localDate(),
       employee: document.getElementById('f-emp').value||CU.name
     };
-    toast('✓ Fuel report saved!');
+    toast(photoFailed?'⚠️ Report saved, but the photo did NOT upload. Please try the photo again.':'✓ Fuel report saved!');
     checkFuelAlerts();
     ['f-reg','f-prem','f-dies'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('fuelBars').innerHTML='';
-    document.getElementById('fuelPrev').innerHTML='<div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div>';
-    document.getElementById('fuelPic').value='';
+    if(!photoFailed){
+      document.getElementById('fuelPrev').innerHTML='<div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:14px;color:var(--text2)">Tap to photo or upload</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Morning fuel inventory printout</div>';
+      document.getElementById('fuelPic').value='';
+    }
     document.getElementById('f-date').value=localDate();
   }catch(e){toast('Error saving fuel report'); console.error(e);}
   finally{ if(_btn){_btn.disabled=false;_btn.innerHTML='Save fuel report';} }
