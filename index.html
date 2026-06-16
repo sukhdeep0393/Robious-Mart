@@ -1043,6 +1043,22 @@
 
   <!-- MY HOURS (employee/lead) -->
   <div class="page" id="page-myhours">
+    <!-- Quick log hours — simple time entry without the full daily report -->
+    <div class="card">
+      <div class="ct">⏱ Log my hours</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Just recording your time? Enter it here — no sales or fuel data needed.</div>
+      <div class="g3" style="margin-bottom:10px">
+        <div><label>Date</label><input type="date" id="qh-date" /></div>
+        <div><label>Shift</label><select id="qh-shift"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="night">Night</option></select></div>
+        <div><label>Hours worked</label><input id="qh-hours" readonly placeholder="Auto" style="background:var(--bg2);font-weight:600;color:var(--blue)" /></div>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div><label>Start time</label><input type="time" id="qh-start" oninput="calcQuickHours()" /></div>
+        <div><label>End time</label><input type="time" id="qh-end" oninput="calcQuickHours()" /></div>
+      </div>
+      <div style="margin-bottom:12px"><label>Comment (optional)</label><input id="qh-comment" placeholder="e.g. Covered for Sam" /></div>
+      <button class="btn bprimary" id="qhBtn" onclick="submitQuickHours()">Save hours</button>
+    </div>
     <div class="card">
       <div class="ct">Filter</div>
       <input type="month" id="myHoursMonth" onchange="loadMyHours()" style="margin-bottom:0" />
@@ -6139,7 +6155,12 @@ async function loadLogs(){
 
     el.innerHTML=all.slice(0,40).map(d=>{
       let t='',det='',b='',extraDetail='';
-      if(d.col==='dailyReports'){
+      if(d.col==='dailyReports' && d.hoursOnly){
+        t=`Hours logged — ${d.employee}`;
+        det=`${d.shift?d.shift+' shift · ':''}${d.startTime&&d.endTime?d.startTime+' – '+d.endTime+' · ':''}${d.hoursWorked?fmtHours(d.hoursWorked):'—'}${d.shiftComment?' · "'+d.shiftComment+'"':''}`;
+        b='<span class="badge bblu">Hours</span>';
+      }
+      else if(d.col==='dailyReports'){
         const cs=d.cashStatus==='short'?` · <span style="color:var(--red)">Short $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:d.cashStatus==='over'?` · <span style="color:var(--green)">Over $${Math.abs(d.cashDifference||0).toFixed(2)}</span>`:'';
         t=`${d.shift} shift — ${d.employee}`;
         {
@@ -7119,6 +7140,9 @@ async function loadMyHours(){
   if(!el)return;
   el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
 
+  // Default the quick-log date to today if not yet set
+  const qd=document.getElementById('qh-date');if(qd&&!qd.value)qd.value=localDate();
+
   const month=document.getElementById('myHoursMonth')?.value||new Date().toISOString().slice(0,7);
   const mtdStart=month+'-01';
   const mtdEnd=month+'-31';
@@ -7147,6 +7171,54 @@ async function loadMyHours(){
       <div style="font-weight:600;color:var(--blue);flex-shrink:0">${r.hoursWorked?fmtHours(r.hoursWorked):'—'}</div>
     </div>`).join('')+'</div>';
   }catch(e){el.innerHTML='<div class="empty">Error loading hours</div>';}
+}
+
+// Calculate hours for the quick-log form (mirrors calcHours but for qh-* inputs)
+function calcQuickHours(){
+  const s=document.getElementById('qh-start').value;
+  const e=document.getElementById('qh-end').value;
+  if(!s||!e){document.getElementById('qh-hours').value='';return;}
+  let [sh,sm]=s.split(':').map(Number);
+  let [eh,em]=e.split(':').map(Number);
+  let totalMins=(eh*60+em)-(sh*60+sm);
+  if(totalMins<0)totalMins+=24*60; // overnight shift
+  const hrs=Math.floor(totalMins/60);
+  const mins=totalMins%60;
+  document.getElementById('qh-hours').value=hrs+'h'+(mins>0?' '+mins+'min':'');
+  return parseFloat((totalMins/60).toFixed(2));
+}
+
+// Save a lightweight hours-only entry. Stored in dailyReports (flagged hoursOnly)
+// so it flows into My Hours totals and the operator's payroll view automatically.
+async function submitQuickHours(){
+  const btn=document.getElementById('qhBtn');
+  const date=document.getElementById('qh-date').value;
+  const start=document.getElementById('qh-start').value;
+  const end=document.getElementById('qh-end').value;
+  if(!date){toast('Pick a date');return;}
+  if(!start||!end){toast('Enter start and end time');return;}
+  const hrs=calcQuickHours()||0;
+  if(!hrs){toast('Hours worked must be greater than 0');return;}
+  btn.innerHTML='<span class="spinner"></span>Saving...';btn.disabled=true;
+  try{
+    await window.F.addDoc(sc('dailyReports'),{
+      type:'dailyReports',employee:CU.name,role:CU.role,
+      shift:document.getElementById('qh-shift').value,
+      startTime:start,endTime:end,hoursWorked:hrs,
+      shiftComment:document.getElementById('qh-comment').value,
+      date:date,hoursOnly:true,
+      timestamp:window.F.serverTimestamp()
+    });
+    toast('✓ Hours logged!');
+    document.getElementById('qh-start').value='';
+    document.getElementById('qh-end').value='';
+    document.getElementById('qh-hours').value='';
+    document.getElementById('qh-comment').value='';
+    // Make sure the list below reflects the month we just logged into
+    const mm=document.getElementById('myHoursMonth');if(mm)mm.value=date.slice(0,7);
+    loadMyHours();
+  }catch(e){console.error(e);toast('Error saving hours');}
+  btn.innerHTML='Save hours';btn.disabled=false;
 }
 
 async function loadLatestFuel(){
