@@ -2386,8 +2386,18 @@ async function adminDeleteCode(code){
 }
 
 async function adminGoToStore(){
-  const storeId=localStorage.getItem('storeId');
+  let storeId=localStorage.getItem('storeId');
+  if(!storeId){
+    const uid=window.auth?.currentUser?.uid;
+    if(uid){
+      try{
+        const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
+        if(uSnap.exists())storeId=uSnap.data().storeId;
+      }catch(e){}
+    }
+  }
   if(!storeId){toast('No store linked to this account');return;}
+  localStorage.setItem('storeId',storeId);
   window.currentStoreId=storeId;
   await loadStoreSettings();
   document.getElementById('adminShell').style.display='none';
