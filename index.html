@@ -2909,7 +2909,7 @@ async function loadDashboard(){
     const mtdTotalGal=mtdRegGal+mtdPremGal+mtdDiesGal;
     // Cache for fuel margin preview widget on Fuel tab
     window._dashMtdRegGal=mtdRegGal; window._dashMtdPremGal=mtdPremGal; window._dashMtdDiesGal=mtdDiesGal;
-    const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout');
+    const mtdLotNet=sum(mtdR,'lotteryTotal')-sum(mtdR,'lotteryPayout')-sum(mtdR,'lotteryScr')-sum(mtdR,'lotteryCan');
 
     // Cash discrepancy summary
     const cashDiscReports=mtdR.filter(r=>r.cashStatus&&r.cashStatus!=='exact'&&r.cashDifference!=null);
@@ -6242,7 +6242,7 @@ function openDailyBreakdown(){
   const byDate = {};
   reports.forEach(r => {
     const d = r.date || '';
-    if(!byDate[d]) byDate[d] = {sales:0,cash:0,credit:0,creditNrs:0,creditVfn:0,lotSales:0,lotPayout:0,gal:0,shifts:[]};
+    if(!byDate[d]) byDate[d] = {sales:0,cash:0,credit:0,creditNrs:0,creditVfn:0,lotSales:0,lotPayout:0,lotScr:0,lotCan:0,gal:0,shifts:[]};
     byDate[d].sales     += r.totalSales    || 0;
     byDate[d].cash      += r.cashSales     || 0;
     byDate[d].credit    += r.creditSales   || 0;
@@ -6250,6 +6250,8 @@ function openDailyBreakdown(){
     byDate[d].creditVfn += r.creditVfn     || 0;
     byDate[d].lotSales  += r.lotteryTotal  || 0;
     byDate[d].lotPayout += r.lotteryPayout || 0;
+    byDate[d].lotScr    += r.lotteryScr    || 0;
+    byDate[d].lotCan    += r.lotteryCan    || 0;
     byDate[d].gal       += (r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0);
     byDate[d].shifts.push(r);
   });
@@ -6264,12 +6266,13 @@ function openDailyBreakdown(){
   } else {
     listEl.innerHTML = dates.map(d => {
       const row=byDate[d], isT=d===today;
-      const lotNet = row.lotSales - row.lotPayout;
+      const lotOut = row.lotPayout + row.lotScr + row.lotCan;
+      const lotNet = row.lotSales - lotOut;
       const lc = lotNet>=0?'var(--green)':'var(--red)';
       const bg = isT?';background:var(--blue-light);border-radius:8px;padding:10px 8px;margin:0 -8px':'';
       const lotCell = row.lotSales>0
         ? '<div style="font-size:13px;font-weight:700">$'+row.lotSales.toFixed(0)+'</div>'
-          +'<div style="font-size:10px;color:var(--text3)">Pay $'+row.lotPayout.toFixed(0)+'</div>'
+          +'<div style="font-size:10px;color:var(--text3)">Pay $'+row.lotPayout.toFixed(0)+' &middot; Scr $'+row.lotScr.toFixed(0)+' &middot; Can $'+row.lotCan.toFixed(0)+'</div>'
           +'<div style="font-size:11px;font-weight:700;color:'+lc+'">'+(lotNet>=0?'Net +':'Net \u2212')+'$'+Math.abs(lotNet).toFixed(0)+'</div>'
         : '<div style="font-size:13px;color:var(--text3)">&mdash;</div>';
       return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;align-items:start;padding:10px 0;border-bottom:1px solid var(--border)'+bg+'">'
@@ -6288,7 +6291,9 @@ function openDailyBreakdown(){
     const tG  = dates.reduce((s,d)=>s+byDate[d].gal,0);
     const tLS = dates.reduce((s,d)=>s+byDate[d].lotSales,0);
     const tLP = dates.reduce((s,d)=>s+byDate[d].lotPayout,0);
-    const tLN = tLS - tLP;
+    const tLScr = dates.reduce((s,d)=>s+byDate[d].lotScr,0);
+    const tLCan = dates.reduce((s,d)=>s+byDate[d].lotCan,0);
+    const tLN = tLS - tLP - tLScr - tLCan;
     const avg = dates.length?tS/dates.length:0;
     totEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;font-size:12px;font-weight:700;align-items:start">'
       +'<div style="color:var(--text3);font-size:11px">'+dates.length+' days<br>avg $'+Math.round(avg).toLocaleString()+'/day</div>'
@@ -6296,7 +6301,7 @@ function openDailyBreakdown(){
       +'<div style="text-align:right;color:var(--text2)">'+tG.toFixed(0)+' gal</div>'
       +'<div style="text-align:right">'
         +(tLS>0
-          ?'<div>$'+tLS.toFixed(0)+'</div><div style="font-size:11px;color:var(--text3)">Pay $'+tLP.toFixed(0)+'</div><div style="font-size:11px;font-weight:700;color:'+(tLN>=0?'var(--green)':'var(--red)')+'\">'+(tLN>=0?'Net +':'Net \u2212')+'$'+Math.abs(tLN).toFixed(0)+'</div>'
+          ?'<div>$'+tLS.toFixed(0)+'</div><div style="font-size:11px;color:var(--text3)">Pay $'+tLP.toFixed(0)+' &middot; Scr $'+tLScr.toFixed(0)+' &middot; Can $'+tLCan.toFixed(0)+'</div><div style="font-size:11px;font-weight:700;color:'+(tLN>=0?'var(--green)':'var(--red)')+'\">'+(tLN>=0?'Net +':'Net \u2212')+'$'+Math.abs(tLN).toFixed(0)+'</div>'
           :'<div style="color:var(--text3)">&mdash;</div>')
       +'</div></div>';
   }
@@ -6340,6 +6345,8 @@ function openEditModal(id,col,d){
       <div class="edit-field"><label>Credit sales ($)</label><input type="number" id="ef-creditSales" value="${d.creditSales||0}" /></div>
       <div class="edit-field"><label>Lottery total ($)</label><input type="number" id="ef-lotteryTotal" value="${d.lotteryTotal||0}" /></div>
       <div class="edit-field"><label>Lottery payout ($)</label><input type="number" id="ef-lotteryPayout" value="${d.lotteryPayout||0}" /></div>
+      <div class="edit-field"><label>Scratcher payout ($)</label><input type="number" id="ef-lotteryScr" value="${d.lotteryScr||0}" /></div>
+      <div class="edit-field"><label>Cancellation ($)</label><input type="number" id="ef-lotteryCan" value="${d.lotteryCan||0}" /></div>
       <div class="edit-field"><label>Regular gal</label><input type="number" id="ef-regularGal" value="${d.regularGal||0}" /></div>
       <div class="edit-field"><label>Premium gal</label><input type="number" id="ef-premiumGal" value="${d.premiumGal||0}" /></div>
       <div class="edit-field"><label>Diesel gal</label><input type="number" id="ef-dieselGal" value="${d.dieselGal||0}" /></div>
@@ -6416,6 +6423,8 @@ async function saveLogEdit(){
     if(f('creditSales')!==null)updates.creditSales=parseFloat(f('creditSales'))||0;
     if(f('lotteryTotal')!==null)updates.lotteryTotal=parseFloat(f('lotteryTotal'))||0;
     if(f('lotteryPayout')!==null)updates.lotteryPayout=parseFloat(f('lotteryPayout'))||0;
+    if(f('lotteryScr')!==null)updates.lotteryScr=parseFloat(f('lotteryScr'))||0;
+    if(f('lotteryCan')!==null)updates.lotteryCan=parseFloat(f('lotteryCan'))||0;
     if(f('regularGal')!==null)updates.regularGal=parseFloat(f('regularGal'))||0;
     if(f('premiumGal')!==null)updates.premiumGal=parseFloat(f('premiumGal'))||0;
     if(f('dieselGal')!==null)updates.dieselGal=parseFloat(f('dieselGal'))||0;
@@ -10096,7 +10105,7 @@ async function loadMonthlyComparison(){
       const storeDeliveries  = dl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
       const lotteryComm      = lc.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
       const scratchRevenue   = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
-      const lotNet           = dr.reduce((s,r)=>s+(r.lotteryTotal||0)-(r.lotteryPayout||0),0);
+      const lotNet           = dr.reduce((s,r)=>s+(r.lotteryTotal||0)-(r.lotteryPayout||0)-(r.lotteryScr||0)-(r.lotteryCan||0),0);
 
       const netProfit = insideSales + otherRevTotal + fuelProfit + lotteryComm
                       - storeDeliveries - overheadTotal;
