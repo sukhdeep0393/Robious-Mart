@@ -1268,6 +1268,23 @@
       <button class="btn bprimary" style="padding:13px" id="dlSubmitBtn" onclick="submitDelivery()">Save delivery</button>
     </div>
 
+    <!-- Category management (operator only) -->
+    <div class="card" id="dlCatMgmtCard" style="display:none">
+      <div class="sh2">
+        <div class="ct" style="margin:0">Vendor categories</div>
+        <button class="bsm" onclick="togDlCatForm()">+ Add category</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin:-4px 0 10px">Group vendors (e.g. Beer, Tobacco, Snacks) to see spending by category.</div>
+      <div id="dlCatFormWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <div style="display:flex;gap:8px">
+          <input id="dlCatName" placeholder="e.g. Beer" style="flex:1" onkeydown="if(event.key==='Enter')saveDlCat()" />
+          <button class="btn bprimary" style="padding:9px 14px;font-size:13px" onclick="saveDlCat()">Add</button>
+          <button class="btn bsecondary" style="padding:9px 12px;font-size:13px" onclick="togDlCatForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="dlCatList"><div style="font-size:12px;color:var(--text3)">No categories yet</div></div>
+    </div>
+
     <!-- Vendor management (operator only) -->
     <div class="card" id="dlVendorMgmtCard" style="display:none">
       <div class="sh2">
@@ -1279,7 +1296,7 @@
         <input type="hidden" id="dlVendorEditId" />
         <div class="g2" style="margin-bottom:8px">
           <div><label>Vendor name</label><input id="dlVendorName" placeholder="e.g. Layman Distributing" /></div>
-          <div><label>Category (optional)</label><input id="dlVendorCat" placeholder="e.g. Beer, Tobacco, Snacks..." /></div>
+          <div><label>Category (optional)</label><select id="dlVendorCat"><option value="">— None —</option></select></div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn bprimary" style="flex:1;padding:9px;font-size:13px" onclick="saveDlVendor()">Save vendor</button>
@@ -1287,6 +1304,19 @@
         </div>
       </div>
       <div id="dlVendorList"><div style="font-size:12px;color:var(--text3)">No vendors yet</div></div>
+    </div>
+
+    <!-- Category breakdown chart (operator only) -->
+    <div class="card" id="dlCatChartCard" style="display:none">
+      <div class="ct" style="margin-bottom:12px">Spending by category</div>
+      <div class="oh-donut-wrap" id="dl-donut-wrap">
+        <svg id="dl-donut-svg" width="200" height="200" viewBox="0 0 200 200"></svg>
+        <div class="oh-donut-center">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Total</div>
+          <div style="font-size:20px;font-weight:800;color:var(--text)" id="dl-donut-total">$0</div>
+        </div>
+      </div>
+      <div id="dl-legend" style="margin-bottom:4px"></div>
     </div>
 
     <!-- Delivery list -->
@@ -9213,14 +9243,20 @@ async function delActivation(id){
 
 // ---- DELIVERY LOG ----
 let dlVendors = [];
+let dlCategories = [];
 
 async function initDeliveries(){
   // Set default month
   const dm = document.getElementById('dlMonth');
   if(dm && !dm.value) dm.value = new Date().toISOString().slice(0,7);
-  // Show vendor management card for operators
-  const mgmt = document.getElementById('dlVendorMgmtCard');
-  if(mgmt && CU?.role==='operator') mgmt.style.display='block';
+  // Show management + chart cards for operators
+  if(CU?.role==='operator'){
+    const mgmt = document.getElementById('dlVendorMgmtCard');
+    if(mgmt) mgmt.style.display='block';
+    const catMgmt = document.getElementById('dlCatMgmtCard');
+    if(catMgmt) catMgmt.style.display='block';
+  }
+  await loadDlCategories();
   await loadDlVendors();
   populateInvVendorDropdown();
   loadDeliveries();
@@ -9241,6 +9277,7 @@ async function loadDlVendors(){
     dlVendors = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderDlVendorList();
     populateDlVendorDropdowns();
+    populateVendorCatSelects();
     populateInvVendorDropdown();
   }catch(e){ console.error('loadDlVendors',e); }
 }
@@ -9265,7 +9302,7 @@ function renderDlVendorList(){
       <div id="dlvedit-${v.id}" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:8px">
         <div class="g2" style="margin-bottom:8px">
           <div><label>Vendor name</label><input id="dlve-name-${v.id}" value="${v.name.replace(/"/g,'&quot;')}" /></div>
-          <div><label>Category</label><input id="dlve-cat-${v.id}" value="${(v.category||'').replace(/"/g,'&quot;')}" placeholder="e.g. Beer, Tobacco..." /></div>
+          <div><label>Category</label><select id="dlve-cat-${v.id}">${dlCatOptions(v.category)}</select></div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn bprimary" style="flex:1;padding:8px;font-size:13px" onclick="saveDlVendorEdit('${v.id}')">Save</button>
@@ -9356,6 +9393,83 @@ async function deleteDlVendor(id){
     toast('Vendor deleted');
     loadDlVendors();
   }catch(e){ toast('Error deleting vendor'); }
+}
+
+// ---- Vendor categories (operator-managed) ----
+async function loadDlCategories(){
+  try{
+    const snap = await window.F.getDocs(window.F.query(
+      sc('dlCategories'),
+      window.F.orderBy('name','asc')
+    ));
+    dlCategories = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderDlCatList();
+    populateVendorCatSelects();
+  }catch(e){ console.error('loadDlCategories',e); }
+}
+
+function renderDlCatList(){
+  const el = document.getElementById('dlCatList');
+  if(!el) return;
+  if(!dlCategories.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3)">No categories yet — add one above</div>'; return; }
+  el.innerHTML = dlCategories.map(c=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);gap:8px">
+      <div style="font-size:13px;font-weight:600;flex:1;min-width:0">${c.name}</div>
+      <button onclick="deleteDlCat('${c.id}')" style="background:var(--red-light);border:1px solid #f7c1c1;color:var(--red);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">Delete</button>
+    </div>`).join('');
+}
+
+function togDlCatForm(){
+  const w = document.getElementById('dlCatFormWrap');
+  if(!w) return;
+  const open = w.style.display !== 'none';
+  if(open){ w.style.display='none'; document.getElementById('dlCatName').value=''; return; }
+  w.style.display='block';
+  setTimeout(()=>document.getElementById('dlCatName')?.focus(), 60);
+}
+
+async function saveDlCat(){
+  const name = document.getElementById('dlCatName')?.value.trim();
+  if(!name){ toast('Enter a category name'); return; }
+  if(dlCategories.find(c=>c.name.toLowerCase()===name.toLowerCase())){ toast('Category already exists'); return; }
+  try{
+    await window.F.addDoc(sc('dlCategories'),{ name, createdAt:new Date().toISOString() });
+    document.getElementById('dlCatName').value='';
+    document.getElementById('dlCatFormWrap').style.display='none';
+    toast('✓ Category added');
+    loadDlCategories();
+  }catch(e){ toast('Error saving category'); }
+}
+
+async function deleteDlCat(id){
+  if(!confirm('Delete this category? Vendors keep their setting but will show as Uncategorized.')) return;
+  try{
+    await window.F.deleteDoc(sd('dlCategories',id));
+    toast('Category deleted');
+    loadDlCategories();
+  }catch(e){ toast('Error deleting category'); }
+}
+
+// Fill the add-vendor category dropdown from managed categories, preserving selection
+function populateVendorCatSelects(){
+  const sel = document.getElementById('dlVendorCat');
+  if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— None —</option>' +
+    dlCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  if(cur) sel.value = cur;
+}
+
+// Options HTML for an inline vendor-edit category select, preselecting `current`
+function dlCatOptions(current){
+  const cur = (current||'').toLowerCase();
+  let html = `<option value=""${cur===''?' selected':''}>— None —</option>`;
+  html += dlCategories.map(c=>`<option value="${c.name}"${c.name.toLowerCase()===cur?' selected':''}>${c.name}</option>`).join('');
+  // Preserve a legacy/free-text value that isn't in the managed list
+  if(current && !dlCategories.find(c=>c.name.toLowerCase()===cur) && cur!=='other'){
+    html += `<option value="${current.replace(/"/g,'&quot;')}" selected>${current}</option>`;
+  }
+  return html;
 }
 
 function dlVendorSel(){
@@ -9700,6 +9814,32 @@ async function loadDeliveries(){
       </div>`;
     } else if(sumEl){ sumEl.innerHTML=''; }
 
+    // Category breakdown chart (operator only)
+    const chartCard = document.getElementById('dlCatChartCard');
+    if(chartCard){
+      if(CU?.role==='operator' && all.length){
+        // Map vendor name -> category (normalize empty / 'other' -> Uncategorized)
+        const vendorCat = {};
+        dlVendors.forEach(v=>{
+          const c = (v.category||'').trim();
+          vendorCat[(v.name||'').toLowerCase()] = (!c || c.toLowerCase()==='other') ? 'Uncategorized' : c;
+        });
+        const byCategory = {};
+        all.forEach(x=>{
+          const cat = vendorCat[(x.vendor||'').toLowerCase()] || 'Uncategorized';
+          byCategory[cat] = (byCategory[cat]||0) + (parseFloat(x.amount)||0);
+        });
+        const catTotal = Object.values(byCategory).reduce((s,a)=>s+a,0);
+        const totEl = document.getElementById('dl-donut-total');
+        if(totEl) totEl.textContent = '$' + catTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+        drawDlDonut(byCategory, catTotal);
+        drawDlLegend(byCategory, catTotal);
+        chartCard.style.display='block';
+      } else {
+        chartCard.style.display='none';
+      }
+    }
+
     if(!all.length){ el.innerHTML='<div class="empty"><div class="ei">🚚</div>No deliveries this month</div>'; return; }
 
     const isOp = CU?.role==='operator';
@@ -9749,6 +9889,67 @@ async function deleteDelivery(id){
     toast('Deleted');
     loadDeliveries();
   }catch(e){ toast('Error deleting'); }
+}
+
+// ---- Category spending donut (mirrors the Overhead donut) ----
+const DL_CAT_PALETTE = ['#4A90D9','#F5A623','#7ED321','#9B59B6','#E74C3C','#E67E22','#1ABC9C','#E84393','#3498DB','#F1C40F'];
+
+// Stable color per category: alphabetical index into palette; Uncategorized always gray
+function dlCatColorMap(cats){
+  const map = {};
+  cats.filter(c=>c!=='Uncategorized').sort((a,b)=>a.localeCompare(b))
+    .forEach((c,i)=>{ map[c] = DL_CAT_PALETTE[i%DL_CAT_PALETTE.length]; });
+  map['Uncategorized'] = '#95A5A6';
+  return map;
+}
+
+function drawDlDonut(byCategory, total){
+  const svg = document.getElementById('dl-donut-svg');
+  if(!svg) return;
+  const cx=100, cy=100, r=80, ir=52;
+  const colors = dlCatColorMap(Object.keys(byCategory));
+  const entries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+
+  if(!entries.length || total===0){
+    svg.innerHTML=`<circle cx="100" cy="100" r="80" fill="none" stroke="var(--border)" stroke-width="28"/>`;
+    return;
+  }
+
+  let startAngle = -Math.PI/2;
+  const paths = entries.map(([cat, amt])=>{
+    const frac = amt/total;
+    const angle = frac * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const x1=cx+r*Math.cos(startAngle), y1=cy+r*Math.sin(startAngle);
+    const x2=cx+r*Math.cos(endAngle),   y2=cy+r*Math.sin(endAngle);
+    const xi1=cx+ir*Math.cos(startAngle),yi1=cy+ir*Math.sin(startAngle);
+    const xi2=cx+ir*Math.cos(endAngle),  yi2=cy+ir*Math.sin(endAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    const d = entries.length===1
+      ? `M ${cx} ${cy-r} A ${r} ${r} 0 1 1 ${cx-0.01} ${cy-r} Z M ${cx} ${cy-ir} A ${ir} ${ir} 0 1 0 ${cx-0.01} ${cy-ir} Z`
+      : `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${ir} ${ir} 0 ${large} 0 ${xi1} ${yi1} Z`;
+    startAngle = endAngle;
+    return `<path d="${d}" fill="${colors[cat]}" opacity="0.9" />`;
+  });
+  svg.innerHTML = paths.join('');
+}
+
+function drawDlLegend(byCategory, total){
+  const el = document.getElementById('dl-legend');
+  if(!el) return;
+  const colors = dlCatColorMap(Object.keys(byCategory));
+  const entries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){ el.innerHTML=''; return; }
+
+  el.innerHTML = entries.map(([cat, amt])=>{
+    const pct = total>0 ? ((amt/total)*100).toFixed(1) : '0.0';
+    return `<div class="oh-legend-row">
+      <div class="oh-legend-dot" style="background:${colors[cat]}"></div>
+      <div style="flex:1;font-weight:600">${cat}</div>
+      <div style="font-size:12px;color:var(--text2);margin-right:10px">${pct}%</div>
+      <div style="font-size:13px;font-weight:700">$${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    </div>`;
+  }).join('');
 }
 
 function dlPaymentChanged(){
