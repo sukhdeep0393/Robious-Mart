@@ -1323,8 +1323,11 @@
     <div class="card">
       <div class="sh2" style="margin-bottom:10px">
         <div class="ct" style="margin:0">Delivery history</div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           <input type="month" id="dlMonth" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto" />
+          <select id="dlCatFilter" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto">
+            <option value="all">All categories</option>
+          </select>
           <select id="dlVendorFilter" onchange="loadDeliveries()" style="font-size:12px;padding:5px 8px;width:auto">
             <option value="all">All vendors</option>
           </select>
@@ -9405,6 +9408,7 @@ async function loadDlCategories(){
     dlCategories = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderDlCatList();
     populateVendorCatSelects();
+    populateDlCatFilter();
   }catch(e){ console.error('loadDlCategories',e); }
 }
 
@@ -9448,6 +9452,18 @@ async function deleteDlCat(id){
     toast('Category deleted');
     loadDlCategories();
   }catch(e){ toast('Error deleting category'); }
+}
+
+// Fill the delivery-history category filter, preserving the current selection
+function populateDlCatFilter(){
+  const sel = document.getElementById('dlCatFilter');
+  if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">All categories</option>' +
+    dlCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('') +
+    '<option value="Uncategorized">Uncategorized</option>';
+  // Restore selection if it still exists, else fall back to "all"
+  sel.value = Array.from(sel.options).some(o=>o.value===cur) ? cur : 'all';
 }
 
 // Fill the add-vendor category dropdown from managed categories, preserving selection
@@ -9781,6 +9797,15 @@ async function loadDeliveries(){
   const start  = month+'-01';
   const end    = month+'-31';
   const fVendor= document.getElementById('dlVendorFilter')?.value||'all';
+  const fCat   = document.getElementById('dlCatFilter')?.value||'all';
+
+  // Map vendor name -> category (normalize empty / 'other' -> Uncategorized)
+  const vendorCat = {};
+  dlVendors.forEach(v=>{
+    const c = (v.category||'').trim();
+    vendorCat[(v.name||'').toLowerCase()] = (!c || c.toLowerCase()==='other') ? 'Uncategorized' : c;
+  });
+  const catOf = x => vendorCat[(x.vendor||'').toLowerCase()] || 'Uncategorized';
 
   try{
     const snap = await window.F.getDocs(window.F.query(
@@ -9790,6 +9815,7 @@ async function loadDeliveries(){
     let all = snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=start&&x.date<=end);
     if(CU?.role==='employee') all = all.filter(x=>x.employee===CU.name);
     if(fVendor!=='all') all = all.filter(x=>x.vendor===fVendor);
+    if(fCat!=='all')    all = all.filter(x=>catOf(x)===fCat);
 
     // MTD summary
     const total   = all.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
@@ -9818,15 +9844,9 @@ async function loadDeliveries(){
     const chartCard = document.getElementById('dlCatChartCard');
     if(chartCard){
       if(CU?.role==='operator' && all.length){
-        // Map vendor name -> category (normalize empty / 'other' -> Uncategorized)
-        const vendorCat = {};
-        dlVendors.forEach(v=>{
-          const c = (v.category||'').trim();
-          vendorCat[(v.name||'').toLowerCase()] = (!c || c.toLowerCase()==='other') ? 'Uncategorized' : c;
-        });
         const byCategory = {};
         all.forEach(x=>{
-          const cat = vendorCat[(x.vendor||'').toLowerCase()] || 'Uncategorized';
+          const cat = catOf(x);
           byCategory[cat] = (byCategory[cat]||0) + (parseFloat(x.amount)||0);
         });
         const catTotal = Object.values(byCategory).reduce((s,a)=>s+a,0);
