@@ -7343,7 +7343,7 @@ async function loadLatestFuel(){
   const el=document.getElementById('latestFuelContent');
   if(!card||!el)return;
   try{
-    const snap=await window.F.getDocs(window.F.query(sc('fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(5)));
+    const snap=await window.F.getDocs(window.F.query(sc('fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(1)));
     if(snap.empty){card.style.display='none';return;}
     card.style.display='block';
     // Store most recent for alert checking
