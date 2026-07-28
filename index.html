@@ -731,8 +731,14 @@
     <div id="fuelDeliveryList"><div class="empty"><div class="ei">⏳</div>Loading deliveries...</div></div>
 
     <div class="ct" style="margin:20px 0 10px">Fuel inventory photos</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Showing recent reports. To pull up an older receipt, search a date range below.</div>
+    <div class="filter-bar" style="flex-wrap:wrap">
+      <div style="flex:1;min-width:130px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">From</label><input type="date" id="fuelPhotoFrom" style="width:100%" /></div>
+      <div style="flex:1;min-width:130px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">To</label><input type="date" id="fuelPhotoTo" style="width:100%" /></div>
+    </div>
     <div class="filter-bar">
-      <input type="date" id="fuelPhotoDate" onchange="loadFuelPhotos()" placeholder="Filter by date" />
+      <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="loadFuelPhotos()">🔍 Search receipts</button>
+      <button class="btn bsecondary" style="font-size:13px;padding:10px" onclick="clearFuelPhotoSearch()">Clear</button>
     </div>
     <div id="fuelPhotoList"><div class="empty"><div class="ei">📷</div>No fuel photos yet</div></div>
   </div>
@@ -2419,16 +2425,22 @@ async function adminDeleteCode(code){
 }
 
 async function adminGoToStore(){
-  let storeId=localStorage.getItem('storeId');
-  if(!storeId){
-    const uid=window.auth?.currentUser?.uid;
-    if(uid){
-      try{
-        const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
-        if(uSnap.exists())storeId=uSnap.data().storeId;
-      }catch(e){}
-    }
+  // Always resolve the store from the signed-in account, never from the
+  // device's cached storeId (a prior demo/login could have left another
+  // store bound in localStorage — see users/{uid} as the source of truth).
+  let storeId='';
+  const uid=window.auth?.currentUser?.uid;
+  if(uid){
+    try{
+      const uSnap=await window.F.getDoc(window.F.doc(window.db,'users',uid));
+      if(uSnap.exists())storeId=uSnap.data().storeId;
+    }catch(e){}
   }
+  // Super-admin owns the legacy robious-mart store, which predates the
+  // users/{uid} mapping — default to it rather than a stale cached store.
+  if(!storeId&&uid==='FKHIlFL3taXKSuiS7zt0KZX14N32')storeId='robious-mart';
+  // Otherwise fall back to the cached store only if there's no mapping.
+  if(!storeId)storeId=localStorage.getItem('storeId');
   if(!storeId){toast('No store linked to this account');return;}
   localStorage.setItem('storeId',storeId);
   window.currentStoreId=storeId;
@@ -7159,16 +7171,36 @@ async function deleteFuelDelivery(){
   } catch(e){ toast('Error deleting'); }
 }
 
+function clearFuelPhotoSearch(){
+  const f=document.getElementById('fuelPhotoFrom');if(f)f.value='';
+  const t=document.getElementById('fuelPhotoTo');if(t)t.value='';
+  loadFuelPhotos();
+}
+
 async function loadFuelPhotos(){
   const el=document.getElementById('fuelPhotoList');
   if(!el)return;
-  const dateFilter=document.getElementById('fuelPhotoDate')?.value||'';
+  let from=document.getElementById('fuelPhotoFrom')?.value||'';
+  let to=document.getElementById('fuelPhotoTo')?.value||'';
+  // If only one end of the range is set, treat it as a single-day search.
+  if(from&&!to)to=from;
+  if(to&&!from)from=to;
+  const isSearch=!!(from&&to);
+  el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
   try{
-    const snap=await window.F.getDocs(window.F.query(sc('fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60)));
+    let q;
+    if(isSearch){
+      // Query Firestore directly by date so any past receipt is reachable, not just recent ones.
+      q=window.F.query(sc('fuelReports'),window.F.where('date','>=',from),window.F.where('date','<=',to),window.F.orderBy('date','desc'));
+    }else{
+      q=window.F.query(sc('fuelReports'),window.F.orderBy('timestamp','desc'),window.F.limit(60));
+    }
+    const snap=await window.F.getDocs(q);
     let docs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.photoUrl&&d.photoUrl!='');
-    if(dateFilter)docs=docs.filter(d=>d.date===dateFilter);
-    if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>No fuel photos'+(dateFilter?' for this date':' yet')+'</div>';return;}
-    el.innerHTML=docs.map(d=>`<div class="card" style="margin-bottom:10px">
+    if(isSearch)docs.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    if(!docs.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>No fuel photos'+(isSearch?(from===to?' for '+new Date(from+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):' in this date range'):' yet')+'</div>';return;}
+    if(isSearch)el.innerHTML='<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+docs.length+' receipt'+(docs.length>1?'s':'')+' found</div>';else el.innerHTML='';
+    el.innerHTML+=docs.map(d=>`<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:13px;font-weight:500">${new Date(d.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
         <span class="badge bgrn">${d.employee||'Unknown'}</span>
