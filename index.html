@@ -696,7 +696,7 @@
     <button class="btn bprimary" id="fuelBtn" onclick="subFuel()">Save fuel report</button>
 
     <!-- Fuel Deliveries -->
-    <div class="ct" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
+    <div class="ct" id="fuelDeliveryHeader" style="margin:20px 0 10px">⛽ Fuel Deliveries</div>
     <div class="card" id="fuelDeliveryForm">
       <div class="ct">Log a fuel delivery</div>
       <div style="margin-bottom:10px">
@@ -2577,9 +2577,14 @@ function loginOK(u){
   // Show price field only to operator
   const fdPriceRow=document.getElementById('fd-price-row');
   if(fdPriceRow) fdPriceRow.style.display = u.role==='operator' ? '' : 'none';
-  // Only operators can log fuel deliveries; staff record inventory readings only
+  // Only operators can log/view fuel deliveries; staff record inventory readings only
+  const fdOp = u.role==='operator' ? '' : 'none';
   const fdForm=document.getElementById('fuelDeliveryForm');
-  if(fdForm) fdForm.style.display = u.role==='operator' ? '' : 'none';
+  if(fdForm) fdForm.style.display = fdOp;
+  const fdHeader=document.getElementById('fuelDeliveryHeader');
+  if(fdHeader) fdHeader.style.display = fdOp;
+  const fdList=document.getElementById('fuelDeliveryList');
+  if(fdList) fdList.style.display = fdOp;
   // Set fuel delivery date
   const fdDate=document.getElementById('fd-date');
   if(fdDate) fdDate.value=localDate();
