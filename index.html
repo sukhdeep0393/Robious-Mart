@@ -2577,6 +2577,9 @@ function loginOK(u){
   // Show price field only to operator
   const fdPriceRow=document.getElementById('fd-price-row');
   if(fdPriceRow) fdPriceRow.style.display = u.role==='operator' ? '' : 'none';
+  // Only operators can log fuel deliveries; staff record inventory readings only
+  const fdForm=document.getElementById('fuelDeliveryForm');
+  if(fdForm) fdForm.style.display = u.role==='operator' ? '' : 'none';
   // Set fuel delivery date
   const fdDate=document.getElementById('fd-date');
   if(fdDate) fdDate.value=localDate();
