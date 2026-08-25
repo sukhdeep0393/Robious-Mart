@@ -1661,7 +1661,7 @@
   <div class="page" id="page-logs">
     <div class="card"><div class="ct">Filter</div>
       <div class="g2">
-        <div><label>Type</label><select id="logFilt" onchange="loadLogs()"><option value="all">All entries</option><option value="dailyReports">Daily reports</option><option value="fuelReports">Fuel reports</option><option value="scratchCounts">Scratch counts</option></select></div>
+        <div><label>Type</label><select id="logFilt" onchange="loadLogs()"><option value="all">All entries</option><option value="dailyReports">Daily reports</option><option value="fuelReports">Fuel reports</option></select></div>
         <div><label>Date</label><input type="date" id="logDate" onchange="loadLogs()" /></div>
       </div>
     </div>
@@ -2530,9 +2530,9 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'},{id:'storesettings',l:'⚙️ Store Settings'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
-  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'scratch',l:'🎟 Scratch-offs'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'},{id:'storesettings',l:'⚙️ Store Settings'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
+  employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
 // ---- LOGIN ----
@@ -3541,122 +3541,6 @@ async function loadDashboard(){
       })()}
       <!-- ===== END NET PROFIT CARD ===== -->
 
-
-      <!-- Scratch-off dashboard — tappable to expand -->
-      <div class="dash-section-hdr">
-        <span class="dash-section-title" style="cursor:pointer" onclick="toggleScrDash()">🎟 Scratch-offs <span id="scrDashChevron" style="font-size:11px;color:var(--blue);margin-left:4px">▼ expand</span></span>
-        <span class="dash-section-link" onclick="showTab('scratch')" style="cursor:pointer">Go to tab →</span>
-      </div>
-      <div class="scr-dash-card" onclick="toggleScrDash()" style="cursor:pointer;user-select:none">
-        <div class="scr-dash-top">
-          <div class="scr-dash-cell">
-            <div class="scr-dash-cell-label">Value on hand</div>
-            <div class="scr-dash-cell-val">$${scrVal.toLocaleString()}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">
-              ${latestCount
-                ? `Last count ${fmtDate(latestCount.date||'')} · ${latestCount.employee||''} · ${latestCount.type||''}`
-                : 'No counts yet'}
-            </div>
-          </div>
-          <div class="scr-dash-cell">
-            <div class="scr-dash-cell-label" style="color:var(--green)">Est. revenue — ${monthName}</div>
-            <div class="scr-dash-cell-val" style="color:var(--green)">$${scrRevenue.toLocaleString()}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">
-              $${mtdActValue.toLocaleString()} activated ${monthName}
-            </div>
-          </div>
-        </div>
-        <!-- Tap-to-expand hint -->
-        <div id="scrDashCollapsedHint" style="padding:10px 16px;font-size:11px;color:var(--text3);text-align:center;border-top:1px solid var(--border)">
-          Tap to see daily sales &amp; employee breakdown
-        </div>
-        <!-- Expandable detail section -->
-        <div id="scrDashExpanded" style="display:none" onclick="event.stopPropagation()">
-          ${(()=>{
-            // Today's sales: sum all count docs for today that have soldBySlot revenue data
-            const todayCounts = scrAll.filter(d => d.type==='count' && d.soldBySlot && Object.keys(d.soldBySlot).length>0 && d.date===localDate())
-              .sort((a,b)=>(a._ts||0)-(b._ts||0));
-
-            let todayTotal = 0;
-            const empMap = {};
-            todayCounts.forEach(d=>{
-              const n = d.employee||'Unknown';
-              if(!empMap[n]) empMap[n]={name:n,revenue:0,shifts:0};
-              empMap[n].revenue += d.totalRevenue||0;
-              empMap[n].shifts++;
-              todayTotal += d.totalRevenue||0;
-            });
-            const empRows = Object.values(empMap).sort((a,b)=>b.revenue-a.revenue);
-
-            // MTD daily breakdown — sum count revenues per day (only docs with soldBySlot revenue data)
-            const byDay={};
-            scrAll.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=mtdStart&&d.date<=mtdEnd&&d.date!==localDate())
-              .forEach(d=>{
-                if(!byDay[d.date]) byDay[d.date]={date:d.date,revenue:0,empBreakdown:{}};
-                byDay[d.date].revenue += d.totalRevenue||0;
-                const n=d.employee||'Unknown';
-                if(!byDay[d.date].empBreakdown[n]) byDay[d.date].empBreakdown[n]={name:n,revenue:0};
-                byDay[d.date].empBreakdown[n].revenue += d.totalRevenue||0;
-              });
-            const dayRows = Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
-            const maxDayRev = dayRows.reduce((m,d)=>Math.max(m,d.revenue),0);
-
-            return `
-              <!-- Today's sales -->
-              <div style="padding:12px 16px 8px;border-top:1px solid var(--border)">
-                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Today's scratch-off sales</div>
-                ${todayTotal > 0 ? `
-                  <div style="font-size:22px;font-weight:800;color:var(--green);margin-bottom:8px">$${todayTotal.toLocaleString()}</div>
-                  ${empRows.map(e=>`
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
-                      <div>
-                        <div style="font-size:13px;font-weight:600">${e.name}</div>
-                        <div style="font-size:11px;color:var(--text3)">${e.shifts} closing count${e.shifts!==1?'s':''}</div>
-                      </div>
-                      <div style="font-size:15px;font-weight:700;color:var(--green)">$${e.revenue.toLocaleString()}</div>
-                    </div>`).join('')}
-                ` : `<div style="font-size:13px;color:var(--text3);padding-bottom:8px">No closing counts logged today yet</div>`}
-              </div>
-              <!-- MTD daily breakdown -->
-              ${dayRows.length ? `
-              <div style="padding:10px 16px 0;border-top:1px solid var(--border)">
-                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${monthName} — daily breakdown</div>
-                ${dayRows.slice(0,14).map(d=>{
-                  const pct = maxDayRev > 0 ? Math.max(4, d.revenue/maxDayRev*100) : 4;
-                  const empLines = Object.values(d.empBreakdown).sort((a,b)=>b.revenue-a.revenue)
-                    .map(e=>`<span style="color:var(--text2)">${e.name}</span> <span style="font-weight:600;color:var(--green)">$${e.revenue.toLocaleString()}</span>`)
-                    .join('<span style="color:var(--text3)"> · </span>');
-                  return `<div style="margin-bottom:11px">
-                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-                      <span style="color:var(--text2);font-weight:600">${fmtDate(d.date)}</span>
-                      <span style="font-weight:700;color:var(--green)">$${d.revenue.toLocaleString()}</span>
-                    </div>
-                    <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-bottom:4px">
-                      <div style="height:100%;width:${pct}%;background:var(--green);border-radius:4px;transition:width .3s"></div>
-                    </div>
-                    <div style="font-size:11px;margin-top:1px">${empLines}</div>
-                  </div>`;
-                }).join('')}
-              </div>` : ''}
-              <!-- Recent activations this month -->
-              ${mtdActs.length ? `
-              <div style="border-top:1px solid var(--border)">
-                <div style="padding:10px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Activations this month</div>
-                ${mtdActs.slice(0,5).map(a=>`
-                  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border)">
-                    <div style="display:flex;align-items:center;gap:8px">
-                      <div class="act-dot"></div>
-                      <div>
-                        <div style="font-size:12px;font-weight:600">Slot ${a.slotNum||''} — $${a.price} ${a.gameName}</div>
-                        <div style="font-size:11px;color:var(--text3)">${a.totalTickets} tickets · ${fmtDate(a.date)} · ${a.employee}</div>
-                      </div>
-                    </div>
-                    <div style="font-size:13px;font-weight:700;color:var(--green)">$${(a.bookValue||0).toLocaleString()}</div>
-                  </div>`).join('')}
-              </div>` : ''}
-            `;
-          })()}
-        </div>
     `;
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">⚠️</div><div style="margin-bottom:8px">Error loading dashboard</div><div style="font-size:11px;background:#f0f0f0;padding:8px;border-radius:6px;text-align:left;word-break:break-all;color:#333">${e.message||e.toString()}</div><button class="btn bsecondary" style="margin-top:12px;font-size:13px;padding:10px" onclick="loadDashboard()">Try again</button></div>`;
@@ -6203,7 +6087,7 @@ async function loadLogs(){
   const el=document.getElementById('logsList');if(!el)return;
   el.innerHTML='<div class="empty"><div class="ei">⏳</div>Loading...</div>';
   try{
-    const cols=filt==='all'?['dailyReports','fuelReports','scratchCounts']:[filt];
+    const cols=filt==='all'?['dailyReports','fuelReports']:[filt];
     let all=[];
     for(const col of cols){
       try{
