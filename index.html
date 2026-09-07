@@ -1294,9 +1294,14 @@
     <!-- Vendor management (operator only) -->
     <div class="card" id="dlVendorMgmtCard" style="display:none">
       <div class="sh2">
-        <div class="ct" style="margin:0">Vendors</div>
+        <div class="ct" id="dlVendorToggle" style="margin:0;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="togDlVendorCollapse()">
+          <span id="dlVendorChevron" style="display:inline-block;transition:transform .18s;font-size:12px;color:var(--text3);transform:rotate(90deg)">▶</span>
+          <span>Vendors</span>
+          <span id="dlVendorCount" style="font-size:12px;font-weight:600;color:var(--text3)"></span>
+        </div>
         <button class="bsm" onclick="togDlVendorForm()">+ Add vendor</button>
       </div>
+      <div id="dlVendorBody" style="display:block">
       <div id="dlVendorFormWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
         <div id="dlVendorFormTitle" style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">New vendor</div>
         <input type="hidden" id="dlVendorEditId" />
@@ -1310,6 +1315,7 @@
         </div>
       </div>
       <div id="dlVendorList"><div style="font-size:12px;color:var(--text3)">No vendors yet</div></div>
+      </div>
     </div>
 
     <!-- Category breakdown chart (operator only) -->
@@ -9248,6 +9254,8 @@ async function loadDlVendors(){
 function renderDlVendorList(){
   const el = document.getElementById('dlVendorList');
   if(!el) return;
+  const cnt = document.getElementById('dlVendorCount');
+  if(cnt) cnt.textContent = dlVendors.length ? `(${dlVendors.length})` : '';
   if(!dlVendors.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3)">No vendors yet — add one above</div>'; return; }
   el.innerHTML = dlVendors.map(v=>`
     <div id="dlvrow-${v.id}">
@@ -9315,7 +9323,18 @@ function populateDlVendorDropdowns(){
   }
 }
 
+function togDlVendorCollapse(force){
+  const body = document.getElementById('dlVendorBody');
+  const chev = document.getElementById('dlVendorChevron');
+  if(!body) return;
+  const open = typeof force === 'boolean' ? force : body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if(chev) chev.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
 function togDlVendorForm(){
+  // Ensure the collapsible body is expanded so the form is visible
+  togDlVendorCollapse(true);
   const w = document.getElementById('dlVendorFormWrap');
   const open = w.style.display !== 'none';
   if(open){ cancelDlVendorEdit(); return; }
