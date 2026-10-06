@@ -1269,9 +1269,14 @@
     <!-- Category management (operator only) -->
     <div class="card" id="dlCatMgmtCard" style="display:none">
       <div class="sh2">
-        <div class="ct" style="margin:0">Vendor categories</div>
+        <div class="ct" id="dlCatToggle" style="margin:0;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="togDlCatCollapse()">
+          <span id="dlCatChevron" style="display:inline-block;transition:transform .18s;font-size:12px;color:var(--text3);transform:rotate(0deg)">▶</span>
+          <span>Vendor categories</span>
+          <span id="dlCatCount" style="font-size:12px;font-weight:600;color:var(--text3)"></span>
+        </div>
         <button class="bsm" onclick="togDlCatForm()">+ Add category</button>
       </div>
+      <div id="dlCatBody" style="display:none">
       <div style="font-size:12px;color:var(--text3);margin:-4px 0 10px">Group vendors (e.g. Beer, Tobacco, Snacks) to see spending by category.</div>
       <div id="dlCatFormWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
         <div style="margin-bottom:8px"><label>Category name</label><input id="dlCatName" placeholder="e.g. Beer" onkeydown="if(event.key==='Enter')saveDlCat()" /></div>
@@ -1281,6 +1286,7 @@
         </div>
       </div>
       <div id="dlCatList"><div style="font-size:12px;color:var(--text3)">No categories yet</div></div>
+      </div>
     </div>
 
     <!-- Vendor management (operator only) -->
@@ -1704,102 +1710,6 @@
       </div>
       <div id="orMTDSummary" style="margin-bottom:12px"></div>
       <div id="orList"><div class="empty"><div class="ei">💰</div>No entries yet</div></div>
-    </div>
-  </div>
-
-  <!-- LOTTERY COMMISSIONS -->
-  <div class="page" id="page-lotterycomm">
-
-    <div style="background:var(--blue-light);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);line-height:1.6">
-      Log the weekly Virginia Lottery settlement report every Wednesday. Enter commissions earned and the EFT draft amount so you can track what's being swept from your account.
-    </div>
-
-    <div class="card">
-      <div class="ct">Log weekly report</div>
-
-      <div class="g2" style="margin-bottom:10px">
-        <div>
-          <label>Week ending date</label>
-          <input type="date" id="lc-week-end" />
-        </div>
-        <div>
-          <label>Entered by</label>
-          <input id="lc-enteredby" readonly style="background:var(--bg2)" />
-        </div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;margin-top:4px">Commission earned</div>
-
-      <div class="g2" style="margin-bottom:8px">
-        <div>
-          <label>🎟 Scratcher commission ($)</label>
-          <input type="number" id="lc-scr-comm" placeholder="0.00" step="0.01" min="0" oninput="lcCalcTotal()" />
-        </div>
-        <div>
-          <label>🖥 Online / Draw-game commission ($)</label>
-          <input type="number" id="lc-dg-comm" placeholder="0.00" step="0.01" min="0" oninput="lcCalcTotal()" />
-        </div>
-      </div>
-      <div class="g2" style="margin-bottom:8px">
-        <div>
-          <label>💵 Cashing bonus ($)</label>
-          <input type="number" id="lc-cash-bonus" placeholder="0.00" step="0.01" min="0" oninput="lcCalcTotal()" />
-        </div>
-        <div>
-          <label>📦 Scratcher activations ($)</label>
-          <input type="number" id="lc-activations" placeholder="0.00" step="0.01" min="0" oninput="lcCalcTotal()" />
-        </div>
-      </div>
-
-      <div id="lc-comm-total-wrap" style="display:none;background:var(--green-light);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Total commission earned</div>
-        <div style="font-size:24px;font-weight:800;color:var(--green)" id="lc-comm-total-val">$0.00</div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">EFT Draft (balance due)</div>
-
-      <div class="g2" style="margin-bottom:8px">
-        <div>
-          <label>Balance due / EFT draft ($)</label>
-          <input type="number" id="lc-eft" placeholder="0.00" step="0.01" min="0" />
-        </div>
-        <div>
-          <label>Sweep date</label>
-          <input type="date" id="lc-sweep-date" />
-        </div>
-      </div>
-
-      <div style="margin-bottom:12px">
-        <label>Notes (optional)</label>
-        <textarea id="lc-notes" rows="2" placeholder="e.g. New packs activated, unusual cashes, etc."></textarea>
-      </div>
-
-      <!-- Mandatory receipt photo -->
-      <div style="margin-bottom:14px">
-        <label>📄 Receipt photo <span style="font-size:11px;color:var(--text3);font-weight:400">(optional — can be added later)</span></label>
-        <div id="lc-photo-zone" onclick="document.getElementById('lc-photo-input').click()"
-          style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:var(--bg2);transition:border-color .15s">
-          <div style="font-size:28px;margin-bottom:6px">📷</div>
-          <div style="font-size:13px;color:var(--text2)" id="lc-photo-label">Tap to take or upload receipt photo</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">Virginia Lottery weekly settlement report</div>
-        </div>
-        <input type="file" id="lc-photo-input" accept="image/*" capture="environment" style="display:none" onchange="lcHandlePhoto(this)" />
-        <div id="lc-photo-preview" style="display:none;margin-top:10px">
-          <img id="lc-photo-img" style="width:100%;border-radius:8px;max-height:220px;object-fit:cover;cursor:pointer" onclick="showPhotoModal(document.getElementById('lc-photo-img').src,'Lottery receipt')" />
-          <button onclick="lcClearPhoto()" style="margin-top:6px;background:none;border:none;color:var(--red);font-size:12px;cursor:pointer">✕ Remove photo</button>
-        </div>
-      </div>
-
-      <button class="btn bprimary" style="padding:13px" id="lcSubmitBtn" onclick="submitLotteryReport()">Save lottery report</button>
-    </div>
-
-    <div class="card">
-      <div class="sh2">
-        <div class="ct" style="margin:0">Weekly history</div>
-        <input type="month" id="lc-filter-month" onchange="loadLotteryReports()" style="font-size:12px;padding:5px 8px;width:auto" />
-      </div>
-      <div id="lc-mtd-summary" style="margin-bottom:12px"></div>
-      <div id="lc-list"><div class="empty"><div class="ei">🏆</div>No reports yet</div></div>
     </div>
   </div>
 
@@ -2528,8 +2438,8 @@ function fmtHours(decimalHrs){
 }
 
 const TABS={
-  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'},{id:'storesettings',l:'⚙️ Store Settings'}],
-  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'lotterycomm',l:'🏆 Lottery Comm'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
+  operator:[{id:'dashboard',l:'🏠 Dashboard'},{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'compliance',l:'📅 Compliance'},{id:'inventory',l:'⚑ Inventory'},{id:'employees',l:'👥 Employees'},{id:'schedule',l:'📅 Schedule'},{id:'deliveries',l:'🚚 Deliveries'},{id:'overhead',l:'🏢 Overhead & Expenses'},{id:'otherrev',l:'💰 Other Rev'},{id:'bankdeposits',l:'🏦 Bank Deposits'},{id:'margins',l:'📖 Price Book'},{id:'monthlycomp',l:'📈 Monthly Compare'},{id:'todo',l:'✅ To-Do'},{id:'logs',l:'📋 Logs'},{id:'storesettings',l:'⚙️ Store Settings'}],
+  lead:    [{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}],
   employee:[{id:'daily',l:'📋 Daily'},{id:'fuel',l:'⛽ Fuel'},{id:'inventory',l:'⚑ Inventory'},{id:'deliveries',l:'🚚 Deliveries'},{id:'myhours',l:'⏱ My Hours'},{id:'myschedule',l:'📅 My Schedule'}]
 };
 
@@ -2547,7 +2457,6 @@ function loginOK(u){
   badge.onclick=isAdmin?()=>{document.getElementById('appShell').style.display='none';document.getElementById('adminShell').style.display='block';showAdminTab('stores');loadAdminStores();}:null;
   document.getElementById('d-emp').value=u.name;
   document.getElementById('s-emp').value=u.name;
-  const lcEb=document.getElementById('lc-enteredby');if(lcEb)lcEb.value=u.name;
   document.getElementById('d-date').value=localDate();
   document.getElementById('f-date').value=localDate();
   document.getElementById('f-emp').value=u.name;
@@ -2869,7 +2778,6 @@ function showTab(id){
   if(id==='myschedule')loadMySchedule();
   if(id==='margins')loadMargins();
   if(id==='otherrev'){const om=document.getElementById('orMonth');if(om&&!om.value)om.value=new Date().toISOString().slice(0,7);loadOtherRev();}
-  if(id==='lotterycomm'){const lm=document.getElementById('lc-filter-month');if(lm&&!lm.value)lm.value=new Date().toISOString().slice(0,7);loadLotteryReports();}
   if(id==='todo')loadTodos();
   if(id==='bankdeposits'){const bm=document.getElementById('bd-filter-month');if(bm&&!bm.value)bm.value=new Date().toISOString().slice(0,7);const dd=document.getElementById('bd-deposit-date');if(dd&&!dd.value)dd.value=localDate();bdInit();}
   if(id==='monthlycomp'){initMonthlyComp();loadMonthlyComparison();}
@@ -8410,201 +8318,6 @@ async function deleteOtherRev(id){
   }catch(e){ toast('Error deleting'); }
 }
 
-// ---- LOTTERY COMMISSIONS ----
-
-let lcPhotoData = null;   // base64 preview only (for display before save)
-let lcPhotoFile = null;   // raw File for Storage upload
-
-function lcHandlePhoto(input){
-  const file = input.files[0];
-  if(!file) return;
-  const zone  = document.getElementById('lc-photo-zone');
-  const label = document.getElementById('lc-photo-label');
-  label.textContent = 'Processing…';
-  lcPhotoFile = file;
-  resizeImage(file, 1200).then(dataUrl=>{
-    lcPhotoData = dataUrl;
-    document.getElementById('lc-photo-img').src = dataUrl;
-    document.getElementById('lc-photo-preview').style.display = 'block';
-    zone.style.borderColor = 'var(--green)';
-    zone.style.borderStyle = 'solid';
-    label.textContent = '✓ Photo attached';
-    label.style.color = 'var(--green)';
-  }).catch(()=>{ label.textContent = 'Error reading photo — try again'; label.style.color='var(--red)'; });
-}
-
-function lcClearPhoto(){
-  lcPhotoData = null;
-  lcPhotoFile = null;
-  document.getElementById('lc-photo-input').value = '';
-  document.getElementById('lc-photo-preview').style.display = 'none';
-  document.getElementById('lc-photo-img').src = '';
-  const zone  = document.getElementById('lc-photo-zone');
-  zone.style.borderColor = '';
-  zone.style.borderStyle = '';
-  const label = document.getElementById('lc-photo-label');
-  label.textContent = 'Tap to take or upload receipt photo';
-  label.style.color = '';
-}
-
-function lcCalcTotal(){
-  const scr  = parseFloat(document.getElementById('lc-scr-comm').value)||0;
-  const dg   = parseFloat(document.getElementById('lc-dg-comm').value)||0;
-  const cb   = parseFloat(document.getElementById('lc-cash-bonus').value)||0;
-  const act  = parseFloat(document.getElementById('lc-activations').value)||0;
-  const total = scr + dg + cb;
-  const wrap = document.getElementById('lc-comm-total-wrap');
-  const hasAny = scr||dg||cb||act;
-  wrap.style.display = hasAny ? 'block' : 'none';
-  document.getElementById('lc-comm-total-val').textContent = '$'+total.toFixed(2);
-}
-
-async function submitLotteryReport(){
-  const _btn=document.getElementById('lcSubmitBtn');if(_btn&&_btn.disabled)return;
-  if(_btn){_btn.disabled=true;var _orig=_btn.innerHTML;_btn.innerHTML='<span class="spinner"></span>Saving...';}
-  const weekEnd   = document.getElementById('lc-week-end').value;
-  const scrComm   = parseFloat(document.getElementById('lc-scr-comm').value)||0;
-  const dgComm    = parseFloat(document.getElementById('lc-dg-comm').value)||0;
-  const cashBonus = parseFloat(document.getElementById('lc-cash-bonus').value)||0;
-  const activations = parseFloat(document.getElementById('lc-activations').value)||0;
-  const eft       = parseFloat(document.getElementById('lc-eft').value)||0;
-  const sweepDate = document.getElementById('lc-sweep-date').value;
-  const notes     = document.getElementById('lc-notes').value.trim();
-
-  if(!weekEnd){ toast('Please enter the week ending date'); return; }
-  if(!eft && !scrComm && !dgComm && !cashBonus){
-    toast('Please enter at least one amount'); return;
-  }
-  if(false && !lcPhotoData){
-    toast('Please attach a photo of the receipt');
-    document.getElementById('lc-photo-zone').style.borderColor='var(--red)';
-    return;
-  }
-
-  const totalComm = scrComm + dgComm + cashBonus;
-
-  const btn = document.querySelector('#page-lotterycomm .bprimary');
-  btn.disabled = true; btn.textContent = 'Saving...';
-  try{
-    // Upload receipt photo to Firebase Storage
-    let photoUrl = '';
-    if(lcPhotoFile){
-      try{
-        photoUrl = await uploadPhoto(lcPhotoFile, photoStoragePath('lotteryReports', weekEnd), 1600);
-      }catch(pe){ console.warn('Lottery photo upload failed', pe); }
-    }
-    await window.F.addDoc(sc('lotteryReports'),{
-      weekEnd, scrComm, dgComm, cashBonus, activations, eft, sweepDate,
-      totalComm, notes,
-      photoUrl,
-      employee: CU.name,
-      timestamp: window.F.serverTimestamp()
-    });
-    toast('✓ Lottery report saved');
-    ['lc-week-end','lc-scr-comm','lc-dg-comm','lc-cash-bonus','lc-activations','lc-eft','lc-sweep-date'].forEach(id=>{
-      document.getElementById(id).value='';
-    });
-    document.getElementById('lc-notes').value='';
-    document.getElementById('lc-comm-total-wrap').style.display='none';
-    lcClearPhoto();
-    loadLotteryReports();
-  }catch(e){ toast('Error saving report'); console.error(e); }
-  finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save lottery report';} if(typeof btn!=='undefined'&&btn){btn.disabled=false;btn.textContent='Save lottery report';} }
-}
-
-async function loadLotteryReports(){
-  const listEl = document.getElementById('lc-list');
-  const sumEl  = document.getElementById('lc-mtd-summary');
-  if(!listEl) return;
-
-  const month    = document.getElementById('lc-filter-month')?.value || localDate().slice(0,7);
-  const mtdStart = month+'-01';
-  const mtdEnd   = month+'-31';
-
-  try{
-    const snap = await window.F.getDocs(window.F.query(
-      sc('lotteryReports'),
-      window.F.orderBy('weekEnd','desc')
-    ));
-    const all      = snap.docs.map(d=>({id:d.id,...d.data()}));
-    const filtered = all.filter(x=>x.weekEnd>=mtdStart && x.weekEnd<=mtdEnd);
-
-    const mtdTotalComm = filtered.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
-    const mtdTotalEft  = filtered.reduce((s,x)=>s+(parseFloat(x.eft)||0),0);
-    const mtdScr       = filtered.reduce((s,x)=>s+(parseFloat(x.scrComm)||0),0);
-    const mtdDg        = filtered.reduce((s,x)=>s+(parseFloat(x.dgComm)||0),0);
-    const mtdCb        = filtered.reduce((s,x)=>s+(parseFloat(x.cashBonus)||0),0);
-
-    if(sumEl && filtered.length){
-      sumEl.innerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:4px;border:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Month commission</span>
-          <span style="font-size:20px;font-weight:800;color:var(--green)">$${mtdTotalComm.toFixed(2)}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <div style="background:var(--green-light);border-radius:6px;padding:8px 10px">
-            <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.05em">Total commission</div>
-            <div style="font-size:17px;font-weight:800;color:var(--green)">$${mtdTotalComm.toFixed(2)}</div>
-            <div style="font-size:10px;color:var(--green);margin-top:2px">Scr $${mtdScr.toFixed(2)} · DG $${mtdDg.toFixed(2)} · Cash $${mtdCb.toFixed(2)}</div>
-          </div>
-          <div style="background:var(--red-light);border-radius:6px;padding:8px 10px">
-            <div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.05em">Total EFT drafts</div>
-            <div style="font-size:17px;font-weight:800;color:var(--red)">$${mtdTotalEft.toFixed(2)}</div>
-            <div style="font-size:10px;color:var(--red);margin-top:2px">${filtered.length} report${filtered.length!==1?'s':''}</div>
-          </div>
-        </div>
-      </div>`;
-    } else if(sumEl){ sumEl.innerHTML=''; }
-
-    if(!filtered.length){
-      listEl.innerHTML='<div class="empty"><div class="ei">🏆</div>No reports this month</div>';
-      return;
-    }
-
-    listEl.innerHTML = filtered.map(x=>{
-      const comm = parseFloat(x.totalComm) || ((parseFloat(x.scrComm)||0)+(parseFloat(x.dgComm)||0)+(parseFloat(x.cashBonus)||0));
-      const commParts=[];
-      if(x.scrComm)    commParts.push(`🎟 Scr $${parseFloat(x.scrComm).toFixed(2)}`);
-      if(x.dgComm)     commParts.push(`🖥 DG $${parseFloat(x.dgComm).toFixed(2)}`);
-      if(x.cashBonus)  commParts.push(`💵 Cash $${parseFloat(x.cashBonus).toFixed(2)}`);
-      if(x.activations)commParts.push(`📦 Act $${parseFloat(x.activations).toFixed(2)}`);
-      const photoHtml = (x.photoUrl||x.photoData)
-        ? `<img src="${x.photoUrl||x.photoData}" style="width:100%;border-radius:6px;max-height:140px;object-fit:cover;margin-top:8px;cursor:pointer" onclick="showPhotoModal('${x.photoData}','Week ending ${x.weekEnd}')" />`
-        : `<div style="margin-top:6px;font-size:11px;color:var(--text3)">No photo attached</div>`;
-      return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:700">Week ending ${x.weekEnd}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:3px">${commParts.join(' · ')||'No breakdown entered'}</div>
-            ${x.sweepDate?`<div style="font-size:11px;color:var(--text3);margin-top:2px">EFT sweep: ${x.sweepDate}</div>`:''}
-            ${x.notes?`<div style="font-size:12px;color:var(--text2);margin-top:3px">${x.notes}</div>`:''}
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">By ${x.employee||'—'}</div>
-            ${photoHtml}
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:16px;font-weight:800;color:var(--green)">$${comm.toFixed(2)}</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:1px">commission</div>
-            ${x.eft?`<div style="font-size:12px;color:var(--text3);margin-top:3px">EFT $${parseFloat(x.eft).toFixed(2)}</div>`:''}
-            <div style="margin-top:4px"><button onclick="deleteLotteryReport('${x.id}')" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">Delete</button></div>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){
-    listEl.innerHTML='<div class="empty">Error loading reports</div>';
-    console.error('loadLotteryReports',e);
-  }
-}
-
-async function deleteLotteryReport(id){
-  if(!confirm('Delete this lottery report?')) return;
-  try{
-    await window.F.deleteDoc(sd('lotteryReports',id));
-    toast('Report deleted');
-    loadLotteryReports();
-  }catch(e){ toast('Error deleting'); }
-}
-
 // ---- MARGINS SPREADSHEET IMPORT ----
 
 let mgRawRows    = [];   // raw parsed rows from XLSX [{col:val,...}]
@@ -9303,6 +9016,8 @@ async function loadDlCategories(){
 function renderDlCatList(){
   const el = document.getElementById('dlCatList');
   if(!el) return;
+  const cnt = document.getElementById('dlCatCount');
+  if(cnt) cnt.textContent = dlCategories.length ? '('+dlCategories.length+')' : '';
   if(!dlCategories.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3)">No categories yet — add one above</div>'; return; }
   el.innerHTML = dlCategories.map(c=>`
     <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);gap:8px">
@@ -9311,7 +9026,17 @@ function renderDlCatList(){
     </div>`).join('');
 }
 
+function togDlCatCollapse(force){
+  const body = document.getElementById('dlCatBody');
+  const chev = document.getElementById('dlCatChevron');
+  if(!body) return;
+  const open = typeof force === 'boolean' ? force : body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if(chev) chev.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
 function togDlCatForm(){
+  togDlCatCollapse(true);
   const w = document.getElementById('dlCatFormWrap');
   if(!w) return;
   const open = w.style.display !== 'none';
