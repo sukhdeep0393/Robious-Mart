@@ -1015,6 +1015,7 @@
         <button onclick="closeEmpLoginModal()" style="background:none;border:none;font-size:20px;color:var(--text3);padding:4px">&#x2715;</button>
       </div>
       <input type="hidden" id="elm-docId" />
+      <input type="hidden" id="elm-oldName" />
       <div style="margin-bottom:12px">
         <label>Employee Name</label>
         <input id="elm-name" placeholder="First name (e.g. Priya)" autocomplete="off" />
@@ -6447,7 +6448,7 @@ async function loadEmpLogins(){
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          <button onclick="openEditEmpLogin('${e.docId}','${e.name.replace(/'/g,"\'")}','${e.role}','${e.pin}')" style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer">Change PIN</button>
+          <button onclick="openEditEmpLogin('${e.docId}','${e.name.replace(/'/g,"\'")}','${e.role}','${e.pin}')" style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer">Edit</button>
           <button onclick="deleteEmpLogin('${e.docId}','${e.name.replace(/'/g,"\'")}' )" style="font-size:12px;padding:5px 10px;border-radius:20px;border:1px solid var(--red-light);background:var(--red-light);color:var(--red);cursor:pointer">Remove</button>
         </div>
       </div>`).join('');
@@ -6463,6 +6464,7 @@ function openAddEmpLogin(){
   document.getElementById('elm-pin-label').textContent='4-Digit PIN';
   document.getElementById('elm-pin-hint').textContent='Set a unique 4-digit PIN for this employee';
   document.getElementById('elm-name').disabled=false;
+  document.getElementById('elm-oldName').value='';
   document.getElementById('elm-err').textContent='';
   const m=document.getElementById('empLoginModal');
   m.style.display='flex';
@@ -6470,10 +6472,11 @@ function openAddEmpLogin(){
 }
 
 function openEditEmpLogin(docId, name, role, pin){
-  document.getElementById('empLoginModalTitle').textContent='Change PIN / Role';
+  document.getElementById('empLoginModalTitle').textContent='Edit Employee';
   document.getElementById('elm-docId').value=docId;
+  document.getElementById('elm-oldName').value=name;
   document.getElementById('elm-name').value=name;
-  document.getElementById('elm-name').disabled=true;
+  document.getElementById('elm-name').disabled=false;
   document.getElementById('elm-role').value=role||'employee';
   document.getElementById('elm-pin').value='';
   document.getElementById('elm-pin-label').textContent='New 4-Digit PIN';
@@ -6481,7 +6484,7 @@ function openEditEmpLogin(docId, name, role, pin){
   document.getElementById('elm-err').textContent='';
   const m=document.getElementById('empLoginModal');
   m.style.display='flex';
-  setTimeout(()=>document.getElementById('elm-pin').focus(),100);
+  setTimeout(()=>document.getElementById('elm-name').focus(),100);
 }
 
 function closeEmpLoginModal(){
@@ -6506,11 +6509,23 @@ async function saveEmpLogin(){
 
   try{
     if(isEdit){
+      const oldName=document.getElementById('elm-oldName').value;
+      const renamed=oldName && name!==oldName;
+      if(renamed){
+        const snap=await window.F.getDocs(sc('employeeLogins'));
+        const dup=snap.docs.find(d=>d.id!==docId && (d.data().name||'').toLowerCase()===name.toLowerCase());
+        if(dup){errEl.textContent='An employee login for "'+name+'" already exists';return;}
+        if(!confirm('Rename "'+oldName+'" to "'+name+'"?\n\nTheir past shifts, schedule, wage rate and payroll records will be moved to the new name.')) return;
+      }
       const ref=sd('employeeLogins',docId);
-      const upd={role, updatedBy:CU.name, updatedAt:new Date().toISOString()};
+      const upd={name, role, updatedBy:CU.name, updatedAt:new Date().toISOString()};
       if(pin) upd.pin=pin;
       await window.F.updateDoc(ref,upd);
-      toast('✓ Login updated for '+name);
+      if(renamed){
+        await renameEmployeeRecords(oldName,name);
+        if(CU && CU.name===oldName) CU.name=name;
+      }
+      toast('✓ '+(renamed?'Renamed '+oldName+' to '+name:'Login updated for '+name));
     } else {
       // Check for duplicate name
       const snap=await window.F.getDocs(sc('employeeLogins'));
@@ -6524,6 +6539,29 @@ async function saveEmpLogin(){
     closeEmpLoginModal();
     loadEmpLogins();
   }catch(err){errEl.textContent='Error saving: '+err.message;console.error(err);}
+}
+
+// Move an employee's history to a new name after a login rename
+async function renameEmployeeRecords(oldName,newName){
+  const {getDocs,query,where,updateDoc,getDoc,setDoc,deleteDoc}=window.F;
+  for(const coll of ['dailyReports','schedules','fuelReports']){
+    try{
+      const snap=await getDocs(query(sc(coll),where('employee','==',oldName)));
+      await Promise.all(snap.docs.map(d=>updateDoc(sd(coll,d.id),{employee:newName})));
+    }catch(e){console.error('rename '+coll,e);}
+  }
+  try{
+    const snap=await getDocs(query(sc('payrollRecords'),where('empName','==',oldName)));
+    await Promise.all(snap.docs.map(d=>{
+      const k=d.data().payKey||'';
+      const payKey=k.endsWith('-'+oldName)?k.slice(0,-oldName.length)+newName:k;
+      return updateDoc(sd('payrollRecords',d.id),{empName:newName,payKey});
+    }));
+  }catch(e){console.error('rename payrollRecords',e);}
+  try{
+    const w=await getDoc(sd('employeeWages',oldName));
+    if(w.exists()){ await setDoc(sd('employeeWages',newName),w.data()); await deleteDoc(sd('employeeWages',oldName)); }
+  }catch(e){console.error('rename employeeWages',e);}
 }
 
 async function deleteEmpLogin(docId, name){
