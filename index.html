@@ -9603,15 +9603,13 @@ async function loadMonthlyComparison(){
     const {getDocs, query, collection, orderBy} = window.F;
     const db = window.db;
 
-    const [drSnap, expSnap, orSnap, fdSnap, dlSnap, lcSnap, scrSnap, actSnap] = await Promise.all([
+    const [drSnap, expSnap, orSnap, fdSnap, dlSnap, lcSnap] = await Promise.all([
       getDocs(query(sc('dailyReports'), orderBy('date','asc'))),
       getDocs(query(sc('overheadExpenses'), orderBy('date','asc'))),
       getDocs(query(sc('otherRevenue'), orderBy('date','asc'))),
       getDocs(query(sc('fuelDeliveries'), orderBy('date','asc'))),
       getDocs(query(sc('deliveries'), orderBy('date','asc'))),
       getDocs(query(sc('lotteryReports'), orderBy('weekEnd','asc'))),
-      getDocs(query(sc('scratchCounts'), orderBy('timestamp','desc'))),
-      getDocs(query(sc('scratchActivations'), orderBy('date','asc'))),
     ]);
 
     const allDR   = drSnap.docs.map(d=>d.data());
@@ -9620,8 +9618,6 @@ async function loadMonthlyComparison(){
     const allFD   = fdSnap.docs.map(d=>d.data());
     const allDL   = dlSnap.docs.map(d=>d.data());
     const allLC   = lcSnap.docs.map(d=>d.data());
-    const allScr  = scrSnap.docs.map(d=>({...d.data(), _ts: d.data().timestamp?.toMillis?.() || 0}));
-    const allActs = actSnap.docs.map(d=>d.data());
 
     // ---- Per-month aggregation ----
     const rows = slicedMonths.map(ym => {
@@ -9632,8 +9628,6 @@ async function loadMonthlyComparison(){
       const fd = allFD.filter(x=>x.date>=start&&x.date<=end);
       const dl = allDL.filter(x=>x.date>=start&&x.date<=end);
       const lc = allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(ym));
-      const scrMTD = allScr.filter(d=>d.type==='count'&&d.soldBySlot&&Object.keys(d.soldBySlot).length>0&&d.date>=start&&d.date<=end);
-      const acts = allActs.filter(a=>a.date>=start&&a.date<=end);
 
       const insideSales = dr.reduce((s,r)=>s+(r.totalSales||0),0);
       const fuelGal     = dr.reduce((s,r)=>s+(r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0),0);
@@ -9648,7 +9642,6 @@ async function loadMonthlyComparison(){
       const otherRevTotal    = or.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
       const storeDeliveries  = dl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
       const lotteryComm      = lc.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
-      const scratchRevenue   = scrMTD.reduce((s,d)=>s+(d.totalRevenue||0),0);
       const lotNet           = dr.reduce((s,r)=>s+(r.lotteryTotal||0)-(r.lotteryPayout||0)-(r.lotteryScr||0)-(r.lotteryCan||0),0);
 
       const netProfit = insideSales + otherRevTotal + fuelProfit + lotteryComm
@@ -9658,7 +9651,7 @@ async function loadMonthlyComparison(){
         ym, dr:dr.length,
         insideSales, fuelGal, fuelProfit, fuelDeliveryCost,
         overheadTotal, otherRevTotal, storeDeliveries, lotteryComm,
-        scratchRevenue, lotNet, netProfit
+        lotNet, netProfit
       };
     });
 
@@ -9703,7 +9696,6 @@ function renderMonthlyCompTable(rows){
     { key:'fuelGal',          label:'Fuel Sold (gal)',        icon:'⛽', fmtFn: r=>'<span style="color:var(--text2)">'+fmtGal(r.fuelGal)+'</span>',  best:bestFuelGal, hi:true },
     { key:'fuelProfit',       label:'Fuel Profit',           icon:'💹', fmt:fmt,  best:best('fuelProfit'), hi:true },
     { key:'fuelDeliveryCost', label:'Fuel Delivery Cost',    icon:'🚛', fmt:fmt,  best:lowestFD,    hi:false, invert:true },
-    { key:'scratchRevenue',   label:'Scratch-off Revenue',   icon:'🎟', fmt:fmt,  best:best('scratchRevenue'), hi:true },
     { key:'lotNet',           label:'Lottery Net',           icon:'🎰', fmtFn: r=>fmtN(r.lotNet), best:best('lotNet'), hi:true },
     { key:'lotteryComm',      label:'Lottery Commission',    icon:'🏆', fmt:fmt,  best:best('lotteryComm'), hi:true },
     { key:'otherRevTotal',    label:'Other Revenue',         icon:'💰', fmt:fmt,  best:best('otherRevTotal'), hi:true },
