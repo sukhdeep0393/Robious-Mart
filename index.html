@@ -9587,13 +9587,12 @@ async function loadMonthlyComparison(){
     const {getDocs, query, collection, orderBy} = window.F;
     const db = window.db;
 
-    const [drSnap, expSnap, orSnap, fdSnap, dlSnap, lcSnap] = await Promise.all([
+    const [drSnap, expSnap, orSnap, fdSnap, dlSnap] = await Promise.all([
       getDocs(query(sc('dailyReports'), orderBy('date','asc'))),
       getDocs(query(sc('overheadExpenses'), orderBy('date','asc'))),
       getDocs(query(sc('otherRevenue'), orderBy('date','asc'))),
       getDocs(query(sc('fuelDeliveries'), orderBy('date','asc'))),
       getDocs(query(sc('deliveries'), orderBy('date','asc'))),
-      getDocs(query(sc('lotteryReports'), orderBy('weekEnd','asc'))),
     ]);
 
     const allDR   = drSnap.docs.map(d=>d.data());
@@ -9601,7 +9600,6 @@ async function loadMonthlyComparison(){
     const allOR   = orSnap.docs.map(d=>d.data());
     const allFD   = fdSnap.docs.map(d=>d.data());
     const allDL   = dlSnap.docs.map(d=>d.data());
-    const allLC   = lcSnap.docs.map(d=>d.data());
 
     // ---- Per-month aggregation ----
     const rows = slicedMonths.map(ym => {
@@ -9611,7 +9609,6 @@ async function loadMonthlyComparison(){
       const or = allOR.filter(x=>x.date>=start&&x.date<=end);
       const fd = allFD.filter(x=>x.date>=start&&x.date<=end);
       const dl = allDL.filter(x=>x.date>=start&&x.date<=end);
-      const lc = allLC.filter(x=>x.weekEnd&&x.weekEnd.startsWith(ym));
 
       const insideSales = dr.reduce((s,r)=>s+(r.totalSales||0),0);
       const fuelGal     = dr.reduce((s,r)=>s+(r.regularGal||0)+(r.premiumGal||0)+(r.dieselGal||0),0);
@@ -9625,16 +9622,15 @@ async function loadMonthlyComparison(){
       const overheadTotal    = exp.reduce((s,x)=>s+(x.amount||0),0);
       const otherRevTotal    = or.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
       const storeDeliveries  = dl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
-      const lotteryComm      = lc.reduce((s,x)=>s+(parseFloat(x.totalComm)||0),0);
       const lotNet           = dr.reduce((s,r)=>s+(r.lotteryTotal||0)-(r.lotteryPayout||0)-(r.lotteryScr||0)-(r.lotteryCan||0),0);
 
-      const netProfit = insideSales + otherRevTotal + fuelProfit + lotteryComm
+      const netProfit = insideSales + otherRevTotal + fuelProfit
                       - storeDeliveries - overheadTotal;
 
       return {
         ym, dr:dr.length,
         insideSales, fuelGal, fuelProfit, fuelDeliveryCost,
-        overheadTotal, otherRevTotal, storeDeliveries, lotteryComm,
+        overheadTotal, otherRevTotal, storeDeliveries,
         lotNet, netProfit
       };
     });
@@ -9681,7 +9677,6 @@ function renderMonthlyCompTable(rows){
     { key:'fuelProfit',       label:'Fuel Profit',           icon:'💹', fmt:fmt,  best:best('fuelProfit'), hi:true },
     { key:'fuelDeliveryCost', label:'Fuel Delivery Cost',    icon:'🚛', fmt:fmt,  best:lowestFD,    hi:false, invert:true },
     { key:'lotNet',           label:'Lottery Net',           icon:'🎰', fmtFn: r=>fmtN(r.lotNet), best:best('lotNet'), hi:true },
-    { key:'lotteryComm',      label:'Lottery Commission',    icon:'🏆', fmt:fmt,  best:best('lotteryComm'), hi:true },
     { key:'otherRevTotal',    label:'Other Revenue',         icon:'💰', fmt:fmt,  best:best('otherRevTotal'), hi:true },
     { key:'storeDeliveries',  label:'Store Delivery Cost',   icon:'📦', fmt:fmt,  best:lowestFD,    hi:false, invert:true },
     { key:'overheadTotal',    label:'Overhead Expenses',     icon:'🏢', fmt:fmt,  best:lowestOH,    hi:false, invert:true },
@@ -9750,7 +9745,7 @@ function renderMonthlyCompTable(rows){
         </table>
       </div>
       <div style="padding:10px 14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">
-        💡 BEST badge = highest value for income metrics, lowest for cost metrics. Net Profit = Inside Sales + Other Rev + Fuel Profit + Lottery Comm − Store Deliveries − Overhead.
+        💡 BEST badge = highest value for income metrics, lowest for cost metrics. Net Profit = Inside Sales + Other Rev + Fuel Profit − Store Deliveries − Overhead.
       </div>
     </div>`;
 }
