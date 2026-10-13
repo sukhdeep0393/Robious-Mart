@@ -2812,8 +2812,6 @@ async function loadDashboard(){
     const mtdExpByCategory={};
     mtdExp.forEach(x=>{ const c=x.category||'Other'; mtdExpByCategory[c]=(mtdExpByCategory[c]||0)+(x.amount||0); });
 
-    // Fuel profit — computed after fuelDeliveries fetch below
-
     // Other revenue for selected month
     const orSnap=await getDocs(query(sc('otherRevenue'),orderBy('date','desc')));
     const mtdOR=orSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
@@ -2834,13 +2832,6 @@ async function loadDashboard(){
     const mtdDl=dlSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
     const mtdDlTotal=mtdDl.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
 
-    // Fuel deliveries
-    const fdSnap=await getDocs(query(sc('fuelDeliveries'),orderBy('date','desc')));
-    const allFuelDeliveries=fdSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const mtdFuelDl=allFuelDeliveries.filter(x=>x.date>=mtdStart&&x.date<=mtdEnd);
-    const recentFuelDl=allFuelDeliveries.slice(0,5); // last 5 regardless of month for dashboard widget
-    const mtdFuelGal=mtdFuelDl.reduce((s,x)=>s+(x.totalGal||0),0);
-    const mtdFuelCost=mtdFuelDl.reduce((s,x)=>s+(x.totalCost||0),0);
     // Fuel profit — weekly margin entered manually, counted by week-ending date
     const mtdFuelWeeks = (window.marginHistory||[]).filter(e=>e.date>=mtdStart&&e.date<=mtdEnd);
     const mtdDelRegGal  = mtdRegGal;
@@ -3175,50 +3166,6 @@ async function loadDashboard(){
             <div style="font-size:12px;font-weight:700;text-align:right">${f.val.toFixed(0)}<span style="font-size:10px;font-weight:400;color:var(--text3)"> gal</span></div>
           </div>`;
         }).join('')}
-      </div></div>
-
-      <!-- Fuel Deliveries on Dashboard -->
-      <div class="dash-section-hdr">
-        <span class="dash-section-title" onclick="toggleDashSection('fueldeliveries')" style="cursor:pointer;user-select:none">🚛 Fuel deliveries — ${monthName} <span id="dash-chev-fueldeliveries" style="font-size:12px;color:var(--blue);font-weight:500">▼ show details</span></span>
-        <span class="dash-section-link" onclick="showTab('fuel')" style="cursor:pointer">Go to tab →</span>
-      </div>
-      <div id="dash-body-fueldeliveries" style="display:none"><div class="card" style="padding:0;overflow:hidden">
-        ${(()=>{
-          if(!mtdFuelDl.length) return '<div class="empty" style="padding:14px">No fuel deliveries in ' + monthName + '</div>';
-          // Summary row
-          const summaryHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border)">'
-            + '<div style="padding:12px 14px;border-right:1px solid var(--border)"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total gallons</div><div style="font-size:18px;font-weight:800">' + mtdFuelGal.toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + mtdFuelDl.length + ' deliver' + (mtdFuelDl.length!==1?'ies':'y') + '</div></div>'
-            + '<div style="padding:12px 14px;border-right:1px solid var(--border)"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Total cost</div><div style="font-size:18px;font-weight:800">' + (mtdFuelCost>0?'$'+mtdFuelCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—') + '</div><div style="font-size:10px;color:var(--text3)">incl. tax</div></div>'
-            + '<div style="padding:12px 14px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Avg $/gal</div><div style="font-size:18px;font-weight:800">' + (mtdFuelGal>0&&mtdFuelCost>0?'$'+(mtdFuelCost/mtdFuelGal).toFixed(3):'—') + '</div><div style="font-size:10px;color:var(--text3)">' + monthName + '</div></div>'
-            + '</div>';
-          const rowsHtml = mtdFuelDl.sort((a,b)=>b.date.localeCompare(a.date)).map(d=>{
-            const fmtD = dt => new Date(dt+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-            const galBreak = [
-              d.regularGal>0?'Reg '+d.regularGal.toLocaleString()+'g':'',
-              d.premiumGal>0?'Prem '+d.premiumGal.toLocaleString()+'g':'',
-              d.dieselGal>0?'Diesel '+d.dieselGal.toLocaleString()+'g':''
-            ].filter(Boolean).join(' · ');
-            const anyDashPrice = d.priceRegular || d.pricePremium || d.priceDiesel || d.pricePerGal;
-            let dashPriceLines = [];
-            if(d.priceRegular && d.regularGal>0) dashPriceLines.push('Reg: $'+d.priceRegular.toFixed(3)+'/gal ($'+(d.costRegular||0).toFixed(2)+')');
-            if(d.pricePremium && d.premiumGal>0) dashPriceLines.push('Prem: $'+d.pricePremium.toFixed(3)+'/gal ($'+(d.costPremium||0).toFixed(2)+')');
-            if(d.priceDiesel  && d.dieselGal >0) dashPriceLines.push('Diesel: $'+d.priceDiesel.toFixed(3)+'/gal ($'+(d.costDiesel||0).toFixed(2)+')');
-            if(!dashPriceLines.length && d.pricePerGal) dashPriceLines.push('$'+d.pricePerGal.toFixed(3)+'/gal');
-            const dashFreightStr = d.freight > 0 ? ' <span style="color:var(--text3);font-size:11px">(fuel $'+(d.fuelCost||0).toFixed(2)+' + $'+d.freight.toFixed(2)+' freight)</span>' : '';
-            const priceLine = anyDashPrice
-              ? '<span style="color:var(--green);font-weight:600">' + dashPriceLines.join(' · ') + '</span>' + (d.totalCost ? ' · <strong>$'+d.totalCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</strong>' + dashFreightStr : '')
-              : '<span style="color:var(--amber);font-size:11px;font-weight:600">⏳ Price pending</span>';
-            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);gap:8px">'
-              + '<div style="flex:1;min-width:0">'
-              + '<div style="font-size:13px;font-weight:600">⛽ Fuel Delivery <span style="font-size:11px;font-weight:400;color:var(--text3)">' + fmtD(d.date) + '</span></div>'
-              + '<div style="font-size:11px;color:var(--text2)">' + galBreak + '</div>'
-              + '<div style="font-size:12px;margin-top:1px">' + priceLine + '</div>'
-              + '</div>'
-              + '<div style="text-align:right;flex-shrink:0"><div style="font-size:15px;font-weight:800">' + (d.totalGal||0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">gal</div></div>'
-              + '</div>';
-          }).join('');
-          return summaryHtml + rowsHtml;
-        })()}
       </div></div>
 
       <!-- ===== OVERHEAD & EXPENSES DASHBOARD SECTION ===== -->
