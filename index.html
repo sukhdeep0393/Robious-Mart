@@ -168,6 +168,8 @@
   .inv-chip{white-space:nowrap;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:600;}
   .inv-chip span{opacity:.6;margin-left:2px;}
   .inv-chip.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .inv-cat-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+  .inv-cat-hdr .inv-cat{margin:0;}
   .inv-cat{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px;}
   .short-over-box{border-radius:8px;padding:10px 12px;font-size:13px;font-weight:500;margin-top:8px;}
   .short-box{background:var(--red-light);color:var(--red);}
@@ -826,7 +828,6 @@
           <div class="ct" style="margin:0">Items</div>
           <div style="display:flex;gap:6px">
             <button class="bsm" id="invCatBtn" style="display:none" onclick="invCatMgrToggle()">⚙ Categories</button>
-            <button class="bsm" id="invAddBtn" style="display:none" onclick="invEditOpen('')">+ Add item</button>
           </div>
         </div>
         <div id="invCatMgr" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
@@ -837,23 +838,33 @@
             <button class="btn bprimary" style="width:auto;padding:8px 14px;font-size:13px" onclick="invCatAdd()">+ Add</button>
           </div>
         </div>
-        <div id="invEditWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <div id="invEditHome" style="display:none">
+        <div id="invEditWrap" style="display:none;background:var(--bg2);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin:4px 0 12px">
           <input type="hidden" id="invEditId" />
-          <div style="margin-bottom:8px"><label>Item name</label><input id="invEditName" placeholder="e.g. Marlboro Red carton" /></div>
+          <div class="ct" id="invEditTitle" style="margin-bottom:10px">New item</div>
+          <div style="margin-bottom:4px"><label>1. Barcode — scan the carton / case</label>
+            <div style="display:flex;gap:6px">
+              <input id="invEditCode" inputmode="numeric" autocomplete="off" placeholder="Scan or type the barcode" onkeydown="invEditCodeKey(event)" oninput="invEditCheckCode()" style="flex:1;font-family:monospace;font-size:16px" />
+              <button class="bsm" id="invEditCamBtn" style="padding:0 14px;font-size:16px" onclick="invCamOpen('edit')">📷</button>
+            </div>
+          </div>
+          <div id="invEditCodeMsg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
+          <div style="margin-bottom:8px"><label>2. Item name</label><input id="invEditName" placeholder="e.g. Marlboro Gold 100 carton" /></div>
           <div class="g2" style="margin-bottom:8px">
             <div><label>Category</label>
-              <select id="invEditCat"><option value="tobacco">Tobacco</option><option value="cigs">Cigs</option><option value="beer">Beer</option><option value="beverage">Beverages</option><option value="deli">Deli</option></select>
+              <select id="invEditCat" onchange="invEditUnitLabels()"></select>
             </div>
-            <div><label>Order up to (par)</label><input type="number" id="invEditPar" min="0" /></div>
+            <div><label id="invEditParLbl">Par (cases)</label><input type="number" id="invEditPar" min="0" /></div>
           </div>
-          <div style="margin-bottom:8px"><label>Low alert at (blank = half of par)</label><input type="number" id="invEditLow" min="0" /></div>
-          <div style="margin-bottom:10px"><label>Barcodes — one per line, add "x24" for case size (e.g. 012345678905 x24)</label>
-            <textarea id="invEditCodes" rows="3" style="width:100%;font-family:monospace;font-size:13px"></textarea>
+          <div style="margin-bottom:8px"><label id="invEditLowLbl">Low alert at (blank = half of par)</label><input type="number" id="invEditLow" min="0" /></div>
+          <div style="margin-bottom:10px"><label>Other barcodes for the same item (optional, one per line)</label>
+            <textarea id="invEditCodes" rows="2" style="width:100%;font-family:monospace;font-size:13px"></textarea>
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="invEditSave()">Save item</button>
             <button class="btn bsecondary" style="padding:10px;font-size:13px;width:auto" onclick="invEditCancel()">Cancel</button>
           </div>
+        </div>
         </div>
         <div class="inv-chips" id="invCatChips"></div>
         <input id="invItemSearch" placeholder="Search items…" oninput="invRenderItems()" style="margin-bottom:10px" />
@@ -1639,15 +1650,14 @@
           <select id="invNewLink" onchange="invNewLinkChg()"></select>
         </div>
         <div id="invNewFields">
-          <div style="margin-bottom:10px"><label>Item name</label><input id="invNewName" placeholder="e.g. Bud Light 24pk cans" /></div>
+          <div style="margin-bottom:10px"><label>Item name</label><input id="invNewName" placeholder="e.g. Bud Light 24pk cans (case)" /></div>
           <div class="g2" style="margin-bottom:10px">
             <div><label>Category</label>
               <select id="invNewCat"><option value="tobacco">Tobacco</option><option value="cigs">Cigs</option><option value="beer">Beer</option><option value="beverage">Beverages</option><option value="deli">Deli</option></select>
             </div>
-            <div><label>Order up to (par)</label><input type="number" id="invNewPar" min="0" placeholder="e.g. 48" /></div>
+            <div><label>Par (cases / cartons)</label><input type="number" id="invNewPar" min="0" placeholder="e.g. 6" /></div>
           </div>
         </div>
-        <div style="margin-bottom:12px"><label>Units this barcode represents (1 = single, 24 = a 24-pack case)</label><input type="number" id="invNewPack" min="1" value="1" /></div>
         <div style="display:flex;gap:8px">
           <button class="btn bprimary" style="flex:1;padding:11px" onclick="invNewSave()">Save &amp; add</button>
           <button class="btn bsecondary" style="padding:11px;width:auto" onclick="invNewCancel()">Cancel</button>
@@ -4317,6 +4327,9 @@ let invNewTarget='inv'; // where a newly-created/linked barcode goes: 'inv' (Sca
 function invEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 // UPC-A (12) and EAN-13 (13) differ by a leading zero; compare without leading zeros
 function invKey(code){return String(code||'').replace(/\D/g,'').replace(/^0+/,'');}
+// Inventory is counted in whole cases; cigarettes in cartons
+function invUnitWord(it,n){const w=(it&&it.category==='cigs')?'carton':'case';return n===1?w:w+'s';}
+function invCatUnits(cat){return cat==='cigs'?'cartons':'cases';}
 function invTotal(it){return (Number(it.front)||0)+(Number(it.back)||0);}
 function invLowAt(it){return (it.lowAt!=null&&it.lowAt!=='')?Number(it.lowAt):Math.floor((Number(it.par)||0)/2);}
 function invStatus(it){
@@ -4334,7 +4347,7 @@ function invReindex(){
   invItems.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   invMap={};
   invItems.forEach(it=>(it.barcodes||[]).forEach(b=>{
-    const k=invKey(b.code);if(k)invMap[k]={item:it,pack:Math.max(1,Number(b.pack)||1)};
+    const k=invKey(b.code);if(k)invMap[k]={item:it,pack:1}; // every barcode = 1 case / carton
   }));
 }
 async function loadInvItems(){
@@ -4350,8 +4363,6 @@ function invLogEntry(it,type,loc,qty,before,after){
 
 // ---- navigation ----
 async function invOpen(){
-  const ab=document.getElementById('invAddBtn');
-  if(ab)ab.style.display=(CU&&CU.role==='operator')?'':'none';
   const cb=document.getElementById('invCatBtn');if(cb)cb.style.display=(CU&&CU.role==='operator')?'':'none';
   invFillCatSelects();
   invCamInit();
@@ -4376,9 +4387,9 @@ function invView(v){
 // ---- scan mode ----
 function invHint(){
   if(invMode==='count')return invLoc==='front'
-    ?'Scan each item on the shelf or in the cooler. Every scan adds to the count. Save sets the Front total for the items you scanned.'
-    :'Scan items stored in the backroom. Every scan adds to the count. Save sets the Backroom total for the items you scanned.';
-  if(invMode==='receive')return 'Scan items from a delivery. They are added to Backroom stock.';
+    ?'Count what is out front / in the cooler, in whole cases (cigarettes: cartons). Each scan adds 1 — or type the number. Save sets the Front total for the items you scanned.'
+    :'Count the backroom in whole cases (cigarettes: cartons). Each scan adds 1 — or type the number. Save sets the Backroom total for the items you scanned.';
+  if(invMode==='receive')return 'Scan each case / carton from a delivery. Each scan adds 1 to Backroom stock.';
   if(invMode==='open')return 'Cigarette cartons only. Scan each carton as you open it. It comes off the carton count and is logged with your name and the time.';
   return 'Scan an item that is gone. It is flagged out immediately and shows on the order list and Dashboard.';
 }
@@ -4474,7 +4485,7 @@ function invRenderSess(){
   if(!invSess.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>Scan items to start</div>';foot.innerHTML='';return;}
   el.innerHTML=invSess.map(r=>{
     const it=invItems.find(x=>x.id===r.id);if(!it)return'';
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On file: Front ${Number(it.front)||0} · Back ${Number(it.back)||0}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="invSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="invRemoveRow('${r.id}')">✕</button></div>`;
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On file: Front ${Number(it.front)||0} · Back ${Number(it.back)||0} ${invUnitWord(it,2)}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="invSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="invRemoveRow('${r.id}')">✕</button></div>`;
   }).join('');
   foot.innerHTML=`<button class="btn bprimary" id="invSaveBtn" style="margin-top:12px" onclick="invSave()">${invMode==='count'?'Save count':'Save received'} (${invSess.length} item${invSess.length>1?'s':''})</button>`;
 }
@@ -4556,7 +4567,6 @@ function invNewOpen(code,target){
   sel.innerHTML='<option value="">➕ New item</option>'+invItems.map(it=>`<option value="${it.id}">${invEsc(it.name)}</option>`).join('');
   document.getElementById('invNewName').value='';
   document.getElementById('invNewPar').value='';
-  document.getElementById('invNewPack').value='1';
   document.getElementById('invNewFields').style.display='';
   if(invCatFilter)document.getElementById('invNewCat').value=invCatFilter;
   if(invMode==='open'&&invNewTarget!=='dl'&&invCats().some(c=>c.id==='cigs'))document.getElementById('invNewCat').value='cigs';
@@ -4573,13 +4583,13 @@ function invNewCancel(){
 }
 async function invNewSave(){
   const code=invPending;if(!code)return;
-  const pack=Math.max(1,parseInt(document.getElementById('invNewPack').value)||1);
+  const pack=1; // inventory is counted in whole cases / cartons
   const link=document.getElementById('invNewLink').value;
   try{
     let it;
     if(link){
       it=invItems.find(x=>x.id===link);if(!it)return;
-      const bc=[...(it.barcodes||[]),{code,pack}];
+      const bc=[...(it.barcodes||[]),{code}];
       await window.F.updateDoc(sd('inventoryItems',link),{barcodes:bc});
       it.barcodes=bc;
     }else{
@@ -4588,7 +4598,7 @@ async function invNewSave(){
       const data={
         name,category:document.getElementById('invNewCat').value,
         par:Math.max(0,parseInt(document.getElementById('invNewPar').value)||0),
-        barcodes:[{code,pack}],front:0,back:0,out:false,
+        barcodes:[{code}],front:0,back:0,out:false,
         createdAt:localDate(),createdBy:(CU&&CU.name)||''
       };
       const ref=await window.F.addDoc(sc('inventoryItems'),data);
@@ -4602,8 +4612,12 @@ async function invNewSave(){
 }
 
 // ---- items list / editor (operator edits) ----
+let invEditAnchor=null; // where the open item form sits: {type:'cat',id} or {type:'item',id}
 function invRenderItems(){
   const el=document.getElementById('invItemList');if(!el)return;
+  // park the form before re-rendering so it isn't destroyed
+  const wrap=document.getElementById('invEditWrap'),home=document.getElementById('invEditHome');
+  if(wrap&&home&&wrap.parentElement!==home)home.appendChild(wrap);
   const q=(document.getElementById('invItemSearch').value||'').toLowerCase();
   const isOp=CU&&CU.role==='operator';
   const chips=document.getElementById('invCatChips');
@@ -4612,16 +4626,33 @@ function invRenderItems(){
     return `<button class="inv-chip${invCatFilter===k?' on':''}" onclick="invSetCatFilter('${k}')">${invEsc(l)} <span>${n}</span></button>`;
   }).join('');
   const list=invItems.filter(it=>(!q||(it.name||'').toLowerCase().includes(q))&&(!invCatFilter||it.category===invCatFilter));
-  if(!list.length){
-    el.innerHTML='<div class="empty"><div class="ei">📦</div>'+(invItems.length?'No matches':'No items yet — scan a barcode to add the first one')+'</div>';
+  let cats;
+  if(isOp&&!q){
+    // operators see every category (so they can add to an empty one)
+    cats=invCats().map(c=>c.id).filter(id=>!invCatFilter||id===invCatFilter);
+    list.forEach(it=>{const c=it.category||'other';if(!cats.includes(c))cats.push(c);});
+  }else{
+    cats=[...new Set(list.map(it=>it.category||'other'))].sort((a,b)=>invCatRank(a)-invCatRank(b));
+  }
+  if(!cats.length){
+    el.innerHTML='<div class="empty"><div class="ei">📦</div>'+(invItems.length?'No matches':'No items yet')+'</div>';
     return;
   }
-  const cats=[...new Set(list.map(it=>it.category||'other'))].sort((a,b)=>invCatRank(a)-invCatRank(b));
-  el.innerHTML=cats.map(c=>`<div class="inv-cat">${invEsc(invCatName(c))}</div>`+list.filter(it=>(it.category||'other')===c).map(it=>{
-    const st=invStatus(it);
-    const badge=st==='out'?'<span class="badge bred">Out</span>':st==='low'?'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>':'';
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">Front ${Number(it.front)||0} · Back ${Number(it.back)||0}${Number(it.par)?' · Par '+Number(it.par):''}</div></div>${isOp?`<button class="bsm" onclick="invEditOpen('${it.id}')">✏️</button><button class="bdsm" onclick="invDelete('${it.id}')">✕</button>`:''}</div>`;
-  }).join('')).join('');
+  el.innerHTML=cats.map(c=>{
+    const items=list.filter(it=>(it.category||'other')===c);
+    const hdr=`<div class="inv-cat-hdr" id="invCatHdr-${invEsc(c)}"><div class="inv-cat">${invEsc(invCatName(c))} <span style="opacity:.6">${items.length}</span></div>${isOp?`<button class="bsm" onclick="invEditOpen('','${invEsc(c)}')">+ Add item</button>`:''}</div>`;
+    const rows=items.length?items.map(it=>{
+      const st=invStatus(it),tot=invTotal(it);
+      const badge=st==='out'?'<span class="badge bred">Out</span>':st==='low'?'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>':'';
+      return `<div class="irow" id="invRow-${it.id}"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)"><strong style="color:var(--text2)">${tot} ${invUnitWord(it,tot)}</strong> · Front ${Number(it.front)||0} · Back ${Number(it.back)||0}${Number(it.par)?' · Par '+Number(it.par):''}</div></div>${isOp?`<button class="bsm" onclick="invEditOpen('${it.id}')">✏️</button><button class="bdsm" onclick="invDelete('${it.id}')">✕</button>`:''}</div>`;
+    }).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No items yet</div>';
+    return hdr+rows;
+  }).join('');
+  // put the open form right under the category header (new item) or the item row (edit)
+  if(wrap&&wrap.style.display!=='none'&&invEditAnchor){
+    const anchor=document.getElementById(invEditAnchor.type==='cat'?'invCatHdr-'+invEditAnchor.id:'invRow-'+invEditAnchor.id);
+    if(anchor)anchor.after(wrap);
+  }
 }
 function invSetCatFilter(k){invCatFilter=k;invRenderItems();}
 function invFillCatSelects(){
@@ -4679,37 +4710,65 @@ async function invCatDelete(id){
   if(invCatFilter===id)invCatFilter='';
   await invSaveCats(invCats().filter(x=>x.id!==id));
 }
-function invCodesToText(it){return (it.barcodes||[]).map(b=>b.code+((Number(b.pack)||1)>1?' x'+b.pack:'')).join('\n');}
-function invParseCodes(txt){
-  const out=[];
-  for(const line of txt.split('\n')){
-    const m=line.trim().match(/^(\d+)\s*(?:[x×*]\s*(\d+))?$/i);
-    if(m)out.push({code:m[1],pack:Math.max(1,parseInt(m[2])||1)});
-    else if(line.trim())return null;
-  }
-  return out;
+function invEditUnitLabels(){
+  const u=invCatUnits(document.getElementById('invEditCat').value);
+  document.getElementById('invEditParLbl').textContent='Par ('+u+')';
+  document.getElementById('invEditLowLbl').textContent='Low alert at, in '+u+' (blank = half of par)';
 }
-function invEditOpen(id){
+function invEditCheckCode(){
+  const f=document.getElementById('invEditCode'),msg=document.getElementById('invEditCodeMsg');
+  const v=(f.value||'').replace(/\D/g,'');
+  if(!v){msg.textContent='';return true;}
+  const hit=invMap[invKey(v)],id=document.getElementById('invEditId').value;
+  if(hit&&hit.item.id!==id){msg.style.color='var(--red)';msg.textContent='⚠ Already used by "'+hit.item.name+'"';return false;}
+  msg.style.color='var(--green)';msg.textContent='✓ Barcode '+v;
+  return true;
+}
+function invEditCodeKey(e){
+  if(e.key!=='Enter')return;
+  e.preventDefault();
+  if(invEditCheckCode())document.getElementById('invEditName').focus();
+}
+function invEditOpen(id,cat){
   const it=id?invItems.find(x=>x.id===id):null;
+  const catId=it?(it.category||invCats()[0].id):(cat||invCatFilter||invCats()[0].id);
+  invEditAnchor=it?{type:'item',id}:{type:'cat',id:catId};
+  invFillCatSelects();
+  const codes=it?(it.barcodes||[]).map(b=>String(b.code)):[];
   document.getElementById('invEditId').value=id||'';
+  document.getElementById('invEditTitle').textContent=it?'Edit item':'New '+invCatName(catId)+' item';
+  document.getElementById('invEditCode').value=codes[0]||'';
+  document.getElementById('invEditCodes').value=codes.slice(1).join('\n');
   document.getElementById('invEditName').value=it?it.name||'':'';
-  document.getElementById('invEditCat').value=it?it.category||invCats()[0].id:(invCatFilter||invCats()[0].id);
+  const sel=document.getElementById('invEditCat');
+  sel.value=invCats().some(c=>c.id===catId)?catId:invCats()[0].id;
   document.getElementById('invEditPar').value=it&&it.par?it.par:'';
   document.getElementById('invEditLow').value=it&&it.lowAt!=null?it.lowAt:'';
-  document.getElementById('invEditCodes').value=it?invCodesToText(it):'';
+  document.getElementById('invEditCodeMsg').textContent='';
+  invEditUnitLabels();
   document.getElementById('invEditWrap').style.display='block';
-  document.getElementById('invEditName').focus();
+  invRenderItems();
+  const w=document.getElementById('invEditWrap');if(w.scrollIntoView)w.scrollIntoView({block:'nearest',behavior:'smooth'});
+  document.getElementById(it?'invEditName':'invEditCode').focus();
 }
-function invEditCancel(){document.getElementById('invEditWrap').style.display='none';}
+function invEditCancel(){
+  document.getElementById('invEditWrap').style.display='none';
+  invEditAnchor=null;
+}
 async function invEditSave(){
   const id=document.getElementById('invEditId').value;
   const name=document.getElementById('invEditName').value.trim();
-  if(!name){toast('Enter an item name');return;}
-  const codes=invParseCodes(document.getElementById('invEditCodes').value);
-  if(codes===null){toast('Barcodes: digits only, one per line (optional "x24")');return;}
-  for(const c of codes){
-    const hit=invMap[invKey(c.code)];
-    if(hit&&hit.item.id!==id){toast(c.code+' already belongs to '+hit.item.name);return;}
+  const main=(document.getElementById('invEditCode').value||'').replace(/\s/g,'');
+  const extra=document.getElementById('invEditCodes').value.split('\n').map(s=>s.replace(/\s/g,'')).filter(Boolean);
+  const all=[...(main?[main]:[]),...extra];
+  if(all.some(c=>!/^\d{6,}$/.test(c))){toast('Barcodes must be digits only (at least 6)');return;}
+  if(!name){toast('Enter an item name');document.getElementById('invEditName').focus();return;}
+  const seen=new Set(),codes=[];
+  for(const c of all){
+    const k=invKey(c);if(seen.has(k))continue;seen.add(k);
+    const hit=invMap[k];
+    if(hit&&hit.item.id!==id){toast(c+' already belongs to '+hit.item.name);return;}
+    codes.push({code:c});
   }
   const lowTxt=document.getElementById('invEditLow').value.trim();
   const data={
@@ -4751,7 +4810,7 @@ const INV_ZX_SRI='sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMY
 let invCam={target:'inv',running:false,stream:null,timer:null,reader:null,busy:false,last:'',lastSeen:0,count:0,audio:null};
 function invCamInit(){
   const ok=navigator.mediaDevices&&navigator.mediaDevices.getUserMedia;
-  ['invCamBtn','dlCamBtn'].forEach(id=>{const b=document.getElementById(id);if(b&&ok)b.style.display='';});
+  ['invCamBtn','dlCamBtn','invEditCamBtn'].forEach(id=>{const b=document.getElementById(id);if(b&&ok)b.style.display='';});
 }
 function invLoadZX(){
   if(window.ZXing)return Promise.resolve();
@@ -4818,13 +4877,19 @@ function invCamHit(raw){
   if(same&&gap<900)return;
   const hit=invMap[invKey(code)];
   const tgt=invCam.target;
+  if(tgt==='edit'){
+    invCamFeedback();invCamClose();
+    document.getElementById('invEditCode').value=code;
+    if(invEditCheckCode())document.getElementById('invEditName').focus();
+    return;
+  }
   if(!hit){invCamClose();invOnBarcode(code,tgt);return;}
   invCamFeedback();
   invCam.count++;
   invRoute(hit.item,hit.pack,tgt);
   const r=(tgt==='dl'?dlStock:invSess).find(x=>x.id===hit.item.id);
   document.getElementById('upcResultName').textContent=hit.item.name;
-  document.getElementById('upcResultCode').textContent=(tgt!=='dl'&&invMode==='out')?'Flagged out':(tgt!=='dl'&&invMode==='open')?'Carton logged':('+'+hit.pack+(r?' · total '+r.qty:''));
+  document.getElementById('upcResultCode').textContent=(tgt!=='dl'&&invMode==='out')?'Flagged out':(tgt!=='dl'&&invMode==='open')?'Carton logged':('+1 '+invUnitWord(hit.item,1)+(r?' · total '+r.qty+' '+invUnitWord(hit.item,r.qty):''));
   document.getElementById('upcResult').style.display='block';
   invCamStatus('✓ '+invCam.count+' scanned — move the item away to scan another');
 }
@@ -4886,7 +4951,7 @@ function dlStockRender(){
   const el=document.getElementById('dlStockList');if(!el)return;
   el.innerHTML=dlStock.map(r=>{
     const it=invItems.find(x=>x.id===r.id);if(!it)return'';
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On hand: Front ${Number(it.front)||0} · Back ${Number(it.back)||0}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="dlStockSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="dlStockRemove('${r.id}')">✕</button></div>`;
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On hand: Front ${Number(it.front)||0} · Back ${Number(it.back)||0} ${invUnitWord(it,2)}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="dlStockSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="dlStockRemove('${r.id}')">✕</button></div>`;
   }).join('');
 }
 // Build the batch that saves the delivery and adds its stock in one atomic write
@@ -4999,17 +5064,17 @@ function invRenderOrder(){
     const it=r.it,back=Number(it.back)||0,front=Number(it.front)||0;
     const badge=it.out?'<span class="badge bred">Out</span>':'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>';
     let right;
-    if(r.need>0)right=`<div style="font-size:18px;font-weight:700;color:var(--text)">${r.need}</div><div style="font-size:10px;color:var(--text3)">to order</div>`;
+    if(r.need>0)right=`<div style="font-size:18px;font-weight:700;color:var(--text)">${r.need}</div><div style="font-size:10px;color:var(--text3)">${invUnitWord(it,r.need)} to order</div>`;
     else right='<div style="font-size:12px;color:var(--text3)">no order</div>';
-    const note=(back>0&&it.out)?`<div style="font-size:12px;color:var(--amber);margin-top:2px">📦 ${back} in backroom — restock the shelf before ordering</div>`:(!Number(it.par)?'<div style="font-size:12px;color:var(--text3);margin-top:2px">Set a par level to get an order quantity</div>':'');
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">Front ${front} · Back ${back}${Number(it.par)?' · Par '+Number(it.par):''}</div>${note}</div><div style="text-align:right;flex-shrink:0">${right}</div></div>`;
+    const note=(back>0&&it.out)?`<div style="font-size:12px;color:var(--amber);margin-top:2px">📦 ${back} ${invUnitWord(it,back)} in backroom — restock the shelf before ordering</div>`:(!Number(it.par)?'<div style="font-size:12px;color:var(--text3);margin-top:2px">Set a par level to get an order quantity</div>':'');
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">Front ${front} · Back ${back} ${invUnitWord(it,2)}${Number(it.par)?' · Par '+Number(it.par):''}</div>${note}</div><div style="text-align:right;flex-shrink:0">${right}</div></div>`;
   }).join('')).join('');
 }
 function invCopyOrder(){
   const rows=invOrderRows().filter(r=>r.need>0);
   if(!rows.length){toast('Nothing to copy');return;}
   const cats=[...new Set(rows.map(r=>r.it.category||'other'))];
-  const txt=cats.map(c=>invCatName(c)+':\n'+rows.filter(r=>(r.it.category||'other')===c).map(r=>'- '+r.it.name+': '+r.need).join('\n')).join('\n\n');
+  const txt=cats.map(c=>invCatName(c)+':\n'+rows.filter(r=>(r.it.category||'other')===c).map(r=>'- '+r.it.name+': '+r.need+' '+invUnitWord(r.it,r.need)).join('\n')).join('\n\n');
   navigator.clipboard.writeText(txt).then(()=>toast('✓ Order list copied')).catch(()=>{prompt('Copy this order list:',txt);});
 }
 
