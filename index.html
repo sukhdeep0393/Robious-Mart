@@ -162,6 +162,8 @@
   .inv-sug span{color:var(--text3);font-size:12px;}
   .inv-code{font-family:monospace;font-size:13px;background:var(--bg2);padding:6px 10px;border-radius:8px;margin-bottom:10px;display:inline-block;}
   .inv-qty{width:72px;text-align:center;padding:8px;flex-shrink:0;}
+  .inv-sheet{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;overflow:auto;}
+  .inv-sheet .card{width:100%;max-width:420px;max-height:92vh;overflow:auto;margin:0;}
   .inv-chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
   .inv-chip{white-space:nowrap;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:600;}
   .inv-chip span{opacity:.6;margin-left:2px;}
@@ -305,11 +307,6 @@
   .upc-actions{display:flex;gap:10px;justify-content:center;}
   .upc-btn{height:44px;border-radius:22px;padding:0 20px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
 
-  /* CAMERA SCANNER */
-  #scannerVideo{width:100%;flex:1;object-fit:cover;display:block;}
-  /* Dark vignette around edges */
-  /* Corner bracket guides */
-  /* UPC BARCODE SCANNER */
   #upcScannerModal{position:fixed;inset:0;background:#000;z-index:600;display:none;flex-direction:column;}
   #upcScannerModal.open{display:flex;}
   #upcVideo{width:100%;flex:1;object-fit:cover;display:block;}
@@ -326,70 +323,10 @@
   .upc-actions{display:flex;gap:10px;justify-content:center;}
   .upc-btn{height:44px;border-radius:22px;padding:0 20px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
 
-  /* CAMERA SCANNER */
-  #scannerVideo{width:100%;flex:1;object-fit:cover;display:block;}
-  /* Dark vignette around edges */
-  /* Corner bracket guides */
-  .scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);width:82%;max-width:340px;aspect-ratio:3/4;}
-  .scan-corner{position:absolute;width:26px;height:26px;border-color:#fff;border-style:solid;}
-  .scan-corner.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
-  .scan-corner.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
-  .scan-corner.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
-  .scan-corner.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
-  /* Scanning laser line animation */
-  .scan-laser{position:absolute;left:3px;right:3px;height:2px;background:linear-gradient(90deg,transparent,rgba(26,92,168,.9),rgba(99,179,255,1),rgba(26,92,168,.9),transparent);border-radius:1px;box-shadow:0 0 8px 2px rgba(99,179,255,.6);animation:laserSweep 2s ease-in-out infinite;}
-  @keyframes laserSweep{0%{top:8%}50%{top:88%}100%{top:8%}}
-  .scanner-bar{background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:16px 20px 32px;display:flex;flex-direction:column;gap:14px;flex-shrink:0;}
-  .scanner-hint{color:rgba(255,255,255,.65);font-size:12px;text-align:center;line-height:1.5;}
-  .scanner-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .scan-close-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;}
-  .scan-shutter{width:68px;height:68px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(255,255,255,.18);transition:transform .1s;}
-  .scan-shutter:active{transform:scale(.92);}
-  .scan-shutter-inner{width:52px;height:52px;border-radius:50%;background:#fff;border:2px solid #ddd;}
-  .scan-done-btn{min-width:44px;height:44px;border-radius:22px;padding:0 16px;background:var(--blue);border:none;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;}
-  .scan-done-btn:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.4);}
-  .scan-captures{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
-  .scan-captures::-webkit-scrollbar{display:none;}
-  .scan-thumb-wrap{position:relative;flex-shrink:0;}
-  .scan-thumb{width:52px;height:68px;object-fit:cover;border-radius:6px;border:2px solid rgba(255,255,255,.4);display:block;}
-  .scan-thumb-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;border:none;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
-  .scan-page-num{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;padding:1px 4px;}
-  /* Flash animation on capture */
-  .scan-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;border-radius:0;}
-  @keyframes flashFade{0%{opacity:.85}100%{opacity:0}}
-  .scan-flash.flash{animation:flashFade .25s ease-out forwards;}
-  /* Capture badge on uzone */
-  .inv-mode-tabs{display:flex;gap:8px;margin-bottom:14px;}
-  .inv-mode-tab{flex:1;padding:10px;border-radius:var(--r);font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--bg2);color:var(--text2);text-align:center;cursor:pointer;}
-  .inv-mode-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .scan-count-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;margin-left:6px;}
 
   /* SIGNUP SCREEN */
   #signupScreen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:30px 24px;}
 
-  /* ---- Invoice Scan styles ---- */
-  .inv-scan-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;}
-  .inv-scan-btn:active{background:var(--blue-dark);}
-  .inv-scan-loading{text-align:center;padding:28px 0}
-  .inv-scan-spinner{width:32px;height:32px;border:3px solid rgba(26,92,168,.2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
-  .inv-scan-status{font-size:14px;color:var(--text2);font-weight:500}
-  .inv-alert{padding:10px 14px;border-radius:var(--r);font-size:13px;font-weight:600;margin-bottom:8px}
-  .inv-alert-warn{background:var(--amber-light);color:var(--amber)}
-  .inv-alert-info{background:var(--blue-light);color:var(--blue)}
-  .inv-line-item{background:var(--bg2);border-radius:var(--r);padding:12px;border-left:3px solid var(--border)}
-  .inv-line-item.is-new{border-left-color:var(--blue)}
-  .inv-line-item.is-changed{border-left-color:var(--amber)}
-  .inv-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
-  .inv-badge-warn{background:var(--amber-light);color:var(--amber)}
-  .inv-badge-new{background:var(--blue-light);color:var(--blue)}
-  .inv-badge-ok{background:var(--green-light);color:var(--green)}
-  .inv-metric{display:flex;flex-direction:column;gap:1px}
-  .inv-metric span{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-  .inv-metric strong{font-size:13px;font-weight:700;color:var(--text)}
-  .inv-header-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-  .inv-header-item span{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
-  .inv-header-item strong{font-size:14px;font-weight:700;color:var(--text)}
-  .inv-scan-or{text-align:center;color:var(--text3);font-size:12px;font-weight:500;margin:8px 0}
 
 </style>
 </head>
@@ -873,28 +810,6 @@
         <div id="invSuggest"></div>
       </div>
 
-      <div class="card" id="invNewCard" style="display:none">
-        <div class="ct">New barcode</div>
-        <div class="inv-code" id="invNewCode"></div>
-        <div style="margin-bottom:10px"><label>Link to</label>
-          <select id="invNewLink" onchange="invNewLinkChg()"></select>
-        </div>
-        <div id="invNewFields">
-          <div style="margin-bottom:10px"><label>Item name</label><input id="invNewName" placeholder="e.g. Bud Light 24pk cans" /></div>
-          <div class="g2" style="margin-bottom:10px">
-            <div><label>Category</label>
-              <select id="invNewCat"><option value="tobacco">Tobacco</option><option value="cigs">Cigs</option><option value="beer">Beer</option><option value="beverage">Beverages</option><option value="deli">Deli</option></select>
-            </div>
-            <div><label>Order up to (par)</label><input type="number" id="invNewPar" min="0" placeholder="e.g. 48" /></div>
-          </div>
-        </div>
-        <div style="margin-bottom:12px"><label>Units this barcode represents (1 = single, 24 = a 24-pack case)</label><input type="number" id="invNewPack" min="1" value="1" /></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bprimary" style="flex:1;padding:11px" onclick="invNewSave()">Save &amp; add</button>
-          <button class="btn bsecondary" style="padding:11px;width:auto" onclick="invNewCancel()">Cancel</button>
-        </div>
-      </div>
-
       <div class="card" id="invSessCard">
         <div class="ct" id="invSessTitle">Scanned</div>
         <div id="invSessList"></div>
@@ -1154,51 +1069,6 @@
   <!-- DELIVERY LOG (all roles) -->
   <div class="page" id="page-deliveries">
 
-    <!-- Invoice Scan Card -->
-    <div class="card">
-      <div class="ct" style="margin-bottom:6px">📷 Scan Invoice</div>
-      <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.5">Select the vendor, then scan the invoice — AI reads line items, flags price changes, and updates your Price Book automatically.</p>
-
-      <!-- Vendor selector -->
-      <div style="margin-bottom:12px">
-        <label style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">Vendor</label>
-        <select id="inv-vendor-sel" style="width:100%;padding:11px 12px;border-radius:var(--r);border:1px solid var(--border);font-size:14px;background:var(--bg2);color:var(--text)" onchange="onInvVendorChange()">
-          <option value="">— Select vendor —</option>
-        </select>
-        <div id="inv-vendor-new-wrap" style="display:none;margin-top:8px;display:none">
-          <input id="inv-vendor-new" placeholder="New vendor name..." style="width:100%;padding:10px 12px;border-radius:var(--r);border:1px solid var(--blue);font-size:14px;box-sizing:border-box" />
-        </div>
-      </div>
-
-      <button class="inv-scan-btn" onclick="startInvoiceScan()">
-        <span style="font-size:18px">📷</span> Scan Invoice
-      </button>
-      <!-- Fallback file upload -->
-      <div class="inv-scan-or">or</div>
-      <label for="inv-scan-input" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;box-sizing:border-box">
-        <span>🖼</span> Upload photo instead
-      </label>
-      <input type="file" id="inv-scan-input" accept="image/*" multiple style="display:none" onchange="handleInvoiceScanFiles(this.files)">
-    </div>
-
-    <!-- Invoice Scan Review Panel (shown after scan) -->
-    <div id="inv-scan-panel" style="display:none" class="card">
-      <div id="inv-scan-loading" class="inv-scan-loading" style="display:none">
-        <div class="inv-scan-spinner"></div>
-        <div class="inv-scan-status">Reading invoice...</div>
-      </div>
-      <div id="inv-scan-review"></div>
-    </div>
-
-    <!-- Invoice History -->
-    <div class="card" id="invHistoryCard" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="ct" style="margin:0">📁 Invoice History</div>
-        <button onclick="loadInvoiceHistory()" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">Refresh</button>
-      </div>
-      <div id="invHistoryList"><div class="empty"><div class="ei">📋</div>No scanned invoices yet</div></div>
-    </div>
-
     <!-- Add delivery form -->
     <div class="card">
       <div class="ct">Log a delivery manually</div>
@@ -1249,6 +1119,17 @@
       <div style="margin-bottom:10px">
         <label>Items delivered (free text)</label>
         <textarea id="del-items" rows="3" placeholder="e.g. Bud Light 24pk ×4, Miller Lite 12pk ×6, Coors Light ×3..."></textarea>
+      </div>
+
+      <div style="margin-bottom:12px;background:var(--bg2);border-radius:var(--r);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">📦 Add to inventory (optional)</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Scan what arrived. When you save the delivery, these are added to Backroom stock.</div>
+        <div style="display:flex;gap:6px">
+          <input id="dlStockScan" autocomplete="off" placeholder="Scan barcode or type item name…" onkeydown="dlStockKey(event)" oninput="dlStockInput()" style="flex:1;font-size:16px" />
+          <button class="bsm" id="dlCamBtn" style="display:none;padding:0 14px;font-size:16px" onclick="invCamOpen('dl')">📷</button>
+        </div>
+        <div id="dlStockSuggest"></div>
+        <div id="dlStockList"></div>
       </div>
 
       <div style="margin-bottom:12px">
@@ -1734,6 +1615,31 @@
     <div id="mc-loading" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:13px;">Loading monthly data…</div>
     <div id="mc-content"></div>
   </div><!-- /page-monthlycomp -->
+
+<!-- NEW BARCODE SHEET (shared by Inventory Scan + Deliveries) -->
+<div class="inv-sheet" id="invNewSheet">
+      <div class="card" id="invNewCard">
+        <div class="ct">New barcode</div>
+        <div class="inv-code" id="invNewCode"></div>
+        <div style="margin-bottom:10px"><label>Link to</label>
+          <select id="invNewLink" onchange="invNewLinkChg()"></select>
+        </div>
+        <div id="invNewFields">
+          <div style="margin-bottom:10px"><label>Item name</label><input id="invNewName" placeholder="e.g. Bud Light 24pk cans" /></div>
+          <div class="g2" style="margin-bottom:10px">
+            <div><label>Category</label>
+              <select id="invNewCat"><option value="tobacco">Tobacco</option><option value="cigs">Cigs</option><option value="beer">Beer</option><option value="beverage">Beverages</option><option value="deli">Deli</option></select>
+            </div>
+            <div><label>Order up to (par)</label><input type="number" id="invNewPar" min="0" placeholder="e.g. 48" /></div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px"><label>Units this barcode represents (1 = single, 24 = a 24-pack case)</label><input type="number" id="invNewPack" min="1" value="1" /></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:11px" onclick="invNewSave()">Save &amp; add</button>
+          <button class="btn bsecondary" style="padding:11px;width:auto" onclick="invNewCancel()">Cancel</button>
+        </div>
+      </div>
+</div>
 
 <!-- UPC BARCODE SCANNER MODAL -->
 <div id="upcScannerModal">
@@ -4392,6 +4298,7 @@ function invCatName(k){const c=invCats().find(x=>x.id===k);return c?c.name:((k&&
 let invCatFilter='';
 let invItems=[], invMap={}, invMode='count', invLoc='front', invSess=[], invPending='', invOutLog=[], invCurView='scan';
 
+let invNewTarget='inv'; // where a newly-created/linked barcode goes: 'inv' (Scan view) or 'dl' (delivery form)
 function invEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 // UPC-A (12) and EAN-13 (13) differ by a leading zero; compare without leading zeros
 function invKey(code){return String(code||'').replace(/\D/g,'').replace(/^0+/,'');}
@@ -4509,10 +4416,12 @@ function invPick(id){
   if(it)invApply(it,1);
   invFocus();
 }
-function invOnBarcode(code){
+function invRoute(it,qty,target){if(target==='dl')dlStockAdd(it,qty);else invApply(it,qty);}
+function invOnBarcode(code,target){
+  target=target||'inv';
   const hit=invMap[invKey(code)];
-  if(hit){invApply(hit.item,hit.pack);return;}
-  invNewOpen(code);
+  if(hit){invRoute(hit.item,hit.pack,target);return;}
+  invNewOpen(code,target);
 }
 function invApply(it,qty){
   if(invMode==='out'){invMarkOut(it);return;}
@@ -4613,7 +4522,8 @@ async function invUndoOut(id){
 }
 
 // ---- unknown barcode: create item or link to an existing one ----
-function invNewOpen(code){
+function invNewOpen(code,target){
+  invNewTarget=target||'inv';
   invPending=code;
   document.getElementById('invNewCode').textContent=code;
   const sel=document.getElementById('invNewLink');
@@ -4623,7 +4533,7 @@ function invNewOpen(code){
   document.getElementById('invNewPack').value='1';
   document.getElementById('invNewFields').style.display='';
   if(invCatFilter)document.getElementById('invNewCat').value=invCatFilter;
-  document.getElementById('invNewCard').style.display='';
+  document.getElementById('invNewSheet').style.display='flex';
   document.getElementById('invNewName').focus();
 }
 function invNewLinkChg(){
@@ -4631,7 +4541,7 @@ function invNewLinkChg(){
 }
 function invNewCancel(){
   invPending='';
-  const c=document.getElementById('invNewCard');if(c)c.style.display='none';
+  const c=document.getElementById('invNewSheet');if(c)c.style.display='none';
   invFocus();
 }
 async function invNewSave(){
@@ -4658,8 +4568,9 @@ async function invNewSave(){
       it={id:ref.id,...data};invItems.push(it);
     }
     invReindex();
+    const tgt=invNewTarget;
     invNewCancel();
-    invApply(it,pack);
+    invRoute(it,pack,tgt);
   }catch(e){console.error(e);toast('Error saving item');}
 }
 
@@ -4810,10 +4721,10 @@ async function invDelete(id){
 // Uses the browser's built-in BarcodeDetector when available (Android Chrome), otherwise a pinned ZXing build loaded on demand (iPhone Safari etc.).
 const INV_ZX_URL='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
 const INV_ZX_SRI='sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMYXOg9+n6sB';
-let invCam={running:false,stream:null,timer:null,reader:null,busy:false,last:'',lastSeen:0,count:0,audio:null};
+let invCam={target:'inv',running:false,stream:null,timer:null,reader:null,busy:false,last:'',lastSeen:0,count:0,audio:null};
 function invCamInit(){
-  const b=document.getElementById('invCamBtn');
-  if(b&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)b.style.display='';
+  const ok=navigator.mediaDevices&&navigator.mediaDevices.getUserMedia;
+  ['invCamBtn','dlCamBtn'].forEach(id=>{const b=document.getElementById(id);if(b&&ok)b.style.display='';});
 }
 function invLoadZX(){
   if(window.ZXing)return Promise.resolve();
@@ -4825,8 +4736,9 @@ function invLoadZX(){
   });
 }
 function invCamStatus(t){const el=document.getElementById('upcStatus');if(el)el.textContent=t;}
-async function invCamOpen(){
+async function invCamOpen(target){
   if(invCam.running)return;
+  invCam.target=target||'inv';
   if(!window.isSecureContext){toast('Camera needs a secure (https) page');return;}
   invCam.running=true;invCam.count=0;invCam.last='';invCam.lastSeen=0;
   document.getElementById('upcResult').style.display='none';
@@ -4878,13 +4790,14 @@ function invCamHit(raw){
   // the same barcode must leave the view (>0.9s gap) before it counts again
   if(same&&gap<900)return;
   const hit=invMap[invKey(code)];
-  if(!hit){invCamClose();invOnBarcode(code);return;}
+  const tgt=invCam.target;
+  if(!hit){invCamClose();invOnBarcode(code,tgt);return;}
   invCamFeedback();
   invCam.count++;
-  invApply(hit.item,hit.pack);
-  const r=invSess.find(x=>x.id===hit.item.id);
+  invRoute(hit.item,hit.pack,tgt);
+  const r=(tgt==='dl'?dlStock:invSess).find(x=>x.id===hit.item.id);
   document.getElementById('upcResultName').textContent=hit.item.name;
-  document.getElementById('upcResultCode').textContent=invMode==='out'?'Flagged out':('+'+hit.pack+(r?' · total '+r.qty:''));
+  document.getElementById('upcResultCode').textContent=(tgt!=='dl'&&invMode==='out')?'Flagged out':('+'+hit.pack+(r?' · total '+r.qty:''));
   document.getElementById('upcResult').style.display='block';
   invCamStatus('✓ '+invCam.count+' scanned — move the item away to scan another');
 }
@@ -4904,10 +4817,69 @@ function invCamClose(){
   const v=document.getElementById('upcVideo');
   if(v){try{v.pause();}catch(e){}v.srcObject=null;}
   const m=document.getElementById('upcScannerModal');if(m)m.classList.remove('open');
-  invRenderSess();invFocus();
+  invRenderSess();invFocus();dlStockRender();
 }
 function closeUpcScanner(){invCamClose();}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&invCam.running)invCamClose();});
+
+// ---- DELIVERY -> INVENTORY (stock received) ----
+let dlStock=[]; // [{id,qty}] scanned on the Deliveries form, applied when the delivery is saved
+async function dlStockInit(){
+  await loadInvItems();
+  invFillCatSelects();invCamInit();dlStockRender();
+}
+function dlStockFocus(){
+  if(window.matchMedia&&matchMedia('(pointer:fine)').matches){const i=document.getElementById('dlStockScan');if(i)i.focus();}
+}
+function dlStockKey(e){
+  if(e.key!=='Enter')return;
+  e.preventDefault();
+  const el=e.target,v=el.value.trim();if(!v)return;
+  if(/^\d{6,}$/.test(v)){el.value='';document.getElementById('dlStockSuggest').innerHTML='';invOnBarcode(v,'dl');return;}
+  const m=invSearch(v);
+  if(m.length)dlStockPick(m[0].id);else toast('No match — scan a barcode to add the item');
+}
+function dlStockInput(){
+  const v=document.getElementById('dlStockScan').value.trim(),box=document.getElementById('dlStockSuggest');
+  if(!v||/^\d+$/.test(v)){box.innerHTML='';return;}
+  box.innerHTML=invSearch(v).map(it=>`<button class="inv-sug" onclick="dlStockPick('${it.id}')">${invEsc(it.name)} <span>${invEsc(invCatName(it.category))}</span></button>`).join('');
+}
+function dlStockPick(id){
+  document.getElementById('dlStockScan').value='';document.getElementById('dlStockSuggest').innerHTML='';
+  const it=invItems.find(x=>x.id===id);if(it)dlStockAdd(it,1);
+}
+function dlStockAdd(it,qty){
+  const r=dlStock.find(x=>x.id===it.id);
+  if(r)r.qty+=qty;else dlStock.unshift({id:it.id,qty});
+  dlStockRender();dlStockFocus();
+}
+function dlStockSetQty(id,v){const r=dlStock.find(x=>x.id===id);if(r)r.qty=Math.max(0,parseInt(v)||0);}
+function dlStockRemove(id){dlStock=dlStock.filter(x=>x.id!==id);dlStockRender();dlStockFocus();}
+function dlStockRender(){
+  const el=document.getElementById('dlStockList');if(!el)return;
+  el.innerHTML=dlStock.map(r=>{
+    const it=invItems.find(x=>x.id===r.id);if(!it)return'';
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On hand: Front ${Number(it.front)||0} · Back ${Number(it.back)||0}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="dlStockSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="dlStockRemove('${r.id}')">✕</button></div>`;
+  }).join('');
+}
+// Build the batch that saves the delivery and adds its stock in one atomic write
+async function dlSaveWithStock(payload,rows){
+  const b=window.F.writeBatch(window.db);
+  const dref=window.F.doc(sc('deliveries'));
+  b.set(dref,{...payload,stock:rows.map(r=>({id:r.id,name:r.name,qty:r.qty})),stockApplied:true});
+  const touched=[];
+  rows.forEach(r=>{
+    const it=invItems.find(x=>x.id===r.id);if(!it)return;
+    const before=Number(it.back)||0;
+    const upd={back:window.F.increment(r.qty)};
+    if(it.out)upd.out=false;
+    b.update(sd('inventoryItems',r.id),upd);
+    b.set(window.F.doc(sc('inventoryLog')),{...invLogEntry(it,'receive','back',r.qty,before,before+r.qty),deliveryId:dref.id,vendor:payload.vendor,invoice:payload.invoiceNumber||''});
+    touched.push({it,after:before+r.qty});
+  });
+  await b.commit();
+  touched.forEach(t=>{t.it.back=t.after;t.it.out=false;});
+}
 
 // ---- order list ----
 function invOrderRows(){
@@ -8572,14 +8544,8 @@ async function initDeliveries(){
   }
   await loadDlCategories();
   await loadDlVendors();
-  populateInvVendorDropdown();
+  dlStockInit();
   loadDeliveries();
-  // Show invoice history for operators/leads
-  const histCard = document.getElementById('invHistoryCard');
-  if(histCard && CU?.role!=='employee') {
-    histCard.style.display='block';
-    loadInvoiceHistory();
-  }
 }
 
 async function loadDlVendors(){
@@ -8592,7 +8558,6 @@ async function loadDlVendors(){
     renderDlVendorList();
     populateDlVendorDropdowns();
     populateVendorCatSelects();
-    populateInvVendorDropdown();
   }catch(e){ console.error('loadDlVendors',e); }
 }
 
@@ -8848,11 +8813,11 @@ async function submitDelivery(){
   const selVendor = document.getElementById('del-vendor-sel')?.value;
   const newVendor = document.getElementById('del-vendor-new')?.value.trim();
   const vendor    = selVendor || newVendor;
-  if(!vendor){ toast('Select or enter a vendor'); return; }
+  if(!vendor){ toast('Select or enter a vendor'); if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save delivery';} return; }
 
   const amount = parseFloat(document.getElementById('del-amount')?.value)||0;
   const date   = document.getElementById('del-date')?.value || localDate();
-  if(!amount){ toast('Enter a total amount'); return; }
+  if(!amount){ toast('Enter a total amount'); if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save delivery';} return; }
 
   const btn = document.querySelector('#page-deliveries .bprimary');
   if(btn){ btn.innerHTML='<span class="spinner"></span>Saving...'; btn.disabled=true; }
@@ -8867,7 +8832,7 @@ async function submitDelivery(){
       }
     }
 
-    await window.F.addDoc(sc('deliveries'),{
+    const dlPayload={
       vendor,
       date,
       invoiceNumber: document.getElementById('del-invnum')?.value.trim()||'',
@@ -8879,9 +8844,14 @@ async function submitDelivery(){
       notes:   document.getElementById('del-notes')?.value.trim()||'',
       employee: CU.name,
       timestamp: window.F.serverTimestamp()
-    });
+    };
+    // Items scanned into "Add to inventory" are saved atomically with the delivery
+    const stockRows=dlStock.filter(r=>r.qty>0).map(r=>{const it=invItems.find(x=>x.id===r.id);return it?{id:it.id,name:it.name,qty:r.qty}:null;}).filter(Boolean);
+    if(stockRows.length)await dlSaveWithStock(dlPayload,stockRows);
+    else await window.F.addDoc(sc('deliveries'),dlPayload);
+    dlStock=[];dlStockRender();
 
-    toast('✓ Delivery logged!');
+    toast(stockRows.length?'✓ Delivery logged — '+stockRows.length+' item'+(stockRows.length>1?'s':'')+' added to inventory':'✓ Delivery logged!');
     // Reset form
     ['del-invnum','del-amount','del-items','del-notes','del-due'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
     document.getElementById('del-vendor-sel').value='';
@@ -8893,235 +8863,6 @@ async function submitDelivery(){
     loadDeliveries();
   }catch(e){ toast('Error saving delivery'); console.error(e); }
   finally{ if(_btn){_btn.disabled=false;_btn.innerHTML=_orig||'Save delivery';} }
-}
-
-// ---- INVOICE SCAN ----
-let invoiceScanResult = null;
-
-// Converts image to high-contrast grayscale — makes thermal paper text much
-// crisper for Claude vision (black ink on white background, boosted contrast)
-function preprocessInvoiceImage(file) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      // Cap at 1800px wide — enough detail without huge payload
-      const ratio  = Math.min(1, 1800 / img.width);
-      const w = Math.round(img.width  * ratio);
-      const h = Math.round(img.height * ratio);
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      // Grayscale + contrast boost via pixel manipulation
-      const id = ctx.getImageData(0, 0, w, h);
-      const d  = id.data;
-      for (let i = 0; i < d.length; i += 4) {
-        // Luminance grayscale
-        const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-        // Boost contrast: push values toward 0 or 255
-        const boosted = Math.min(255, Math.max(0, (gray - 128) * 1.6 + 128));
-        d[i] = d[i+1] = d[i+2] = boosted;
-      }
-      ctx.putImageData(id, 0, 0);
-      URL.revokeObjectURL(url);
-      res(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
-    };
-    img.onerror = rej;
-    img.src = url;
-  });
-}
-
-async function handleInvoiceScanFile(file) {
-  // Legacy single-file path — redirect through new multi-image handler
-  if (!file) return;
-  const vendor = getInvVendor();
-  if (!vendor) { toast('Select a vendor first'); return; }
-  _scanVendor = vendor;
-  const b64 = await preprocessInvoiceImage(file);
-  await handleInvoiceScanImages([b64], vendor);
-}
-
-function renderInvoiceReview(inv) {
-  const review  = document.getElementById('inv-scan-review');
-  const changed = inv.lineItems.filter(i=>i.priceChange);
-  const added   = inv.lineItems.filter(i=>i.isNew);
-
-  let alertsHtml = '';
-  if (changed.length) alertsHtml += `<div class="inv-alert inv-alert-warn">⚠️ ${changed.length} price increase${changed.length>1?'s':''} detected</div>`;
-  if (added.length)   alertsHtml += `<div class="inv-alert inv-alert-info">✨ ${added.length} new product${added.length>1?'s':''} will be added to Price Book</div>`;
-
-  const itemsHtml = inv.lineItems.map((item,i)=>{
-    const cpu = item.cost && item.unitsPerCase > 1 ? (item.cost / item.unitsPerCase).toFixed(2) : null;
-    let badge='', extraCls='';
-    if (item.priceChange) {
-      badge = `<span class="inv-badge inv-badge-warn">↑ was $${(item.previousCost||0).toFixed(2)}</span>`;
-      extraCls = ' is-changed';
-    } else if (item.isNew) {
-      badge = `<span class="inv-badge inv-badge-new">NEW</span>`;
-      extraCls = ' is-new';
-    } else {
-      badge = `<span class="inv-badge inv-badge-ok">✓</span>`;
-    }
-    const catName = item.suggestedCategoryId ? (mgCategories.find(c=>c.id===item.suggestedCategoryId)?.name||'') : '';
-    return `<div class="inv-line-item${extraCls}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.3">${item.name}</div>
-          ${catName ? `<div style="font-size:11px;color:var(--text3);margin-top:1px">${catName}</div>` : ''}
-        </div>
-        ${badge}
-      </div>
-      <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
-        <div class="inv-metric"><span>Case cost</span><strong>$${(item.cost||0).toFixed(2)}</strong></div>
-        <div class="inv-metric"><span>Units/case</span><strong>${item.unitsPerCase||1}</strong></div>
-        ${cpu ? `<div class="inv-metric"><span>Cost/unit</span><strong>$${cpu}</strong></div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
-  review.innerHTML = `
-    <div class="ct" style="margin:0 0 12px">Invoice Review</div>
-    <div class="inv-header-grid">
-      <div class="inv-header-item"><span>Vendor</span><strong>${inv.vendor||'—'}</strong></div>
-      <div class="inv-header-item"><span>Invoice #</span><strong>${inv.invoiceNumber||'—'}</strong></div>
-      <div class="inv-header-item"><span>Date</span><strong>${inv.date||localDate()}</strong></div>
-      <div class="inv-header-item"><span>Total</span><strong style="color:var(--blue)">$${(inv.total||0).toFixed(2)}</strong></div>
-    </div>
-    ${alertsHtml}
-    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px">${inv.lineItems.length} Line Items</div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">${itemsHtml}</div>
-    <div style="display:flex;gap:8px">
-      <button class="btn bprimary" style="flex:1;padding:13px;font-size:14px;font-weight:600" onclick="applyInvoice()">Apply & Save Delivery</button>
-      <button class="btn bsecondary" style="padding:13px;font-size:13px" onclick="cancelInvoiceScan()">Cancel</button>
-    </div>`;
-}
-
-async function applyInvoice() {
-  if (!invoiceScanResult) return;
-  const inv = invoiceScanResult;
-  const btn = document.querySelector('#inv-scan-review .bprimary');
-  const orig = btn?.innerHTML;
-  if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving...'; }
-
-  try {
-    const vendor = (inv._vendor || inv.vendor||'').trim() || 'Unknown Vendor';
-    const date   = inv.date || localDate();
-
-    // Auto-save vendor if new
-    if (!dlVendors.find(v=>v.name.toLowerCase()===vendor.toLowerCase())) {
-      await window.F.addDoc(sc('dlVendors'),
-        {name:vendor, category:'other', createdAt:new Date().toISOString()});
-      await loadDlVendors();
-    }
-
-    // Upload invoice photos to Firebase Storage
-    if (btn) btn.innerHTML = '<span class="spinner"></span>Uploading photos…';
-    const photoUrls = [];
-    const images = inv._capturedImages || [];
-    const scanId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-    for (let i = 0; i < images.length; i++) {
-      try {
-        const path = `invoiceScans/${date}/${scanId}/page-${i+1}.jpg`;
-        const storageRef = window.F.storageRef(window.storage, path);
-        await window.F.uploadString(storageRef, images[i], 'base64', {contentType:'image/jpeg'});
-        const url = await window.F.getDownloadURL(storageRef);
-        photoUrls.push(url);
-      } catch(e) { console.error('Photo upload failed page', i+1, e); }
-    }
-
-    if (btn) btn.innerHTML = '<span class="spinner"></span>Saving…';
-
-    const itemsSummary = inv.lineItems.map(i=>`${i.name} ×${i.unitsPerCase||1}/case @ $${(i.cost||0).toFixed(2)}`).join('; ');
-
-    // Save delivery record
-    await window.F.addDoc(sc('deliveries'),{
-      vendor,
-      date,
-      invoiceNumber: inv.invoiceNumber||'',
-      amount: inv.total||0,
-      payment: 'check',
-      status: 'paid',
-      dueDate: '',
-      items: itemsSummary,
-      notes: 'Logged via invoice scan',
-      employee: CU.name,
-      timestamp: window.F.serverTimestamp()
-    });
-
-    // Save invoice scan record for history
-    await window.F.addDoc(sc('invoiceScans'),{
-      vendor,
-      date,
-      invoiceNumber: inv.invoiceNumber||'',
-      total: inv.total||0,
-      lineItemCount: inv.lineItems.length,
-      photoUrls,
-      employee: CU.name,
-      timestamp: window.F.serverTimestamp()
-    });
-
-    // Update costs for price-changed products
-    let priceUpdates = 0;
-    for (const item of inv.lineItems) {
-      if (item.priceChange && item.matchedProductId) {
-        try {
-          await window.F.updateDoc(sd('mgProducts',item.matchedProductId), {cost: item.cost});
-          const p = mgProducts.find(p=>p.id===item.matchedProductId);
-          if (p) p.cost = item.cost;
-          priceUpdates++;
-        } catch(e) { console.error('Cost update failed:', e); }
-      }
-    }
-
-    // Add new products to Price Book
-    // Try to match vendor name to a category name (e.g. vendor "Gold Ash" → category "Gold Ash")
-    const vendorMatchedCat = mgCategories.find(c=>
-      c.name.toLowerCase().replace(/[^a-z0-9]/g,'') === vendor.toLowerCase().replace(/[^a-z0-9]/g,'')
-    );
-    let newAdded = 0;
-    for (const item of inv.lineItems) {
-      if (item.isNew && item.name) {
-        try {
-          const catId = vendorMatchedCat?.id ||
-            (mgCategories.find(c=>c.id===item.suggestedCategoryId)?.id) ||
-            '';
-          const docRef = await window.F.addDoc(sc('mgProducts'),{
-            name: item.name,
-            cost: item.cost||0,
-            sell: 0,
-            categoryId: catId,
-            unitsPerCase: item.unitsPerCase||1,
-            createdAt: new Date().toISOString()
-          });
-          mgProducts.push({id:docRef.id, name:item.name, cost:item.cost||0, sell:0, categoryId:catId, unitsPerCase:item.unitsPerCase||1});
-          newAdded++;
-        } catch(e) { console.error('New product add failed:', e); }
-      }
-    }
-
-    loadDeliveries();
-    loadInvoiceHistory();
-    cancelInvoiceScan();
-
-    let msg = '✓ Delivery saved!';
-    if (photoUrls.length) msg += ` ${photoUrls.length} photo${photoUrls.length>1?'s':''} stored.`;
-    if (priceUpdates) msg += ` ${priceUpdates} cost${priceUpdates>1?'s':''} updated in Price Book.`;
-    if (newAdded) msg += ` ${newAdded} new product${newAdded>1?'s':''} added to Price Book — add sell price when ready.`;
-    toast(msg);
-
-  } catch(e) {
-    toast('Error: ' + e.message);
-    console.error(e);
-    if (btn) { btn.disabled=false; btn.innerHTML=orig||'Apply & Save Delivery'; }
-  }
-}
-
-function cancelInvoiceScan() {
-  invoiceScanResult = null;
-  const panel = document.getElementById('inv-scan-panel');
-  if (panel) panel.style.display='none';
-  document.getElementById('inv-scan-input').value='';
 }
 
 async function loadDeliveries(){
@@ -9226,6 +8967,7 @@ async function loadDeliveries(){
               ${dueLabel}
             </div>
             ${x.items?`<div style="font-size:12px;color:var(--text2);margin-bottom:2px;line-height:1.4">${x.items.substring(0,120)}${x.items.length>120?'...':''}</div>`:''}
+            ${(x.stock&&x.stock.length)?`<div style="font-size:11px;color:var(--green);margin-bottom:2px;line-height:1.4">📦 Added to inventory: ${x.stock.map(s=>invEsc(s.name)+' ×'+s.qty).join(', ').substring(0,140)}</div>`:''}
             <div style="font-size:11px;color:var(--text3)">via ${x.payment||'check'}${x.paidDate?` · paid ${new Date(x.paidDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`:''} · logged by ${x.employee||'Unknown'}</div>
             ${x.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">📝 ${x.notes}</div>`:''}
             ${isPending?`<button onclick="markDeliveryPaid('${x.id}')" style="margin-top:7px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">✓ Mark as paid</button>`:''}
@@ -9243,10 +8985,30 @@ async function loadDeliveries(){
 async function deleteDelivery(id){
   if(!confirm('Delete this delivery log?')) return;
   try{
-    await window.F.deleteDoc(sd('deliveries',id));
-    toast('Deleted');
+    // If this delivery added stock, offer to take that stock back out in the same write
+    let rows=[];
+    try{const s=await window.F.getDoc(sd('deliveries',id));const d=s.exists()?s.data():null;if(d&&d.stockApplied&&Array.isArray(d.stock))rows=d.stock;}catch(e){}
+    let reverse=false;
+    if(rows.length){
+      reverse=confirm('This delivery added '+rows.length+' item'+(rows.length>1?'s':'')+' to inventory.\n\nOK = also remove that stock again\nCancel = delete the log but keep the stock');
+      if(reverse)await loadInvItems();
+    }
+    const b=window.F.writeBatch(window.db);
+    b.delete(sd('deliveries',id));
+    let n=0;
+    if(reverse)rows.forEach(r=>{
+      const it=invItems.find(x=>x.id===r.id);if(!it)return;
+      const before=Number(it.back)||0,after=Math.max(0,before-r.qty);
+      const upd={back:after};
+      if(invTotal(it)-before+after<=0){upd.out=true;upd.outAt=localDate();upd.outBy=(CU&&CU.name)||'';}
+      b.update(sd('inventoryItems',it.id),upd);
+      b.set(window.F.doc(sc('inventoryLog')),{...invLogEntry(it,'adjust','back',-(before-after),before,after),deliveryId:id,note:'delivery deleted'});
+      n++;
+    });
+    await b.commit();
+    toast(n?'Deleted — stock removed from '+n+' item'+(n>1?'s':''):'Deleted');
     loadDeliveries();
-  }catch(e){ toast('Error deleting'); }
+  }catch(e){ console.error(e);toast('Error deleting'); }
 }
 
 // ---- Category spending donut (mirrors the Overhead donut) ----
@@ -9582,465 +9344,7 @@ function renderMonthlyCompTable(rows){
     </div>`;
 }
 
-// ── Invoice Auto-Capture Scanner ─────────────────────────────────────────────
-
-let _scanStream = null;
-let _scanCaptures = []; // array of base64 jpeg strings
-let _scanVendor = '';
-let _scanAutoTimer = null;
-let _scanStableFrames = 0;
-let _scanDetecting = false;
-let _scanAnimFrame = null;
-
-function onInvVendorChange() {
-  const sel = document.getElementById('inv-vendor-sel');
-  const newWrap = document.getElementById('inv-vendor-new-wrap');
-  if (sel.value === '__new__') {
-    newWrap.style.display = 'block';
-    document.getElementById('inv-vendor-new').focus();
-  } else {
-    newWrap.style.display = 'none';
-  }
-}
-
-function populateInvVendorDropdown() {
-  const sel = document.getElementById('inv-vendor-sel');
-  if (!sel) return;
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— Select vendor —</option>' +
-    (dlVendors||[]).map(v=>`<option value="${v.name}">${v.name}</option>`).join('') +
-    '<option value="__new__">+ Add new vendor</option>';
-  if (current) sel.value = current;
-}
-
-function getInvVendor() {
-  const sel = document.getElementById('inv-vendor-sel');
-  if (!sel) return '';
-  if (sel.value === '__new__') {
-    return (document.getElementById('inv-vendor-new')?.value || '').trim();
-  }
-  return sel.value;
-}
-
-async function startInvoiceScan() {
-  const vendor = getInvVendor();
-  if (!vendor) { toast('Select a vendor first'); return; }
-  _scanVendor = vendor;
-  _scanCaptures = [];
-
-  // If new vendor, save it now
-  if (document.getElementById('inv-vendor-sel')?.value === '__new__') {
-    const exists = dlVendors.find(v => v.name.toLowerCase() === vendor.toLowerCase());
-    if (!exists) {
-      await window.F.addDoc(sc('dlVendors'), {name:vendor, category:'other', createdAt:new Date().toISOString()});
-      await loadDlVendors();
-      populateInvVendorDropdown();
-      document.getElementById('inv-vendor-sel').value = vendor;
-      document.getElementById('inv-vendor-new-wrap').style.display = 'none';
-    }
-  }
-
-  const modal = document.getElementById('invScannerModal');
-  modal.style.display = 'flex';
-  document.getElementById('scanVendorLabel').textContent = vendor;
-  renderScanThumbs();
-  updateScanDoneBtn();
-
-  try {
-    _scanStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width:{ideal:1920}, height:{ideal:1080} }
-    });
-    const video = document.getElementById('invScanVideo');
-    video.srcObject = _scanStream;
-    await video.play();
-    // Manual-only mode — no auto-detection loop
-  } catch(e) {
-    toast('Camera access denied — use upload instead');
-    closeInvScanner();
-  }
-}
-
-function scanDetectLoop() {
-  if (!_scanDetecting) return;
-  const video = document.getElementById('invScanVideo');
-  const canvas = document.getElementById('invScanCanvas');
-  if (!video || !canvas || video.readyState < 2) {
-    _scanAnimFrame = requestAnimationFrame(scanDetectLoop);
-    return;
-  }
-
-  const W = video.videoWidth, H = video.videoHeight;
-  if (!W || !H) { _scanAnimFrame = requestAnimationFrame(scanDetectLoop); return; }
-
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, W, H);
-
-  const detected = detectDocumentInFrame(ctx, W, H);
-  updateScanFrameStyle(detected);
-
-  if (detected) {
-    _scanStableFrames++;
-    if (_scanStableFrames >= 18) { // ~0.6s at 30fps
-      _scanStableFrames = 0;
-      captureInvFrame();
-      return; // pause loop briefly, restart after flash
-    }
-  } else {
-    _scanStableFrames = 0;
-  }
-
-  _scanAnimFrame = requestAnimationFrame(scanDetectLoop);
-}
-
-function detectDocumentInFrame(ctx, W, H) {
-  // Sample a grid of pixels looking for a bright rectangular region
-  // Simple luminance-based heuristic: check if center region is significantly brighter than edges
-  const sampleW = Math.floor(W / 20);
-  const sampleH = Math.floor(H / 20);
-
-  let centerLum = 0, edgeLum = 0, centerCount = 0, edgeCount = 0;
-
-  for (let gy = 0; gy < 20; gy++) {
-    for (let gx = 0; gx < 20; gx++) {
-      const px = Math.floor(gx * sampleW + sampleW/2);
-      const py = Math.floor(gy * sampleH + sampleH/2);
-      const d = ctx.getImageData(px, py, 1, 1).data;
-      const lum = 0.299*d[0] + 0.587*d[1] + 0.114*d[2];
-      const isCenter = gx >= 4 && gx <= 15 && gy >= 2 && gy <= 17;
-      if (isCenter) { centerLum += lum; centerCount++; }
-      else { edgeLum += lum; edgeCount++; }
-    }
-  }
-
-  const avgCenter = centerCount ? centerLum/centerCount : 0;
-  const avgEdge   = edgeCount   ? edgeLum/edgeCount     : 0;
-  // Document detected if center is notably brighter than surroundings
-  return avgCenter > 140 && avgCenter > avgEdge + 30;
-}
-
-function updateScanFrameStyle(detected) {
-  const frame = document.getElementById('invScanFrame');
-  if (!frame) return;
-  const corners = frame.querySelectorAll('.scan-corner');
-  corners.forEach(c => {
-    c.style.borderColor = detected ? '#4ade80' : '#fff';
-  });
-  const hint = document.getElementById('invScanHint');
-  if (hint) {
-    if (detected) {
-      const pct = Math.round((_scanStableFrames / 18) * 100);
-      hint.textContent = `Document detected — hold steady… ${pct}%`;
-    } else {
-      hint.textContent = 'Position invoice inside the frame';
-    }
-  }
-}
-
-function captureInvFrame() {
-  const video = document.getElementById('invScanVideo');
-  const canvas = document.getElementById('invScanCanvas');
-  if (!video || !canvas) return;
-
-  // Flash effect
-  const flash = document.getElementById('invScanFlash');
-  if (flash) { flash.classList.remove('flash'); void flash.offsetWidth; flash.classList.add('flash'); }
-
-  // Draw full frame
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
-
-  // Crop to center document area (inner 80%)
-  const cw = Math.floor(canvas.width * 0.82);
-  const ch = Math.floor(canvas.height * 0.90);
-  const cx = Math.floor((canvas.width - cw) / 2);
-  const cy = Math.floor((canvas.height - ch) / 2);
-
-  const cropCanvas = document.createElement('canvas');
-  cropCanvas.width = cw; cropCanvas.height = ch;
-  cropCanvas.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
-
-  const base64 = cropCanvas.toDataURL('image/jpeg', 0.92).split(',')[1];
-  _scanCaptures.push(base64);
-  renderScanThumbs();
-  updateScanDoneBtn();
-  updateScanPageCount();
-
-  const hint = document.getElementById('invScanHint');
-  if (hint) hint.textContent = `Page ${_scanCaptures.length} captured! Move to next section or tap Done.`;
-}
-
-function manualCapture() {
-  _scanStableFrames = 0;
-  captureInvFrame();
-}
-
-function renderScanThumbs() {
-  const el = document.getElementById('invScanThumbs');
-  if (!el) return;
-  if (!_scanCaptures.length) { el.innerHTML = ''; return; }
-  el.innerHTML = _scanCaptures.map((b64, i) => `
-    <div class="scan-thumb-wrap">
-      <img class="scan-thumb" src="data:image/jpeg;base64,${b64}" />
-      <button class="scan-thumb-del" onclick="deleteScanCapture(${i})">×</button>
-      <div class="scan-page-num">P${i+1}</div>
-    </div>`).join('');
-}
-
-function deleteScanCapture(i) {
-  _scanCaptures.splice(i, 1);
-  renderScanThumbs();
-  updateScanDoneBtn();
-  updateScanPageCount();
-}
-
-function updateScanDoneBtn() {
-  const btn = document.getElementById('invScanDoneBtn');
-  if (btn) btn.disabled = _scanCaptures.length === 0;
-}
-
-function updateScanPageCount() {
-  const el = document.getElementById('scanPageCount');
-  if (!el) return;
-  el.textContent = _scanCaptures.length > 0 ? `${_scanCaptures.length} page${_scanCaptures.length > 1 ? 's' : ''}` : '';
-}
-
-function closeInvScanner() {
-  _scanDetecting = false;
-  cancelAnimationFrame(_scanAnimFrame);
-  if (_scanStream) { _scanStream.getTracks().forEach(t=>t.stop()); _scanStream = null; }
-  document.getElementById('invScannerModal').style.display = 'none';
-}
-
-async function finishInvScan() {
-  if (!_scanCaptures.length) return;
-  closeInvScanner();
-  await handleInvoiceScanImages(_scanCaptures, _scanVendor);
-}
-
-async function handleInvoiceScanFiles(files) {
-  if (!files || !files.length) return;
-  const vendor = getInvVendor();
-  if (!vendor) { toast('Select a vendor first'); return; }
-  _scanVendor = vendor;
-
-  const panel   = document.getElementById('inv-scan-panel');
-  const loading = document.getElementById('inv-scan-loading');
-  loading.querySelector('.inv-scan-status').textContent = 'Processing images...';
-  panel.style.display = 'block';
-  loading.style.display = 'block';
-  document.getElementById('inv-scan-review').innerHTML = '';
-  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
-
-  const images = [];
-  for (const file of Array.from(files)) {
-    loading.querySelector('.inv-scan-status').textContent = `Enhancing image ${images.length+1}…`;
-    const b64 = await preprocessInvoiceImage(file);
-    images.push(b64);
-  }
-  await handleInvoiceScanImages(images, vendor);
-}
-
-async function handleInvoiceScanImages(images, vendor) {
-  const panel   = document.getElementById('inv-scan-panel');
-  const loading = document.getElementById('inv-scan-loading');
-  const review  = document.getElementById('inv-scan-review');
-  panel.style.display   = 'block';
-  loading.style.display = 'block';
-  review.innerHTML = '';
-  loading.querySelector('.inv-scan-status').textContent = 'Loading product database...';
-  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
-
-  try {
-    if (!mgProducts.length) {
-      const [prodSnap, catSnap] = await Promise.all([
-        window.F.getDocs(window.F.query(sc('mgProducts'), window.F.orderBy('name','asc'))),
-        window.F.getDocs(window.F.query(sc('mgCategories'), window.F.orderBy('order','asc')))
-      ]);
-      mgProducts   = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
-      mgCategories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
-    }
-
-    loading.querySelector('.inv-scan-status').textContent = 'Analyzing invoice…';
-
-    const productCtx = mgProducts.slice(0,400).map(p=>({
-      id: p.id, name: p.name, cost: p.cost,
-      category: mgCategories.find(c=>c.id===p.categoryId)?.name||''
-    }));
-    const catList = mgCategories.map(c=>`${c.id}:${c.name}`).join(', ');
-
-    const prompt = `You are reading a delivery invoice for Robious Mart, a gas station convenience store in Virginia. The vendor for this invoice is: ${vendor}.
-
-EXISTING PRODUCT DATABASE (${productCtx.length} items):
-${JSON.stringify(productCtx)}
-
-AVAILABLE CATEGORIES (id:name): ${catList}
-
-IMPORTANT — Read the invoice carefully using these rules:
-
-PRICING: Distributor invoices typically have multiple price columns: "List Price", "Discount", and "Net Price" (or "Your Cost" / "Invoice Price"). You MUST use the FINAL NET PRICE per case — the price after all discounts are already subtracted. Do NOT use the list/gross price. Do NOT include the discount amount as a separate line item.
-
-UNITS PER CASE: Look for pack size indicators on the same line as the product (e.g. "24/12oz", "12/16oz", "6/4pk", "1/EA"). The first number is unitsPerCase. This is separate from the quantity ordered (how many cases were ordered). Do not mix these up.
-
-SKIP these rows entirely — do not include them as line items:
-- Discount rows / off-invoice allowance rows
-- Deposit / can deposit rows
-- Tax rows
-- Delivery fee rows
-- Subtotal / total rows
-- Any row without a product name
-
-The images may be multiple pages of the same invoice — treat them as one continuous document.
-
-Return ONLY a valid JSON object — no markdown fences, no explanation, nothing else:
-{
-  "vendor": "${vendor}",
-  "invoiceNumber": "invoice number or empty string",
-  "date": "YYYY-MM-DD or empty string",
-  "total": 0.00,
-  "lineItems": [
-    {
-      "name": "product name as printed",
-      "cost": 0.00,
-      "unitsPerCase": 1,
-      "matchedProductId": "id from database if similar product exists, else null",
-      "matchedProductName": "matched product name or null",
-      "previousCost": null,
-      "priceChange": false,
-      "isNew": true,
-      "suggestedCategoryId": "exact id from AVAILABLE CATEGORIES or null"
-    }
-  ]
-}
-
-Additional rules:
-- priceChange = true if matchedProductId is set AND cost differs from the matched product's cost in the database
-- previousCost = the matched product's existing cost from the database (not from the invoice)
-- isNew = true if no match found in the database
-- suggestedCategoryId must be an exact id string from AVAILABLE CATEGORIES`;
-
-    const content = [
-      ...images.map(b64=>({ type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64} })),
-      { type:'text', text:prompt }
-    ];
-
-    const resp = await fetch('https://robious-mart-api.sukhdeep-0393.workers.dev', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        messages: [{ role:'user', content }]
-      })
-    });
-
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    const raw = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
-    invoiceScanResult = JSON.parse(raw);
-    invoiceScanResult._capturedImages = images;
-    invoiceScanResult._vendor = vendor;
-
-    loading.style.display = 'none';
-    renderInvoiceReview(invoiceScanResult);
-
-  } catch(e) {
-    console.error('Invoice scan error:', e);
-    loading.style.display = 'none';
-    panel.style.display = 'none';
-    toast('Scan failed: ' + e.message);
-    document.getElementById('inv-scan-input').value = '';
-  }
-}
-
-async function loadInvoiceHistory() {
-  const el = document.getElementById('invHistoryList');
-  if (!el) return;
-  try {
-    const snap = await window.F.getDocs(window.F.query(
-      sc('invoiceScans'),
-      window.F.orderBy('timestamp','desc'),
-      window.F.limit(30)
-    ));
-    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if (!docs.length) { el.innerHTML='<div class="empty"><div class="ei">📋</div>No scanned invoices yet</div>'; return; }
-    el.innerHTML = docs.map(inv=>{
-      const d = inv.date ? new Date(inv.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-      const thumbs = (inv.photoUrls||[]).slice(0,3).map(url=>
-        `<img src="${url}" style="width:44px;height:58px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0" onclick="window.open('${url}')">`
-      ).join('');
-      return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="display:flex;gap:4px;flex-shrink:0">${thumbs||'<div style="width:44px;height:58px;background:var(--bg2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">📄</div>'}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700">${inv.vendor||'Unknown'}</div>
-            <div style="font-size:12px;color:var(--text3);margin-top:2px">${d}${inv.invoiceNumber?' · #'+inv.invoiceNumber:''}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:3px">${inv.lineItemCount||0} items · ${(inv.photoUrls||[]).length} page${(inv.photoUrls||[]).length!==1?'s':''}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">By ${inv.employee||'—'}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-            ${inv.total ? `<div style="font-size:15px;font-weight:700;color:var(--blue)">$${(inv.total||0).toFixed(2)}</div>` : ''}
-            <button onclick="deleteInvoiceHistory('${inv.id}')" style="background:var(--red-light);border:1px solid #f7c1c1;color:var(--red);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-  } catch(e) { console.error(e); }
-}
-
-async function deleteInvoiceHistory(id) {
-  if (!confirm('Delete this invoice record from history? This does not undo any price book changes.')) return;
-  try {
-    await window.F.deleteDoc(sd('invoiceScans', id));
-    loadInvoiceHistory();
-    toast('Invoice record deleted.');
-  } catch(e) { toast('Error: ' + e.message); }
-}
-
 </script>
-
-<!-- Invoice Auto-Capture Scanner Modal -->
-<div id="invScannerModal" style="display:none;position:fixed;inset:0;background:#000;z-index:700;flex-direction:column;overflow:hidden">
-  <!-- Top bar: vendor label + close button -->
-  <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:env(safe-area-inset-top,14px) 16px 0;padding-top:max(env(safe-area-inset-top),14px);display:flex;align-items:center;justify-content:space-between">
-    <div style="background:rgba(0,0,0,.6);backdrop-filter:blur(8px);border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600">
-      🏪 <span id="scanVendorLabel"></span>
-    </div>
-    <button onclick="closeInvScanner()" style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);border:none;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
-  </div>
-
-  <!-- Live video -->
-  <video id="invScanVideo" style="width:100%;flex:1;object-fit:cover;display:block" playsinline muted></video>
-
-  <!-- Overlay: corners + flash (no laser — manual mode) -->
-  <div style="position:absolute;inset:0;pointer-events:none">
-    <div id="invScanFrame" class="scan-frame">
-      <div class="scan-corner tl"></div>
-      <div class="scan-corner tr"></div>
-      <div class="scan-corner bl"></div>
-      <div class="scan-corner br"></div>
-    </div>
-    <div id="invScanFlash" class="scan-flash"></div>
-  </div>
-
-  <!-- Hidden canvas for processing -->
-  <canvas id="invScanCanvas" style="display:none"></canvas>
-
-  <!-- Bottom bar — padded for home indicator -->
-  <div class="scanner-bar" style="padding-bottom:max(env(safe-area-inset-bottom),28px)">
-    <div id="invScanHint" class="scanner-hint">Position the invoice in the frame, then tap the button to capture</div>
-    <!-- Thumbnail strip -->
-    <div class="scan-captures" id="invScanThumbs"></div>
-    <!-- Actions: Done left, Shutter center, page count right -->
-    <div class="scanner-actions">
-      <button id="invScanDoneBtn" class="scan-done-btn" disabled onclick="finishInvScan()" style="min-width:64px">Done</button>
-      <button class="scan-shutter" onclick="manualCapture()"><div class="scan-shutter-inner"></div></button>
-      <div id="scanPageCount" style="min-width:64px;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:600"></div>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
