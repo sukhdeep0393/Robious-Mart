@@ -868,6 +868,7 @@
           <button data-l="back" onclick="invSetLoc('back')">Backroom</button>
         </div>
         <div class="inv-hint" id="invModeHint"></div>
+        <button class="btn bsecondary" id="invCamBtn" style="display:none;margin-top:10px;padding:11px;font-size:14px" onclick="invCamOpen()">📷 Use phone camera</button>
         <input id="invScan" autocomplete="off" placeholder="Scan barcode or type item name…" onkeydown="invScanKey(event)" oninput="invScanInput()" style="margin-top:10px;font-size:16px" />
         <div id="invSuggest"></div>
       </div>
@@ -1745,7 +1746,7 @@
       </div>
     </div>
     <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:rgba(255,255,255,.85);font-size:12px;padding:5px 14px;border-radius:20px;">
-      Point at the barcode on the carton
+      Point at a barcode — it keeps scanning until you tap Done
     </div>
   </div>
   <div class="upc-bar">
@@ -1755,8 +1756,7 @@
       <div class="upc-result-upc" id="upcResultCode"></div>
     </div>
     <div class="upc-actions">
-      <button class="upc-btn" style="background:rgba(255,255,255,.15);color:#fff;" onclick="closeUpcScanner()">Cancel</button>
-      <button class="upc-btn" style="background:var(--blue);color:#fff;display:none;" id="upcConfirmBtn" onclick="confirmUpcResult()">Use this product</button>
+      <button class="upc-btn" style="background:var(--blue);color:#fff;padding:0 36px;" onclick="closeUpcScanner()">Done</button>
     </div>
   </div>
 </div>
@@ -4432,6 +4432,7 @@ async function invOpen(){
   if(ab)ab.style.display=(CU&&CU.role==='operator')?'':'none';
   const cb=document.getElementById('invCatBtn');if(cb)cb.style.display=(CU&&CU.role==='operator')?'':'none';
   invFillCatSelects();
+  invCamInit();
   await loadInvItems();
   invSetMode(invMode,true);
   invView(invCurView);
@@ -4804,6 +4805,109 @@ async function invDelete(id){
     invReindex();invRenderItems();toast('Deleted');
   }catch(e){console.error(e);toast('Error deleting');}
 }
+
+// ---- phone camera scanning (reuses the #upcScannerModal pop-up) ----
+// Uses the browser's built-in BarcodeDetector when available (Android Chrome), otherwise a pinned ZXing build loaded on demand (iPhone Safari etc.).
+const INV_ZX_URL='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+const INV_ZX_SRI='sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMYXOg9+n6sB';
+let invCam={running:false,stream:null,timer:null,reader:null,busy:false,last:'',lastSeen:0,count:0,audio:null};
+function invCamInit(){
+  const b=document.getElementById('invCamBtn');
+  if(b&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)b.style.display='';
+}
+function invLoadZX(){
+  if(window.ZXing)return Promise.resolve();
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=INV_ZX_URL;s.integrity=INV_ZX_SRI;s.crossOrigin='anonymous';
+    s.onload=res;s.onerror=()=>rej(new Error('Could not load scanner library'));
+    document.head.appendChild(s);
+  });
+}
+function invCamStatus(t){const el=document.getElementById('upcStatus');if(el)el.textContent=t;}
+async function invCamOpen(){
+  if(invCam.running)return;
+  if(!window.isSecureContext){toast('Camera needs a secure (https) page');return;}
+  invCam.running=true;invCam.count=0;invCam.last='';invCam.lastSeen=0;
+  document.getElementById('upcResult').style.display='none';
+  document.getElementById('upcScannerModal').classList.add('open');
+  invCamStatus('Starting camera…');
+  try{
+    try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){invCam.audio=invCam.audio||new AC();if(invCam.audio.resume)invCam.audio.resume();}}catch(e){}
+    const video=document.getElementById('upcVideo');
+    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false};
+    if('BarcodeDetector' in window){
+      let fmts=['upc_a','upc_e','ean_13','ean_8','code_128','itf'];
+      try{const sup=await BarcodeDetector.getSupportedFormats();fmts=fmts.filter(f=>sup.includes(f));}catch(e){}
+      if(fmts.length){
+        const stream=await navigator.mediaDevices.getUserMedia(constraints);
+        if(!invCam.running){stream.getTracks().forEach(t=>t.stop());return;}
+        invCam.stream=stream;video.srcObject=stream;
+        try{await video.play();}catch(e){}
+        const det=new BarcodeDetector({formats:fmts});
+        invCam.timer=setInterval(async()=>{
+          if(invCam.busy||video.readyState<2)return;
+          invCam.busy=true;
+          try{const r=await det.detect(video);if(r.length)invCamHit(r[0].rawValue);}catch(e){}
+          invCam.busy=false;
+        },200);
+        invCamStatus('Point at a barcode');
+        return;
+      }
+    }
+    await invLoadZX();
+    if(!invCam.running)return;
+    const Z=window.ZXing,hints=new Map();
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.UPC_A,Z.BarcodeFormat.UPC_E,Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.CODE_128,Z.BarcodeFormat.ITF]);
+    hints.set(Z.DecodeHintType.TRY_HARDER,true);
+    invCam.reader=new Z.BrowserMultiFormatReader(hints,300);
+    await invCam.reader.decodeFromConstraints(constraints,video,(result)=>{if(result&&invCam.running)invCamHit(result.getText());});
+    invCamStatus('Point at a barcode');
+  }catch(e){
+    console.error('camera',e);
+    invCamClose();
+    toast(e&&e.name==='NotAllowedError'?'Camera blocked — allow camera access in your browser settings':'Could not start the camera');
+  }
+}
+function invCamHit(raw){
+  const code=String(raw||'').replace(/\D/g,'');
+  if(code.length<6)return;
+  const now=Date.now();
+  const same=code===invCam.last,gap=now-invCam.lastSeen;
+  invCam.last=code;invCam.lastSeen=now;
+  // the same barcode must leave the view (>0.9s gap) before it counts again
+  if(same&&gap<900)return;
+  const hit=invMap[invKey(code)];
+  if(!hit){invCamClose();invOnBarcode(code);return;}
+  invCamFeedback();
+  invCam.count++;
+  invApply(hit.item,hit.pack);
+  const r=invSess.find(x=>x.id===hit.item.id);
+  document.getElementById('upcResultName').textContent=hit.item.name;
+  document.getElementById('upcResultCode').textContent=invMode==='out'?'Flagged out':('+'+hit.pack+(r?' · total '+r.qty:''));
+  document.getElementById('upcResult').style.display='block';
+  invCamStatus('✓ '+invCam.count+' scanned — move the item away to scan another');
+}
+function invCamFeedback(){
+  try{if(navigator.vibrate)navigator.vibrate(50);}catch(e){}
+  try{
+    const a=invCam.audio;if(!a)return;
+    const o=a.createOscillator(),g=a.createGain();
+    o.frequency.value=1000;g.gain.value=0.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+0.08);
+  }catch(e){}
+}
+function invCamClose(){
+  invCam.running=false;
+  if(invCam.timer){clearInterval(invCam.timer);invCam.timer=null;}
+  if(invCam.reader){try{invCam.reader.reset();}catch(e){}invCam.reader=null;}
+  if(invCam.stream){invCam.stream.getTracks().forEach(t=>t.stop());invCam.stream=null;}
+  const v=document.getElementById('upcVideo');
+  if(v){try{v.pause();}catch(e){}v.srcObject=null;}
+  const m=document.getElementById('upcScannerModal');if(m)m.classList.remove('open');
+  invRenderSess();invFocus();
+}
+function closeUpcScanner(){invCamClose();}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&invCam.running)invCamClose();});
 
 // ---- order list ----
 function invOrderRows(){
