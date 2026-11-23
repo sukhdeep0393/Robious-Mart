@@ -151,6 +151,22 @@
   .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
   .toast.show{opacity:1;}
   .sh2{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .inv-nav{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
+  .inv-sub{flex:1;white-space:nowrap;padding:9px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text2);font-size:13px;font-weight:600;}
+  .inv-sub.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .inv-seg{display:flex;background:var(--bg2);border-radius:var(--r);padding:3px;gap:3px;}
+  .inv-seg button{flex:1;padding:9px 6px;border:none;border-radius:calc(var(--r) - 2px);background:transparent;color:var(--text2);font-size:14px;font-weight:600;}
+  .inv-seg button.on{background:var(--bg);color:var(--blue);box-shadow:0 1px 3px rgba(0,0,0,.15);}
+  .inv-hint{font-size:12px;color:var(--text2);margin-top:10px;line-height:1.5;}
+  .inv-sug{display:flex;justify-content:space-between;width:100%;padding:10px 12px;margin-top:6px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:14px;text-align:left;}
+  .inv-sug span{color:var(--text3);font-size:12px;}
+  .inv-code{font-family:monospace;font-size:13px;background:var(--bg2);padding:6px 10px;border-radius:8px;margin-bottom:10px;display:inline-block;}
+  .inv-qty{width:72px;text-align:center;padding:8px;flex-shrink:0;}
+  .inv-chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+  .inv-chip{white-space:nowrap;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:600;}
+  .inv-chip span{opacity:.6;margin-left:2px;}
+  .inv-chip.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .inv-cat{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px;}
   .short-over-box{border-radius:8px;padding:10px 12px;font-size:13px;font-weight:500;margin-top:8px;}
   .short-box{background:var(--red-light);color:var(--red);}
   .over-box{background:var(--green-light);color:var(--green);}
@@ -832,18 +848,128 @@
 
   <!-- INVENTORY -->
   <div class="page" id="page-inventory">
-    <div class="card" id="flagFormCard"><div class="ct">Report low inventory</div>
-      <div style="margin-bottom:8px"><input id="invItem" placeholder="Item name (e.g. Bud Light 6-pack)" onkeydown="if(event.key==='Enter')flagInv()" /></div>
-      <div style="margin-bottom:10px"><label>Additional notes (optional)</label><input id="invNote" placeholder="e.g. Almost out, need to order 2 cases" /></div>
-      <button class="btn bprimary" style="padding:11px" onclick="flagInv()">Flag low inventory</button>
+    <div class="inv-nav">
+      <button class="inv-sub active" data-v="scan" onclick="invView('scan')">Scan</button>
+      <button class="inv-sub" data-v="items" onclick="invView('items')">Items</button>
+      <button class="inv-sub" data-v="order" onclick="invView('order')">Order list</button>
+      <button class="inv-sub" data-v="flags" onclick="invView('flags')">Flags <span class="badge bred" id="invCnt" style="display:none"></span></button>
     </div>
-    <div class="card">
-      <div class="sh2"><div class="ct" style="margin:0">Active flags</div><span class="badge bred" id="invCnt" style="display:none"></span></div>
-      <div id="invList"><div class="empty"><div class="ei">✓</div>No active flags</div></div>
+
+    <!-- SCAN -->
+    <div class="inv-view" id="invV-scan">
+      <div class="card">
+        <div class="inv-seg" id="invModeSeg">
+          <button data-m="count" class="on" onclick="invSetMode('count')">Count</button>
+          <button data-m="receive" onclick="invSetMode('receive')">Receive</button>
+          <button data-m="out" onclick="invSetMode('out')">Out</button>
+        </div>
+        <div class="inv-seg" id="invLocSeg" style="margin-top:8px">
+          <button data-l="front" class="on" onclick="invSetLoc('front')">Front / Cooler</button>
+          <button data-l="back" onclick="invSetLoc('back')">Backroom</button>
+        </div>
+        <div class="inv-hint" id="invModeHint"></div>
+        <input id="invScan" autocomplete="off" placeholder="Scan barcode or type item name…" onkeydown="invScanKey(event)" oninput="invScanInput()" style="margin-top:10px;font-size:16px" />
+        <div id="invSuggest"></div>
+      </div>
+
+      <div class="card" id="invNewCard" style="display:none">
+        <div class="ct">New barcode</div>
+        <div class="inv-code" id="invNewCode"></div>
+        <div style="margin-bottom:10px"><label>Link to</label>
+          <select id="invNewLink" onchange="invNewLinkChg()"></select>
+        </div>
+        <div id="invNewFields">
+          <div style="margin-bottom:10px"><label>Item name</label><input id="invNewName" placeholder="e.g. Bud Light 24pk cans" /></div>
+          <div class="g2" style="margin-bottom:10px">
+            <div><label>Category</label>
+              <select id="invNewCat"><option value="tobacco">Tobacco</option><option value="cigs">Cigs</option><option value="beer">Beer</option><option value="beverage">Beverages</option><option value="deli">Deli</option></select>
+            </div>
+            <div><label>Order up to (par)</label><input type="number" id="invNewPar" min="0" placeholder="e.g. 48" /></div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px"><label>Units this barcode represents (1 = single, 24 = a 24-pack case)</label><input type="number" id="invNewPack" min="1" value="1" /></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bprimary" style="flex:1;padding:11px" onclick="invNewSave()">Save &amp; add</button>
+          <button class="btn bsecondary" style="padding:11px;width:auto" onclick="invNewCancel()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="card" id="invSessCard">
+        <div class="ct" id="invSessTitle">Scanned</div>
+        <div id="invSessList"></div>
+        <div id="invSessFoot"></div>
+      </div>
     </div>
-    <div class="card" id="resolvedCard" style="display:none">
-      <div class="ct">Resolved today</div>
-      <div id="resolvedList"></div>
+
+    <!-- ITEMS -->
+    <div class="inv-view" id="invV-items" style="display:none">
+      <div class="card">
+        <div class="sh2">
+          <div class="ct" style="margin:0">Items</div>
+          <div style="display:flex;gap:6px">
+            <button class="bsm" id="invCatBtn" style="display:none" onclick="invCatMgrToggle()">⚙ Categories</button>
+            <button class="bsm" id="invAddBtn" style="display:none" onclick="invEditOpen('')">+ Add item</button>
+          </div>
+        </div>
+        <div id="invCatMgr" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+          <div class="ct" style="margin-bottom:6px">Categories</div>
+          <div id="invCatMgrList"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <input id="invCatNew" placeholder="New category (e.g. Snacks, Ice cream)" onkeydown="if(event.key==='Enter')invCatAdd()" style="flex:1" />
+            <button class="btn bprimary" style="width:auto;padding:8px 14px;font-size:13px" onclick="invCatAdd()">+ Add</button>
+          </div>
+        </div>
+        <div id="invEditWrap" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+          <input type="hidden" id="invEditId" />
+          <div style="margin-bottom:8px"><label>Item name</label><input id="invEditName" placeholder="e.g. Marlboro Red carton" /></div>
+          <div class="g2" style="margin-bottom:8px">
+            <div><label>Category</label>
+              <select id="invEditCat"><option value="tobacco">Tobacco</option><option value="cigs">Cigs</option><option value="beer">Beer</option><option value="beverage">Beverages</option><option value="deli">Deli</option></select>
+            </div>
+            <div><label>Order up to (par)</label><input type="number" id="invEditPar" min="0" /></div>
+          </div>
+          <div style="margin-bottom:8px"><label>Low alert at (blank = half of par)</label><input type="number" id="invEditLow" min="0" /></div>
+          <div style="margin-bottom:10px"><label>Barcodes — one per line, add "x24" for case size (e.g. 012345678905 x24)</label>
+            <textarea id="invEditCodes" rows="3" style="width:100%;font-family:monospace;font-size:13px"></textarea>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bprimary" style="flex:1;padding:10px;font-size:13px" onclick="invEditSave()">Save item</button>
+            <button class="btn bsecondary" style="padding:10px;font-size:13px;width:auto" onclick="invEditCancel()">Cancel</button>
+          </div>
+        </div>
+        <div class="inv-chips" id="invCatChips"></div>
+        <input id="invItemSearch" placeholder="Search items…" oninput="invRenderItems()" style="margin-bottom:10px" />
+        <div id="invItemList"></div>
+      </div>
+    </div>
+
+    <!-- ORDER LIST -->
+    <div class="inv-view" id="invV-order" style="display:none">
+      <div class="card">
+        <div class="sh2">
+          <div class="ct" style="margin:0">Order list</div>
+          <button class="bsm" onclick="invCopyOrder()">Copy</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Items flagged out or running low. Order quantity = par minus everything on hand (front + backroom).</div>
+        <div id="invOrderList"></div>
+      </div>
+    </div>
+
+    <!-- FLAGS (existing quick low-inventory flags) -->
+    <div class="inv-view" id="invV-flags" style="display:none">
+      <div class="card" id="flagFormCard"><div class="ct">Report low inventory</div>
+        <div style="margin-bottom:8px"><input id="invItem" placeholder="Item name (e.g. Bud Light 6-pack)" onkeydown="if(event.key==='Enter')flagInv()" /></div>
+        <div style="margin-bottom:10px"><label>Additional notes (optional)</label><input id="invNote" placeholder="e.g. Almost out, need to order 2 cases" /></div>
+        <button class="btn bprimary" style="padding:11px" onclick="flagInv()">Flag low inventory</button>
+      </div>
+      <div class="card">
+        <div class="sh2"><div class="ct" style="margin:0">Active flags</div></div>
+        <div id="invList"><div class="empty"><div class="ei">✓</div>No active flags</div></div>
+      </div>
+      <div class="card" id="resolvedCard" style="display:none">
+        <div class="ct">Resolved today</div>
+        <div id="resolvedList"></div>
+      </div>
     </div>
   </div>
 
@@ -1760,7 +1886,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,deleteField,enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore,collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,deleteField,increment,writeBatch,enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage,ref,uploadString,getDownloadURL,deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 import { getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 const app=initializeApp({apiKey:"AIzaSyC5ZtJ25RB4gz_Ov8H0lPHExsggpP00Gok",authDomain:"robious-mart.firebaseapp.com",projectId:"robious-mart",storageBucket:"robious-mart.firebasestorage.app",messagingSenderId:"679205177455",appId:"1:679205177455:web:b10c4c2835f9cf2c2e259a"});
@@ -1775,7 +1901,7 @@ enableIndexedDbPersistence(db).catch(err=>{
 window.db=db;
 const storage=getStorage(app);
 window.storage=storage;
-window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,deleteField,storageRef:ref,uploadString,getDownloadURL,deleteObject,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged};
+window.F={collection,addDoc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where,serverTimestamp,doc,deleteField,increment,writeBatch,storageRef:ref,uploadString,getDownloadURL,deleteObject,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged};
 window.dispatchEvent(new Event('fbReady'));
 </script>
 
@@ -2549,7 +2675,7 @@ function showTab(id){
     const fdDate=document.getElementById('fd-date');if(fdDate&&!fdDate.value)fdDate.value=localDate();
   }
   if(id==='logs')loadLogs();
-  if(id==='inventory')loadInvFlags();
+  if(id==='inventory')invOpen();
   if(id==='scratch'){
     loadGames().then(()=>loadScrBaseline().then(()=>renderScrRows()));
     const hc = document.getElementById('scrHistoryCard');
@@ -2758,6 +2884,13 @@ async function loadDashboard(){
       openFlags=invSnap.docs.filter(d=>d.data().resolved===false||d.data().resolved===undefined).length;
     }catch(e2){}
 
+    // Inventory tracker: out-of-stock + low items
+    let invOutNames=[], invLowCt=0;
+    try{
+      const invSnap2=await window.F.getDocs(sc('inventoryItems'));
+      invSnap2.docs.forEach(d=>{const it={id:d.id,...d.data()};const st=invStatus(it);if(st==='out')invOutNames.push(it.name||'Item');else if(st==='low')invLowCt++;});
+    }catch(e4){}
+
     const urgLics=lics.filter(l=>!l.ack&&du(l.due)<=30);
     const incidents=allReports.filter(r=>r.incidents&&r.incidents.trim()!=''&&r.date>=mtdStart&&r.date<=mtdEnd).slice(0,4);
     const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -2827,13 +2960,16 @@ async function loadDashboard(){
 
       ${todoDashHtml}
 
-      ${(isCurrentMonth&&(urgLics.length||openFlags))?`
+      ${(isCurrentMonth&&(urgLics.length||openFlags||invOutNames.length||invLowCt))?`
       <div style="background:var(--red-light);border:1px solid #f7c1c1;border-radius:var(--rl);padding:13px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:18px;margin-top:1px">⚑</div>
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px">Needs your attention</div>
           ${urgLics.map(l=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${l.name} — ${du(l.due)<0?'OVERDUE':du(l.due)+'d left'}</div>`).join('')}
           ${openFlags?`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• ${openFlags} open low-inventory flag${openFlags>1?'s':''}</div>`:''}
+          ${invOutNames.slice(0,5).map(n=>`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• 📦 ${invEsc(n)} — out of stock</div>`).join('')}
+          ${invOutNames.length>5?`<div style="font-size:12px;color:var(--red);margin-bottom:2px">• …and ${invOutNames.length-5} more out of stock</div>`:''}
+          ${invLowCt?`<div style="font-size:12px;color:var(--red);margin-bottom:2px;cursor:pointer" onclick="invCurView='order';showTab('inventory')">• 📦 ${invLowCt} item${invLowCt>1?'s':''} running low — view order list →</div>`:''}
         </div>
       </div>`:''}
 
@@ -4245,6 +4381,456 @@ async function loadInvFlags(){
       }
     }
   }catch(e){console.error('loadInvFlags error',e);}
+}
+
+// ---- INVENTORY TRACKER (scan / count / receive / order list) ----
+// Collections (scoped via sc/sd): inventoryItems, inventoryLog
+const INV_DEFAULT_CATS=[{id:'tobacco',name:'Tobacco'},{id:'cigs',name:'Cigs'},{id:'beer',name:'Beer'},{id:'beverage',name:'Beverages'},{id:'deli',name:'Deli'},{id:'grocery',name:'Grocery & Household'}];
+// Categories live in stores/{storeId}/settings/main -> inventoryCategories (operator can add / rename / remove)
+function invCats(){const c=window.storeSettings&&window.storeSettings.inventoryCategories;return(Array.isArray(c)&&c.length)?c:INV_DEFAULT_CATS;}
+function invCatName(k){const c=invCats().find(x=>x.id===k);return c?c.name:((k&&k!=='other')?k:'Other');}
+let invCatFilter='';
+let invItems=[], invMap={}, invMode='count', invLoc='front', invSess=[], invPending='', invOutLog=[], invCurView='scan';
+
+function invEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// UPC-A (12) and EAN-13 (13) differ by a leading zero; compare without leading zeros
+function invKey(code){return String(code||'').replace(/\D/g,'').replace(/^0+/,'');}
+function invTotal(it){return (Number(it.front)||0)+(Number(it.back)||0);}
+function invLowAt(it){return (it.lowAt!=null&&it.lowAt!=='')?Number(it.lowAt):Math.floor((Number(it.par)||0)/2);}
+function invStatus(it){
+  if(it.out)return 'out';
+  const par=Number(it.par)||0;
+  if(par>0&&invTotal(it)<=invLowAt(it))return 'low';
+  return 'ok';
+}
+function invOrderQty(it){return Math.max(0,(Number(it.par)||0)-invTotal(it));}
+function invCatRank(c){const i=invCats().findIndex(x=>x.id===c);return i<0?99:i;}
+function invFocus(){
+  if(window.matchMedia&&matchMedia('(pointer:fine)').matches){const i=document.getElementById('invScan');if(i)i.focus();}
+}
+function invReindex(){
+  invItems.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  invMap={};
+  invItems.forEach(it=>(it.barcodes||[]).forEach(b=>{
+    const k=invKey(b.code);if(k)invMap[k]={item:it,pack:Math.max(1,Number(b.pack)||1)};
+  }));
+}
+async function loadInvItems(){
+  try{
+    const snap=await window.F.getDocs(sc('inventoryItems'));
+    invItems=snap.docs.map(d=>({id:d.id,...d.data()}));
+    invReindex();
+  }catch(e){console.error('loadInvItems',e);toast('Could not load inventory items');}
+}
+function invLogEntry(it,type,loc,qty,before,after){
+  return {itemId:it.id,name:it.name||'',type,loc:loc||'',qty,before,after,by:(CU&&CU.name)||'',date:localDate(),ts:window.F.serverTimestamp()};
+}
+
+// ---- navigation ----
+async function invOpen(){
+  const ab=document.getElementById('invAddBtn');
+  if(ab)ab.style.display=(CU&&CU.role==='operator')?'':'none';
+  const cb=document.getElementById('invCatBtn');if(cb)cb.style.display=(CU&&CU.role==='operator')?'':'none';
+  invFillCatSelects();
+  await loadInvItems();
+  invSetMode(invMode,true);
+  invView(invCurView);
+  loadInvFlags();
+}
+function invView(v){
+  invCurView=v;
+  document.querySelectorAll('.inv-sub').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  document.querySelectorAll('.inv-view').forEach(el=>{el.style.display=(el.id==='invV-'+v)?'':'none';});
+  if(v==='scan'){invRenderSess();invFocus();}
+  if(v==='items')invRenderItems();
+  if(v==='order')invRenderOrder();
+  if(v==='flags')loadInvFlags();
+}
+
+// ---- scan mode ----
+function invHint(){
+  if(invMode==='count')return invLoc==='front'
+    ?'Scan each item on the shelf or in the cooler. Every scan adds to the count. Save sets the Front total for the items you scanned.'
+    :'Scan items stored in the backroom. Every scan adds to the count. Save sets the Backroom total for the items you scanned.';
+  if(invMode==='receive')return 'Scan items from a delivery. They are added to Backroom stock.';
+  return 'Scan an item that is gone. It is flagged out immediately and shows on the order list and Dashboard.';
+}
+function invSetMode(m,force){
+  if(!force&&m!==invMode){
+    if(invSess.length&&!confirm('Discard '+invSess.length+' unsaved scan(s)?'))return;
+    invSess=[];
+  }
+  invMode=m;
+  document.querySelectorAll('#invModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.getElementById('invLocSeg').style.display=(m==='count')?'':'none';
+  document.getElementById('invModeHint').textContent=invHint();
+  invNewCancel();
+  invRenderSess();
+  invFocus();
+}
+function invSetLoc(l){
+  if(l!==invLoc){
+    if(invSess.length&&!confirm('Discard '+invSess.length+' unsaved scan(s)?'))return;
+    invSess=[];
+  }
+  invLoc=l;
+  document.querySelectorAll('#invLocSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
+  document.getElementById('invModeHint').textContent=invHint();
+  invRenderSess();
+  invFocus();
+}
+function invSearch(q){
+  q=q.toLowerCase();
+  return invItems.filter(it=>(it.name||'').toLowerCase().includes(q)).slice(0,6);
+}
+function invScanKey(e){
+  if(e.key!=='Enter')return;
+  e.preventDefault();
+  const el=e.target,v=el.value.trim();
+  if(!v)return;
+  if(/^\d{6,}$/.test(v)){
+    el.value='';document.getElementById('invSuggest').innerHTML='';
+    invOnBarcode(v);return;
+  }
+  const m=invSearch(v);
+  if(m.length)invPick(m[0].id);
+  else toast('No match — scan a barcode to add the item');
+}
+function invScanInput(){
+  const v=document.getElementById('invScan').value.trim(),box=document.getElementById('invSuggest');
+  if(!v||/^\d+$/.test(v)){box.innerHTML='';return;}
+  box.innerHTML=invSearch(v).map(it=>`<button class="inv-sug" onclick="invPick('${it.id}')">${invEsc(it.name)} <span>${invEsc(invCatName(it.category))}</span></button>`).join('');
+}
+function invPick(id){
+  document.getElementById('invScan').value='';
+  document.getElementById('invSuggest').innerHTML='';
+  const it=invItems.find(x=>x.id===id);
+  if(it)invApply(it,1);
+  invFocus();
+}
+function invOnBarcode(code){
+  const hit=invMap[invKey(code)];
+  if(hit){invApply(hit.item,hit.pack);return;}
+  invNewOpen(code);
+}
+function invApply(it,qty){
+  if(invMode==='out'){invMarkOut(it);return;}
+  const r=invSess.find(x=>x.id===it.id);
+  if(r)r.qty+=qty;else invSess.unshift({id:it.id,qty});
+  invRenderSess();
+}
+function invSetQty(id,v){const r=invSess.find(x=>x.id===id);if(r)r.qty=Math.max(0,parseInt(v)||0);}
+function invRemoveRow(id){invSess=invSess.filter(x=>x.id!==id);invRenderSess();invFocus();}
+
+function invRenderSess(){
+  const el=document.getElementById('invSessList'),foot=document.getElementById('invSessFoot'),ttl=document.getElementById('invSessTitle');
+  if(!el)return;
+  if(invMode==='out'){
+    ttl.textContent='Flagged out this session';
+    foot.innerHTML='';
+    el.innerHTML=invOutLog.length?invOutLog.map(id=>{
+      const it=invItems.find(x=>x.id===id);if(!it)return'';
+      return `<div class="irow"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div>${it.out?`<button class="bsm" onclick="invUndoOut('${id}')">Undo</button>`:'<span class="badge">cleared</span>'}</div>`;
+    }).join(''):'<div class="empty"><div class="ei">📦</div>Scan an item that is out of stock</div>';
+    return;
+  }
+  ttl.textContent=invMode==='count'?('Counting — '+(invLoc==='front'?'Front / Cooler':'Backroom')):'Receiving into Backroom';
+  if(!invSess.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>Scan items to start</div>';foot.innerHTML='';return;}
+  el.innerHTML=invSess.map(r=>{
+    const it=invItems.find(x=>x.id===r.id);if(!it)return'';
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On file: Front ${Number(it.front)||0} · Back ${Number(it.back)||0}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="invSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="invRemoveRow('${r.id}')">✕</button></div>`;
+  }).join('');
+  foot.innerHTML=`<button class="btn bprimary" id="invSaveBtn" style="margin-top:12px" onclick="invSave()">${invMode==='count'?'Save count':'Save received'} (${invSess.length} item${invSess.length>1?'s':''})</button>`;
+}
+
+async function invSave(){
+  const btn=document.getElementById('invSaveBtn');
+  if(!invSess.length||(btn&&btn.disabled))return;
+  if(btn)btn.disabled=true;
+  const loc=invMode==='receive'?'back':invLoc;
+  const date=localDate();
+  const applied=[];
+  try{
+    const rows=invSess.slice();
+    for(let i=0;i<rows.length;i+=200){
+      const b=window.F.writeBatch(window.db);
+      rows.slice(i,i+200).forEach(r=>{
+        const it=invItems.find(x=>x.id===r.id);if(!it)return;
+        const q=Math.max(0,Math.round(Number(r.qty)||0));
+        if(invMode==='receive'&&q<1)return;
+        const before=Number(it[loc])||0;
+        const after=invMode==='count'?q:before+q;
+        const total=invTotal(it)-before+after;
+        const upd={};
+        if(invMode==='count'){upd[loc]=q;upd.lastCountedAt=date;}
+        else upd[loc]=window.F.increment(q);
+        let out=!!it.out;
+        if(total>0)out=false;
+        else if(invMode==='count'){out=true;}
+        if(out!==!!it.out){
+          upd.out=out;
+          if(out){upd.outAt=date;upd.outBy=(CU&&CU.name)||'';}
+        }
+        b.update(sd('inventoryItems',it.id),upd);
+        b.set(window.F.doc(sc('inventoryLog')),invLogEntry(it,invMode,loc,q,before,after));
+        applied.push({it,loc,after,out});
+      });
+      await b.commit();
+    }
+    applied.forEach(a=>{a.it[a.loc]=a.after;a.it.out=a.out;if(invMode==='count')a.it.lastCountedAt=date;});
+    invSess=[];
+    toast('✓ '+(invMode==='count'?'Count saved':'Delivery received')+' ('+applied.length+')');
+    invRenderSess();invFocus();
+  }catch(e){
+    console.error('invSave',e);toast('Error saving — try again');
+    if(btn)btn.disabled=false;
+  }
+}
+
+async function invMarkOut(it){
+  if(it.out){toast(it.name+' is already flagged out');return;}
+  try{
+    const b=window.F.writeBatch(window.db);
+    b.update(sd('inventoryItems',it.id),{out:true,outAt:localDate(),outBy:(CU&&CU.name)||''});
+    b.set(window.F.doc(sc('inventoryLog')),invLogEntry(it,'out','',0,invTotal(it),invTotal(it)));
+    await b.commit();
+    it.out=true;it.outAt=localDate();
+    invOutLog=invOutLog.filter(x=>x!==it.id);invOutLog.unshift(it.id);
+    toast('⚑ '+it.name+' flagged out');
+    invRenderSess();
+  }catch(e){console.error(e);toast('Error flagging item');}
+}
+async function invUndoOut(id){
+  const it=invItems.find(x=>x.id===id);if(!it)return;
+  try{
+    const b=window.F.writeBatch(window.db);
+    b.update(sd('inventoryItems',id),{out:false});
+    b.set(window.F.doc(sc('inventoryLog')),invLogEntry(it,'adjust','',0,invTotal(it),invTotal(it)));
+    await b.commit();
+    it.out=false;toast('Out flag cleared');invRenderSess();
+  }catch(e){console.error(e);toast('Error');}
+}
+
+// ---- unknown barcode: create item or link to an existing one ----
+function invNewOpen(code){
+  invPending=code;
+  document.getElementById('invNewCode').textContent=code;
+  const sel=document.getElementById('invNewLink');
+  sel.innerHTML='<option value="">➕ New item</option>'+invItems.map(it=>`<option value="${it.id}">${invEsc(it.name)}</option>`).join('');
+  document.getElementById('invNewName').value='';
+  document.getElementById('invNewPar').value='';
+  document.getElementById('invNewPack').value='1';
+  document.getElementById('invNewFields').style.display='';
+  if(invCatFilter)document.getElementById('invNewCat').value=invCatFilter;
+  document.getElementById('invNewCard').style.display='';
+  document.getElementById('invNewName').focus();
+}
+function invNewLinkChg(){
+  document.getElementById('invNewFields').style.display=document.getElementById('invNewLink').value?'none':'';
+}
+function invNewCancel(){
+  invPending='';
+  const c=document.getElementById('invNewCard');if(c)c.style.display='none';
+  invFocus();
+}
+async function invNewSave(){
+  const code=invPending;if(!code)return;
+  const pack=Math.max(1,parseInt(document.getElementById('invNewPack').value)||1);
+  const link=document.getElementById('invNewLink').value;
+  try{
+    let it;
+    if(link){
+      it=invItems.find(x=>x.id===link);if(!it)return;
+      const bc=[...(it.barcodes||[]),{code,pack}];
+      await window.F.updateDoc(sd('inventoryItems',link),{barcodes:bc});
+      it.barcodes=bc;
+    }else{
+      const name=document.getElementById('invNewName').value.trim();
+      if(!name){toast('Enter an item name');return;}
+      const data={
+        name,category:document.getElementById('invNewCat').value,
+        par:Math.max(0,parseInt(document.getElementById('invNewPar').value)||0),
+        barcodes:[{code,pack}],front:0,back:0,out:false,
+        createdAt:localDate(),createdBy:(CU&&CU.name)||''
+      };
+      const ref=await window.F.addDoc(sc('inventoryItems'),data);
+      it={id:ref.id,...data};invItems.push(it);
+    }
+    invReindex();
+    invNewCancel();
+    invApply(it,pack);
+  }catch(e){console.error(e);toast('Error saving item');}
+}
+
+// ---- items list / editor (operator edits) ----
+function invRenderItems(){
+  const el=document.getElementById('invItemList');if(!el)return;
+  const q=(document.getElementById('invItemSearch').value||'').toLowerCase();
+  const isOp=CU&&CU.role==='operator';
+  const chips=document.getElementById('invCatChips');
+  if(chips)chips.innerHTML=[['','All']].concat(invCats().map(c=>[c.id,c.name])).map(([k,l])=>{
+    const n=k?invItems.filter(it=>it.category===k).length:invItems.length;
+    return `<button class="inv-chip${invCatFilter===k?' on':''}" onclick="invSetCatFilter('${k}')">${invEsc(l)} <span>${n}</span></button>`;
+  }).join('');
+  const list=invItems.filter(it=>(!q||(it.name||'').toLowerCase().includes(q))&&(!invCatFilter||it.category===invCatFilter));
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="ei">📦</div>'+(invItems.length?'No matches':'No items yet — scan a barcode to add the first one')+'</div>';
+    return;
+  }
+  const cats=[...new Set(list.map(it=>it.category||'other'))].sort((a,b)=>invCatRank(a)-invCatRank(b));
+  el.innerHTML=cats.map(c=>`<div class="inv-cat">${invEsc(invCatName(c))}</div>`+list.filter(it=>(it.category||'other')===c).map(it=>{
+    const st=invStatus(it);
+    const badge=st==='out'?'<span class="badge bred">Out</span>':st==='low'?'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>':'';
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">Front ${Number(it.front)||0} · Back ${Number(it.back)||0}${Number(it.par)?' · Par '+Number(it.par):''}</div></div>${isOp?`<button class="bsm" onclick="invEditOpen('${it.id}')">✏️</button><button class="bdsm" onclick="invDelete('${it.id}')">✕</button>`:''}</div>`;
+  }).join('')).join('');
+}
+function invSetCatFilter(k){invCatFilter=k;invRenderItems();}
+function invFillCatSelects(){
+  ['invNewCat','invEditCat'].forEach(id=>{
+    const s=document.getElementById(id);if(!s)return;
+    const cur=s.value;
+    s.innerHTML=invCats().map(c=>`<option value="${invEsc(c.id)}">${invEsc(c.name)}</option>`).join('');
+    if(invCats().some(c=>c.id===cur))s.value=cur;
+  });
+}
+function invCatMgrToggle(){
+  const w=document.getElementById('invCatMgr');
+  const open=w.style.display!=='none';
+  w.style.display=open?'none':'block';
+  if(!open)invRenderCatMgr();
+}
+function invRenderCatMgr(){
+  const el=document.getElementById('invCatMgrList');if(!el)return;
+  el.innerHTML=invCats().map(c=>{
+    const n=invItems.filter(it=>it.category===c.id).length;
+    return `<div class="irow"><div style="flex:1;font-size:14px;font-weight:600">${invEsc(c.name)} <span style="font-size:12px;font-weight:400;color:var(--text3)">${n} item${n===1?'':'s'}</span></div><button class="bsm" onclick="invCatRename('${c.id}')">✏️</button><button class="bdsm" onclick="invCatDelete('${c.id}')">✕</button></div>`;
+  }).join('');
+}
+async function invSaveCats(list){
+  try{
+    await window.F.setDoc(window.F.doc(window.db,'stores',window.currentStoreId,'settings','main'),{inventoryCategories:list},{merge:true});
+    if(!window.storeSettings)window.storeSettings={};
+    window.storeSettings.inventoryCategories=list;
+    invFillCatSelects();invRenderCatMgr();invRenderItems();
+    return true;
+  }catch(e){console.error(e);toast('Error saving categories');return false;}
+}
+function invCatNameTaken(name,exceptId){return invCats().some(c=>c.id!==exceptId&&c.name.toLowerCase()===name.toLowerCase());}
+async function invCatAdd(){
+  const inp=document.getElementById('invCatNew');const name=inp.value.trim();
+  if(!name)return;
+  if(invCatNameTaken(name)){toast('That category already exists');return;}
+  let id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'cat';
+  const base=id;let i=2;while(invCats().some(c=>c.id===id))id=base+'-'+(i++);
+  if(await invSaveCats([...invCats(),{id,name}])){inp.value='';toast('✓ Category added');}
+}
+async function invCatRename(id){
+  const c=invCats().find(x=>x.id===id);if(!c)return;
+  const n=(prompt('Rename category',c.name)||'').trim();
+  if(!n||n===c.name)return;
+  if(invCatNameTaken(n,id)){toast('That category already exists');return;}
+  await invSaveCats(invCats().map(x=>x.id===id?{id,name:n}:x));
+}
+async function invCatDelete(id){
+  const c=invCats().find(x=>x.id===id);if(!c)return;
+  const used=invItems.filter(it=>it.category===id).length;
+  if(used){toast(used+' item'+(used===1?'':'s')+' use "'+c.name+'" — move them to another category first');return;}
+  if(invCats().length<=1){toast('Keep at least one category');return;}
+  if(!confirm('Delete category "'+c.name+'"?'))return;
+  if(invCatFilter===id)invCatFilter='';
+  await invSaveCats(invCats().filter(x=>x.id!==id));
+}
+function invCodesToText(it){return (it.barcodes||[]).map(b=>b.code+((Number(b.pack)||1)>1?' x'+b.pack:'')).join('\n');}
+function invParseCodes(txt){
+  const out=[];
+  for(const line of txt.split('\n')){
+    const m=line.trim().match(/^(\d+)\s*(?:[x×*]\s*(\d+))?$/i);
+    if(m)out.push({code:m[1],pack:Math.max(1,parseInt(m[2])||1)});
+    else if(line.trim())return null;
+  }
+  return out;
+}
+function invEditOpen(id){
+  const it=id?invItems.find(x=>x.id===id):null;
+  document.getElementById('invEditId').value=id||'';
+  document.getElementById('invEditName').value=it?it.name||'':'';
+  document.getElementById('invEditCat').value=it?it.category||invCats()[0].id:(invCatFilter||invCats()[0].id);
+  document.getElementById('invEditPar').value=it&&it.par?it.par:'';
+  document.getElementById('invEditLow').value=it&&it.lowAt!=null?it.lowAt:'';
+  document.getElementById('invEditCodes').value=it?invCodesToText(it):'';
+  document.getElementById('invEditWrap').style.display='block';
+  document.getElementById('invEditName').focus();
+}
+function invEditCancel(){document.getElementById('invEditWrap').style.display='none';}
+async function invEditSave(){
+  const id=document.getElementById('invEditId').value;
+  const name=document.getElementById('invEditName').value.trim();
+  if(!name){toast('Enter an item name');return;}
+  const codes=invParseCodes(document.getElementById('invEditCodes').value);
+  if(codes===null){toast('Barcodes: digits only, one per line (optional "x24")');return;}
+  for(const c of codes){
+    const hit=invMap[invKey(c.code)];
+    if(hit&&hit.item.id!==id){toast(c.code+' already belongs to '+hit.item.name);return;}
+  }
+  const lowTxt=document.getElementById('invEditLow').value.trim();
+  const data={
+    name,category:document.getElementById('invEditCat').value,
+    par:Math.max(0,parseInt(document.getElementById('invEditPar').value)||0),
+    barcodes:codes
+  };
+  try{
+    if(id){
+      const upd={...data,lowAt:lowTxt===''?window.F.deleteField():Math.max(0,parseInt(lowTxt)||0)};
+      await window.F.updateDoc(sd('inventoryItems',id),upd);
+      const it=invItems.find(x=>x.id===id);
+      Object.assign(it,data);
+      if(lowTxt==='')delete it.lowAt;else it.lowAt=upd.lowAt;
+    }else{
+      const nd={...data,front:0,back:0,out:false,createdAt:localDate(),createdBy:(CU&&CU.name)||''};
+      if(lowTxt!=='')nd.lowAt=Math.max(0,parseInt(lowTxt)||0);
+      const ref=await window.F.addDoc(sc('inventoryItems'),nd);
+      invItems.push({id:ref.id,...nd});
+    }
+    invReindex();invEditCancel();invRenderItems();toast('✓ Item saved');
+  }catch(e){console.error(e);toast('Error saving item');}
+}
+async function invDelete(id){
+  const it=invItems.find(x=>x.id===id);if(!it)return;
+  if(!confirm('Delete "'+it.name+'"? Its counts and barcodes will be removed.'))return;
+  try{
+    await window.F.deleteDoc(sd('inventoryItems',id));
+    invItems=invItems.filter(x=>x.id!==id);
+    invSess=invSess.filter(x=>x.id!==id);
+    invReindex();invRenderItems();toast('Deleted');
+  }catch(e){console.error(e);toast('Error deleting');}
+}
+
+// ---- order list ----
+function invOrderRows(){
+  return invItems.filter(it=>invStatus(it)!=='ok').map(it=>({it,need:invOrderQty(it)}))
+    .sort((a,b)=>(invCatRank(a.it.category)-invCatRank(b.it.category))||((b.it.out?1:0)-(a.it.out?1:0))||(a.it.name||'').localeCompare(b.it.name||''));
+}
+function invRenderOrder(){
+  const el=document.getElementById('invOrderList');if(!el)return;
+  const rows=invOrderRows();
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="ei">✓</div>Nothing to order right now</div>';return;}
+  const cats=[...new Set(rows.map(r=>r.it.category||'other'))];
+  el.innerHTML=cats.map(c=>`<div class="inv-cat">${invEsc(invCatName(c))}</div>`+rows.filter(r=>(r.it.category||'other')===c).map(r=>{
+    const it=r.it,back=Number(it.back)||0,front=Number(it.front)||0;
+    const badge=it.out?'<span class="badge bred">Out</span>':'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>';
+    let right;
+    if(r.need>0)right=`<div style="font-size:18px;font-weight:700;color:var(--text)">${r.need}</div><div style="font-size:10px;color:var(--text3)">to order</div>`;
+    else right='<div style="font-size:12px;color:var(--text3)">no order</div>';
+    const note=(back>0&&it.out)?`<div style="font-size:12px;color:var(--amber);margin-top:2px">📦 ${back} in backroom — restock the shelf before ordering</div>`:(!Number(it.par)?'<div style="font-size:12px;color:var(--text3);margin-top:2px">Set a par level to get an order quantity</div>':'');
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">Front ${front} · Back ${back}${Number(it.par)?' · Par '+Number(it.par):''}</div>${note}</div><div style="text-align:right;flex-shrink:0">${right}</div></div>`;
+  }).join('')).join('');
+}
+function invCopyOrder(){
+  const rows=invOrderRows().filter(r=>r.need>0);
+  if(!rows.length){toast('Nothing to copy');return;}
+  const cats=[...new Set(rows.map(r=>r.it.category||'other'))];
+  const txt=cats.map(c=>invCatName(c)+':\n'+rows.filter(r=>(r.it.category||'other')===c).map(r=>'- '+r.it.name+': '+r.need).join('\n')).join('\n\n');
+  navigator.clipboard.writeText(txt).then(()=>toast('✓ Order list copied')).catch(()=>{prompt('Copy this order list:',txt);});
 }
 
 // ---- TO-DO ----
