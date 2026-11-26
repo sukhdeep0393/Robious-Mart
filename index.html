@@ -170,6 +170,17 @@
   .inv-chip.on{background:var(--blue);color:#fff;border-color:var(--blue);}
   .inv-cat-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--border);}
   .inv-cat-hdr .inv-cat{margin:0;}
+  .inv-cat-toggle{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 0;border:none;background:none;text-align:left;cursor:pointer;}
+  .inv-cat-toggle .inv-cat{font-size:13px;color:var(--text);}
+  #invStockSeg button{white-space:nowrap;font-size:13px;padding:9px 2px;}
+  .inv-caret{width:14px;color:var(--text2);font-size:14px;}
+  .inv-stock{width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:5px 0;border-radius:var(--r);line-height:1.15;}
+  .inv-stock strong{font-size:20px;}
+  .inv-stock span{font-size:10px;font-weight:600;}
+  .inv-stock.in{background:var(--green-light);color:var(--green);}
+  .inv-stock.low{background:var(--amber-light);color:var(--amber);}
+  .inv-stock.out{background:var(--red-light);color:var(--red);}
+  .inv-stock.none{background:var(--bg2);color:var(--text3);}
   .inv-cat{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px;}
   .short-over-box{border-radius:8px;padding:10px 12px;font-size:13px;font-weight:500;margin-top:8px;}
   .short-box{background:var(--red-light);color:var(--red);}
@@ -804,10 +815,6 @@
           <button data-m="out" onclick="invSetMode('out')">Out</button>
           <button data-m="open" onclick="invSetMode('open')">🚬 Open</button>
         </div>
-        <div class="inv-seg" id="invLocSeg" style="margin-top:8px">
-          <button data-l="front" class="on" onclick="invSetLoc('front')">Front / Cooler</button>
-          <button data-l="back" onclick="invSetLoc('back')">Backroom</button>
-        </div>
         <div class="inv-hint" id="invModeHint"></div>
         <button class="btn bsecondary" id="invCamBtn" style="display:none;margin-top:10px;padding:11px;font-size:14px" onclick="invCamOpen()">📷 Use phone camera</button>
         <input id="invScan" autocomplete="off" placeholder="Scan barcode or type item name…" onkeydown="invScanKey(event)" oninput="invScanInput()" style="margin-top:10px;font-size:16px" />
@@ -867,7 +874,11 @@
         </div>
         </div>
         <div class="inv-chips" id="invCatChips"></div>
-        <input id="invItemSearch" placeholder="Search items…" oninput="invRenderItems()" style="margin-bottom:10px" />
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <input id="invItemSearch" autocomplete="off" placeholder="Search name or scan barcode…" oninput="invRenderItems()" onkeydown="invItemSearchKey(event)" style="flex:1;font-size:16px" />
+          <button class="bsm" id="invSearchCamBtn" style="display:none;padding:0 14px;font-size:16px" onclick="invCamOpen('search')">📷</button>
+        </div>
+        <div class="inv-seg" id="invStockSeg" style="margin-bottom:6px"></div>
         <div id="invItemList"></div>
       </div>
     </div>
@@ -879,7 +890,7 @@
           <div class="ct" style="margin:0">Order list</div>
           <button class="bsm" onclick="invCopyOrder()">Copy</button>
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Items flagged out or running low. Order quantity = par minus everything on hand (front + backroom).</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Items flagged out or running low. Order quantity = par minus what is in stock.</div>
         <div id="invOrderList"></div>
       </div>
     </div>
@@ -1148,7 +1159,7 @@
 
       <div style="margin-bottom:12px;background:var(--bg2);border-radius:var(--r);padding:12px">
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">📦 Add to inventory (optional)</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Scan what arrived. When you save the delivery, these are added to Backroom stock.</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Scan what arrived. When you save the delivery, these are added to stock.</div>
         <div style="display:flex;gap:6px">
           <input id="dlStockScan" autocomplete="off" placeholder="Scan barcode or type item name…" onkeydown="dlStockKey(event)" oninput="dlStockInput()" style="flex:1;font-size:16px" />
           <button class="bsm" id="dlCamBtn" style="display:none;padding:0 14px;font-size:16px" onclick="invCamOpen('dl')">📷</button>
@@ -1646,6 +1657,7 @@
       <div class="card" id="invNewCard">
         <div class="ct">New barcode</div>
         <div class="inv-code" id="invNewCode"></div>
+        <div class="inv-hint" style="margin:0 0 10px">This barcode isn't saved on any item yet. If the item is already on your list, pick it under “Link to”.</div>
         <div style="margin-bottom:10px"><label>Link to</label>
           <select id="invNewLink" onchange="invNewLinkChg()"></select>
         </div>
@@ -4320,7 +4332,9 @@ const INV_DEFAULT_CATS=[{id:'tobacco',name:'Tobacco'},{id:'cigs',name:'Cigs'},{i
 function invCats(){const c=window.storeSettings&&window.storeSettings.inventoryCategories;return(Array.isArray(c)&&c.length)?c:INV_DEFAULT_CATS;}
 function invCatName(k){const c=invCats().find(x=>x.id===k);return c?c.name:((k&&k!=='other')?k:'Other');}
 let invCatFilter='';
-let invItems=[], invMap={}, invMode='count', invLoc='front', invSess=[], invPending='', invOutLog=[], invCurView='scan';
+let invStockFilter=''; // '', 'in', 'low', 'out'
+const invOpenCats=new Set(); // categories expanded on the Items list (all start collapsed)
+let invItems=[], invMap={}, invMode='count', invSess=[], invPending='', invOutLog=[], invCurView='scan';
 
 let invOpenLog=[]; // cartons opened this session (for Undo)
 let invNewTarget='inv'; // where a newly-created/linked barcode goes: 'inv' (Scan view) or 'dl' (delivery form)
@@ -4338,6 +4352,9 @@ function invStatus(it){
   if(par>0&&invTotal(it)<=invLowAt(it))return 'low';
   return 'ok';
 }
+// What the Items list shows: 'out' (flagged), 'none' (zero on file), 'low', 'in'
+function invLevel(it){if(it.out)return 'out';if(invTotal(it)<=0)return 'none';return invStatus(it)==='low'?'low':'in';}
+function invStockMatch(it,f){const l=invLevel(it);return !f||(f==='in'?(l==='in'||l==='low'):f==='out'?(l==='out'||l==='none'):l===f);}
 function invOrderQty(it){return Math.max(0,(Number(it.par)||0)-invTotal(it));}
 function invCatRank(c){const i=invCats().findIndex(x=>x.id===c);return i<0?99:i;}
 function invFocus(){
@@ -4386,10 +4403,8 @@ function invView(v){
 
 // ---- scan mode ----
 function invHint(){
-  if(invMode==='count')return invLoc==='front'
-    ?'Count what is out front / in the cooler, in whole cases (cigarettes: cartons). Each scan adds 1 — or type the number. Save sets the Front total for the items you scanned.'
-    :'Count the backroom in whole cases (cigarettes: cartons). Each scan adds 1 — or type the number. Save sets the Backroom total for the items you scanned.';
-  if(invMode==='receive')return 'Scan each case / carton from a delivery. Each scan adds 1 to Backroom stock.';
+  if(invMode==='count')return 'Count what you have, in whole cases (cigarettes: cartons). Each scan adds 1 — or type the number. Save sets the stock for the items you scanned.';
+  if(invMode==='receive')return 'Scan each case / carton from a delivery. Each scan adds 1 to stock.';
   if(invMode==='open')return 'Cigarette cartons only. Scan each carton as you open it. It comes off the carton count and is logged with your name and the time.';
   return 'Scan an item that is gone. It is flagged out immediately and shows on the order list and Dashboard.';
 }
@@ -4400,26 +4415,24 @@ function invSetMode(m,force){
   }
   invMode=m;
   document.querySelectorAll('#invModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  document.getElementById('invLocSeg').style.display=(m==='count')?'':'none';
   document.getElementById('invModeHint').textContent=invHint();
   invNewCancel();
   invRenderSess();
   invFocus();
 }
-function invSetLoc(l){
-  if(l!==invLoc){
-    if(invSess.length&&!confirm('Discard '+invSess.length+' unsaved scan(s)?'))return;
-    invSess=[];
-  }
-  invLoc=l;
-  document.querySelectorAll('#invLocSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
-  document.getElementById('invModeHint').textContent=invHint();
-  invRenderSess();
-  invFocus();
+// A query made of 4+ digits also matches saved barcodes (full or partial)
+function invCodeQuery(q){const d=String(q||'').replace(/[\s-]/g,'');return /^\d{4,}$/.test(d)?d:'';}
+function invCodeExact(it,d){const k=invKey(d);return !!k&&(it.barcodes||[]).some(b=>invKey(b.code)===k);}
+function invMatches(it,q){
+  if((it.name||'').toLowerCase().includes(q.toLowerCase()))return true;
+  const d=invCodeQuery(q);
+  return !!d&&(invCodeExact(it,d)||(it.barcodes||[]).some(b=>String(b.code).includes(d)));
 }
 function invSearch(q,cat){
-  q=q.toLowerCase();
-  return invItems.filter(it=>(!cat||it.category===cat)&&(it.name||'').toLowerCase().includes(q)).slice(0,6);
+  const d=invCodeQuery(q);
+  const m=invItems.filter(it=>(!cat||it.category===cat)&&invMatches(it,q));
+  if(d)m.sort((a,b)=>invCodeExact(b,d)-invCodeExact(a,d));
+  return m.slice(0,6);
 }
 function invScanKey(e){
   if(e.key!=='Enter')return;
@@ -4436,7 +4449,7 @@ function invScanKey(e){
 }
 function invScanInput(){
   const v=document.getElementById('invScan').value.trim(),box=document.getElementById('invSuggest');
-  if(!v||/^\d+$/.test(v)){box.innerHTML='';return;}
+  if(!v){box.innerHTML='';return;}
   box.innerHTML=invSearch(v,invMode==='open'?'cigs':'').map(it=>`<button class="inv-sug" onclick="invPick('${it.id}')">${invEsc(it.name)} <span>${invEsc(invCatName(it.category))}</span></button>`).join('');
 }
 function invPick(id){
@@ -4446,7 +4459,19 @@ function invPick(id){
   if(it)invApply(it,1);
   invFocus();
 }
-function invRoute(it,qty,target){if(target==='dl')dlStockAdd(it,qty);else invApply(it,qty);}
+function invRoute(it,qty,target){
+  if(target==='dl')dlStockAdd(it,qty);
+  else if(target==='search')invShowCode(((it.barcodes||[]).slice(-1)[0]||{}).code||it.name);
+  else invApply(it,qty);
+}
+function invShowCode(v){document.getElementById('invItemSearch').value=v;invRenderItems();}
+function invItemSearchKey(e){
+  if(e.key!=='Enter')return;
+  e.preventDefault();
+  const el=e.target,d=invCodeQuery(el.value.trim());
+  invRenderItems();
+  if(d&&d.length>=6){if(!invItems.some(it=>invMatches(it,d)))invNewOpen(d,'search');else el.select();} // select so the next scan replaces it
+}
 function invOnBarcode(code,target){
   target=target||'inv';
   const hit=invMap[invKey(code)];
@@ -4481,11 +4506,11 @@ function invRenderSess(){
     el.innerHTML=invOpenLog.length?invOpenLog.map(r=>`<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;${r.undone?'text-decoration:line-through;color:var(--text3)':''}">${invEsc(r.name)}</div><div style="font-size:11px;color:var(--text3)">${invEsc(r.time)}${r.warn?' · ⚠ stock showed 0':''}</div></div>${r.undone?'<span class="badge">undone</span>':`<button class="bsm" onclick="invUndoOpen('${r.logId}')">Undo</button>`}</div>`).join(''):'<div class="empty"><div class="ei">🚬</div>Scan a carton as you open it</div>';
     return;
   }
-  ttl.textContent=invMode==='count'?('Counting — '+(invLoc==='front'?'Front / Cooler':'Backroom')):'Receiving into Backroom';
+  ttl.textContent=invMode==='count'?'Counting':'Receiving';
   if(!invSess.length){el.innerHTML='<div class="empty"><div class="ei">📷</div>Scan items to start</div>';foot.innerHTML='';return;}
   el.innerHTML=invSess.map(r=>{
     const it=invItems.find(x=>x.id===r.id);if(!it)return'';
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On file: Front ${Number(it.front)||0} · Back ${Number(it.back)||0} ${invUnitWord(it,2)}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="invSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="invRemoveRow('${r.id}')">✕</button></div>`;
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">In stock: ${invTotal(it)} ${invUnitWord(it,invTotal(it))}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="invSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="invRemoveRow('${r.id}')">✕</button></div>`;
   }).join('');
   foot.innerHTML=`<button class="btn bprimary" id="invSaveBtn" style="margin-top:12px" onclick="invSave()">${invMode==='count'?'Save count':'Save received'} (${invSess.length} item${invSess.length>1?'s':''})</button>`;
 }
@@ -4494,7 +4519,6 @@ async function invSave(){
   const btn=document.getElementById('invSaveBtn');
   if(!invSess.length||(btn&&btn.disabled))return;
   if(btn)btn.disabled=true;
-  const loc=invMode==='receive'?'back':invLoc;
   const date=localDate();
   const applied=[];
   try{
@@ -4505,26 +4529,26 @@ async function invSave(){
         const it=invItems.find(x=>x.id===r.id);if(!it)return;
         const q=Math.max(0,Math.round(Number(r.qty)||0));
         if(invMode==='receive'&&q<1)return;
-        const before=Number(it[loc])||0;
+        const before=invTotal(it);
         const after=invMode==='count'?q:before+q;
-        const total=invTotal(it)-before+after;
+        // stock is kept in `back`; a count also clears any quantity saved under the old `front` field
         const upd={};
-        if(invMode==='count'){upd[loc]=q;upd.lastCountedAt=date;}
-        else upd[loc]=window.F.increment(q);
+        if(invMode==='count'){upd.back=q;upd.front=0;upd.lastCountedAt=date;}
+        else upd.back=window.F.increment(q);
         let out=!!it.out;
-        if(total>0)out=false;
+        if(after>0)out=false;
         else if(invMode==='count'){out=true;}
         if(out!==!!it.out){
           upd.out=out;
           if(out){upd.outAt=date;upd.outBy=(CU&&CU.name)||'';}
         }
         b.update(sd('inventoryItems',it.id),upd);
-        b.set(window.F.doc(sc('inventoryLog')),invLogEntry(it,invMode,loc,q,before,after));
-        applied.push({it,loc,after,out});
+        b.set(window.F.doc(sc('inventoryLog')),invLogEntry(it,invMode,'',q,before,after));
+        applied.push({it,q,out});
       });
       await b.commit();
     }
-    applied.forEach(a=>{a.it[a.loc]=a.after;a.it.out=a.out;if(invMode==='count')a.it.lastCountedAt=date;});
+    applied.forEach(a=>{if(invMode==='count'){a.it.back=a.q;a.it.front=0;a.it.lastCountedAt=date;}else a.it.back=(Number(a.it.back)||0)+a.q;a.it.out=a.out;});
     invSess=[];
     toast('✓ '+(invMode==='count'?'Count saved':'Delivery received')+' ('+applied.length+')');
     invRenderSess();invFocus();
@@ -4618,16 +4642,23 @@ function invRenderItems(){
   // park the form before re-rendering so it isn't destroyed
   const wrap=document.getElementById('invEditWrap'),home=document.getElementById('invEditHome');
   if(wrap&&home&&wrap.parentElement!==home)home.appendChild(wrap);
-  const q=(document.getElementById('invItemSearch').value||'').toLowerCase();
+  const q=(document.getElementById('invItemSearch').value||'').trim();
   const isOp=CU&&CU.role==='operator';
   const chips=document.getElementById('invCatChips');
   if(chips)chips.innerHTML=[['','All']].concat(invCats().map(c=>[c.id,c.name])).map(([k,l])=>{
     const n=k?invItems.filter(it=>it.category===k).length:invItems.length;
     return `<button class="inv-chip${invCatFilter===k?' on':''}" onclick="invSetCatFilter('${k}')">${invEsc(l)} <span>${n}</span></button>`;
   }).join('');
-  const list=invItems.filter(it=>(!q||(it.name||'').toLowerCase().includes(q))&&(!invCatFilter||it.category===invCatFilter));
+  // a barcode search looks everywhere, whatever category / stock filter is selected
+  const byCode=!!invCodeQuery(q)&&invItems.some(it=>invCodeExact(it,invCodeQuery(q)));
+  const inCat=invItems.filter(it=>byCode||!invCatFilter||it.category===invCatFilter);
+  const seg=document.getElementById('invStockSeg');
+  if(seg)seg.innerHTML=[['','All'],['in','In stock'],['low','Low'],['out','Out']].map(([k,l])=>`<button class="${invStockFilter===k?'on':''}" onclick="invSetStockFilter('${k}')">${l} <span style="opacity:.6">${inCat.filter(it=>invStockMatch(it,k)).length}</span></button>`).join('');
+  const rank={in:0,low:1,out:2,none:3};
+  const list=inCat.filter(it=>(!q||invMatches(it,q))&&(byCode||invStockMatch(it,invStockFilter)))
+    .sort((a,b)=>rank[invLevel(a)]-rank[invLevel(b)]); // what's on the shelf first, A–Z within each group
   let cats;
-  if(isOp&&!q){
+  if(isOp&&!q&&!invStockFilter){
     // operators see every category (so they can add to an empty one)
     cats=invCats().map(c=>c.id).filter(id=>!invCatFilter||id===invCatFilter);
     list.forEach(it=>{const c=it.category||'other';if(!cats.includes(c))cats.push(c);});
@@ -4635,16 +4666,22 @@ function invRenderItems(){
     cats=[...new Set(list.map(it=>it.category||'other'))].sort((a,b)=>invCatRank(a)-invCatRank(b));
   }
   if(!cats.length){
-    el.innerHTML='<div class="empty"><div class="ei">📦</div>'+(invItems.length?'No matches':'No items yet')+'</div>';
+    const d=invCodeQuery(q);
+    el.innerHTML='<div class="empty"><div class="ei">📦</div>'+(!invItems.length?'No items yet':d&&d.length>=6?`No item has this barcode<br><button class="bsm" style="margin-top:10px" onclick="invNewOpen('${d}','search')">Add or link it</button>`:'No matches')+'</div>';
     return;
   }
   el.innerHTML=cats.map(c=>{
     const items=list.filter(it=>(it.category||'other')===c);
-    const hdr=`<div class="inv-cat-hdr" id="invCatHdr-${invEsc(c)}"><div class="inv-cat">${invEsc(invCatName(c))} <span style="opacity:.6">${items.length}</span></div>${isOp?`<button class="bsm" onclick="invEditOpen('','${invEsc(c)}')">+ Add item</button>`:''}</div>`;
+    const open=!!(q||invStockFilter||invCatFilter)||invOpenCats.has(c); // searching or filtering opens the matches
+    const count=l=>items.filter(it=>invLevel(it)===l).length;
+    const nIn=count('in')+count('low'),nLow=count('low'),nOut=count('out');
+    const sum=(nIn?`<span class="badge bgrn">${nIn} in stock</span>`:'')+(nLow?`<span class="badge bamb">${nLow} low</span>`:'')+(nOut?`<span class="badge bred">${nOut} out</span>`:'');
+    const hdr=`<div class="inv-cat-hdr" id="invCatHdr-${invEsc(c)}"><button class="inv-cat-toggle" aria-expanded="${open}" onclick="invToggleCat('${invEsc(c)}')"><span class="inv-caret">${open?'▾':'▸'}</span><span class="inv-cat">${invEsc(invCatName(c))} <span style="opacity:.6">${items.length}</span></span>${sum}</button>${isOp?`<button class="bsm" onclick="invEditOpen('','${invEsc(c)}')">+ Add item</button>`:''}</div>`;
+    if(!open)return hdr;
     const rows=items.length?items.map(it=>{
-      const st=invStatus(it),tot=invTotal(it);
-      const badge=st==='out'?'<span class="badge bred">Out</span>':st==='low'?'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>':'';
-      return `<div class="irow" id="invRow-${it.id}"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)"><strong style="color:var(--text2)">${tot} ${invUnitWord(it,tot)}</strong> · Front ${Number(it.front)||0} · Back ${Number(it.back)||0}${Number(it.par)?' · Par '+Number(it.par):''}</div></div>${isOp?`<button class="bsm" onclick="invEditOpen('${it.id}')">✏️</button><button class="bdsm" onclick="invDelete('${it.id}')">✕</button>`:''}</div>`;
+      const lv=invLevel(it),tot=invTotal(it);
+      const note={out:'Out',low:'Low',none:'None in stock',in:'In stock'}[lv];
+      return `<div class="irow" id="invRow-${it.id}"><div class="inv-stock ${lv}"><strong>${tot}</strong><span>${invUnitWord(it,tot)}</span></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;${lv==='none'?'color:var(--text2)':''}">${invEsc(it.name)}</div><div style="font-size:12px;color:var(--text3)">${note}${Number(it.par)?' · Par '+Number(it.par):''}</div></div>${isOp?`<button class="bsm" onclick="invEditOpen('${it.id}')">✏️</button><button class="bdsm" onclick="invDelete('${it.id}')">✕</button>`:''}</div>`;
     }).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No items yet</div>';
     return hdr+rows;
   }).join('');
@@ -4655,6 +4692,13 @@ function invRenderItems(){
   }
 }
 function invSetCatFilter(k){invCatFilter=k;invRenderItems();}
+function invSetStockFilter(k){invStockFilter=k;invRenderItems();}
+function invToggleCat(c){
+  // while a search / filter holds everything open there is nothing to toggle
+  if(document.getElementById('invItemSearch').value.trim()||invStockFilter||invCatFilter)return;
+  if(invOpenCats.has(c))invOpenCats.delete(c);else invOpenCats.add(c);
+  invRenderItems();
+}
 function invFillCatSelects(){
   ['invNewCat','invEditCat'].forEach(id=>{
     const s=document.getElementById(id);if(!s)return;
@@ -4733,6 +4777,7 @@ function invEditOpen(id,cat){
   const it=id?invItems.find(x=>x.id===id):null;
   const catId=it?(it.category||invCats()[0].id):(cat||invCatFilter||invCats()[0].id);
   invEditAnchor=it?{type:'item',id}:{type:'cat',id:catId};
+  invOpenCats.add(catId);
   invFillCatSelects();
   const codes=it?(it.barcodes||[]).map(b=>String(b.code)):[];
   document.getElementById('invEditId').value=id||'';
@@ -4789,6 +4834,7 @@ async function invEditSave(){
       const ref=await window.F.addDoc(sc('inventoryItems'),nd);
       invItems.push({id:ref.id,...nd});
     }
+    invOpenCats.add(data.category);
     invReindex();invEditCancel();invRenderItems();toast('✓ Item saved');
   }catch(e){console.error(e);toast('Error saving item');}
 }
@@ -4810,7 +4856,7 @@ const INV_ZX_SRI='sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMY
 let invCam={target:'inv',running:false,stream:null,timer:null,reader:null,busy:false,last:'',lastSeen:0,count:0,audio:null};
 function invCamInit(){
   const ok=navigator.mediaDevices&&navigator.mediaDevices.getUserMedia;
-  ['invCamBtn','dlCamBtn','invEditCamBtn'].forEach(id=>{const b=document.getElementById(id);if(b&&ok)b.style.display='';});
+  ['invCamBtn','dlCamBtn','invEditCamBtn','invSearchCamBtn'].forEach(id=>{const b=document.getElementById(id);if(b&&ok)b.style.display='';});
 }
 function invLoadZX(){
   if(window.ZXing)return Promise.resolve();
@@ -4877,6 +4923,11 @@ function invCamHit(raw){
   if(same&&gap<900)return;
   const hit=invMap[invKey(code)];
   const tgt=invCam.target;
+  if(tgt==='search'){
+    invCamFeedback();invCamClose();
+    if(hit)invShowCode(code);else{invShowCode(code);invNewOpen(code,'search');}
+    return;
+  }
   if(tgt==='edit'){
     invCamFeedback();invCamClose();
     document.getElementById('invEditCode').value=code;
@@ -4933,7 +4984,7 @@ function dlStockKey(e){
 }
 function dlStockInput(){
   const v=document.getElementById('dlStockScan').value.trim(),box=document.getElementById('dlStockSuggest');
-  if(!v||/^\d+$/.test(v)){box.innerHTML='';return;}
+  if(!v){box.innerHTML='';return;}
   box.innerHTML=invSearch(v).map(it=>`<button class="inv-sug" onclick="dlStockPick('${it.id}')">${invEsc(it.name)} <span>${invEsc(invCatName(it.category))}</span></button>`).join('');
 }
 function dlStockPick(id){
@@ -4951,7 +5002,7 @@ function dlStockRender(){
   const el=document.getElementById('dlStockList');if(!el)return;
   el.innerHTML=dlStock.map(r=>{
     const it=invItems.find(x=>x.id===r.id);if(!it)return'';
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">On hand: Front ${Number(it.front)||0} · Back ${Number(it.back)||0} ${invUnitWord(it,2)}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="dlStockSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="dlStockRemove('${r.id}')">✕</button></div>`;
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)}</div><div style="font-size:11px;color:var(--text3)">In stock: ${invTotal(it)} ${invUnitWord(it,invTotal(it))}</div></div><input type="number" class="inv-qty" min="0" value="${r.qty}" oninput="dlStockSetQty('${r.id}',this.value)" /><button class="bdsm" onclick="dlStockRemove('${r.id}')">✕</button></div>`;
   }).join('');
 }
 // Build the batch that saves the delivery and adds its stock in one atomic write
@@ -4974,7 +5025,7 @@ async function dlSaveWithStock(payload,rows){
 }
 
 // ---- OPEN CARTON LOG (cigs only) ----
-// Opening a carton takes 1 off Backroom (or Front if Backroom is empty) and writes an 'open' entry to inventoryLog.
+// Opening a carton takes 1 off stock (the `back` field, or a leftover `front` quantity) and writes an 'open' entry to inventoryLog.
 async function invOpenCarton(it){
   if(it.category!=='cigs'){toast('Open-carton logging is for cigarettes only');return;}
   const f0=Number(it.front)||0,b0=Number(it.back)||0;
@@ -5061,13 +5112,13 @@ function invRenderOrder(){
   if(!rows.length){el.innerHTML='<div class="empty"><div class="ei">✓</div>Nothing to order right now</div>';return;}
   const cats=[...new Set(rows.map(r=>r.it.category||'other'))];
   el.innerHTML=cats.map(c=>`<div class="inv-cat">${invEsc(invCatName(c))}</div>`+rows.filter(r=>(r.it.category||'other')===c).map(r=>{
-    const it=r.it,back=Number(it.back)||0,front=Number(it.front)||0;
+    const it=r.it,tot=invTotal(it);
     const badge=it.out?'<span class="badge bred">Out</span>':'<span class="badge" style="background:var(--amber-light);color:var(--amber)">Low</span>';
     let right;
     if(r.need>0)right=`<div style="font-size:18px;font-weight:700;color:var(--text)">${r.need}</div><div style="font-size:10px;color:var(--text3)">${invUnitWord(it,r.need)} to order</div>`;
     else right='<div style="font-size:12px;color:var(--text3)">no order</div>';
-    const note=(back>0&&it.out)?`<div style="font-size:12px;color:var(--amber);margin-top:2px">📦 ${back} ${invUnitWord(it,back)} in backroom — restock the shelf before ordering</div>`:(!Number(it.par)?'<div style="font-size:12px;color:var(--text3);margin-top:2px">Set a par level to get an order quantity</div>':'');
-    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">Front ${front} · Back ${back} ${invUnitWord(it,2)}${Number(it.par)?' · Par '+Number(it.par):''}</div>${note}</div><div style="text-align:right;flex-shrink:0">${right}</div></div>`;
+    const note=(tot>0&&it.out)?`<div style="font-size:12px;color:var(--amber);margin-top:2px">📦 ${tot} ${invUnitWord(it,tot)} still on file — check before ordering</div>`:(!Number(it.par)?'<div style="font-size:12px;color:var(--text3);margin-top:2px">Set a par level to get an order quantity</div>':'');
+    return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${invEsc(it.name)} ${badge}</div><div style="font-size:12px;color:var(--text3)">In stock: ${tot} ${invUnitWord(it,tot)}${Number(it.par)?' · Par '+Number(it.par):''}</div>${note}</div><div style="text-align:right;flex-shrink:0">${right}</div></div>`;
   }).join('')).join('');
 }
 function invCopyOrder(){
