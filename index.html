@@ -813,7 +813,7 @@
           <button data-m="count" class="on" onclick="invSetMode('count')">Count</button>
           <button data-m="receive" onclick="invSetMode('receive')">Receive</button>
           <button data-m="out" onclick="invSetMode('out')">Out</button>
-          <button data-m="open" onclick="invSetMode('open')">🚬 Open</button>
+          <button data-m="open" onclick="invSetMode('open')">📦 Open</button>
         </div>
         <div class="inv-hint" id="invModeHint"></div>
         <button class="btn bsecondary" id="invCamBtn" style="display:none;margin-top:10px;padding:11px;font-size:14px" onclick="invCamOpen()">📷 Use phone camera</button>
@@ -895,11 +895,11 @@
       </div>
     </div>
 
-    <!-- OPENED CARTONS (operator) -->
+    <!-- OPENED CASES / CARTONS (operator) -->
     <div class="inv-view" id="invV-opened" style="display:none">
       <div class="card">
         <div class="sh2">
-          <div class="ct" style="margin:0">🚬 Opened cartons</div>
+          <div class="ct" style="margin:0">📦 Opened cases &amp; cartons</div>
           <input type="month" id="invOpenedMonth" onchange="loadInvOpened()" style="width:auto;padding:6px 8px;font-size:13px" />
         </div>
         <div id="invOpenedSummary"></div>
@@ -4336,7 +4336,7 @@ let invStockFilter=''; // '', 'in', 'low', 'out'
 const invOpenCats=new Set(); // categories expanded on the Items list (all start collapsed)
 let invItems=[], invMap={}, invMode='count', invSess=[], invPending='', invOutLog=[], invCurView='scan';
 
-let invOpenLog=[]; // cartons opened this session (for Undo)
+let invOpenLog=[]; // cases / cartons opened this session (for Undo)
 let invNewTarget='inv'; // where a newly-created/linked barcode goes: 'inv' (Scan view) or 'dl' (delivery form)
 function invEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 // UPC-A (12) and EAN-13 (13) differ by a leading zero; compare without leading zeros
@@ -4405,7 +4405,7 @@ function invView(v){
 function invHint(){
   if(invMode==='count')return 'Count what you have, in whole cases (cigarettes: cartons). Each scan adds 1 — or type the number. Save sets the stock for the items you scanned.';
   if(invMode==='receive')return 'Scan each case / carton from a delivery. Each scan adds 1 to stock.';
-  if(invMode==='open')return 'Cigarette cartons only. Scan each carton as you open it. It comes off the carton count and is logged with your name and the time.';
+  if(invMode==='open')return 'Scan each case / carton as you open it. It comes off the stock count and is logged with your name and the time.';
   return 'Scan an item that is gone. It is flagged out immediately and shows on the order list and Dashboard.';
 }
 function invSetMode(m,force){
@@ -4443,14 +4443,14 @@ function invScanKey(e){
     el.value='';document.getElementById('invSuggest').innerHTML='';
     invOnBarcode(v);return;
   }
-  const m=invSearch(v,invMode==='open'?'cigs':'');
+  const m=invSearch(v);
   if(m.length)invPick(m[0].id);
   else toast('No match — scan a barcode to add the item');
 }
 function invScanInput(){
   const v=document.getElementById('invScan').value.trim(),box=document.getElementById('invSuggest');
   if(!v){box.innerHTML='';return;}
-  box.innerHTML=invSearch(v,invMode==='open'?'cigs':'').map(it=>`<button class="inv-sug" onclick="invPick('${it.id}')">${invEsc(it.name)} <span>${invEsc(invCatName(it.category))}</span></button>`).join('');
+  box.innerHTML=invSearch(v).map(it=>`<button class="inv-sug" onclick="invPick('${it.id}')">${invEsc(it.name)} <span>${invEsc(invCatName(it.category))}</span></button>`).join('');
 }
 function invPick(id){
   document.getElementById('invScan').value='';
@@ -4501,9 +4501,9 @@ function invRenderSess(){
     return;
   }
   if(invMode==='open'){
-    ttl.textContent='Cartons opened this session';
+    ttl.textContent='Opened this session';
     foot.innerHTML='';
-    el.innerHTML=invOpenLog.length?invOpenLog.map(r=>`<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;${r.undone?'text-decoration:line-through;color:var(--text3)':''}">${invEsc(r.name)}</div><div style="font-size:11px;color:var(--text3)">${invEsc(r.time)}${r.warn?' · ⚠ stock showed 0':''}</div></div>${r.undone?'<span class="badge">undone</span>':`<button class="bsm" onclick="invUndoOpen('${r.logId}')">Undo</button>`}</div>`).join(''):'<div class="empty"><div class="ei">🚬</div>Scan a carton as you open it</div>';
+    el.innerHTML=invOpenLog.length?invOpenLog.map(r=>`<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;${r.undone?'text-decoration:line-through;color:var(--text3)':''}">${invEsc(r.name)}</div><div style="font-size:11px;color:var(--text3)">${invEsc(r.time)}${r.warn?' · ⚠ stock showed 0':''}</div></div>${r.undone?'<span class="badge">undone</span>':`<button class="bsm" onclick="invUndoOpen('${r.logId}')">Undo</button>`}</div>`).join(''):'<div class="empty"><div class="ei">📦</div>Scan a case or carton as you open it</div>';
     return;
   }
   ttl.textContent=invMode==='count'?'Counting':'Receiving';
@@ -4593,7 +4593,6 @@ function invNewOpen(code,target){
   document.getElementById('invNewPar').value='';
   document.getElementById('invNewFields').style.display='';
   if(invCatFilter)document.getElementById('invNewCat').value=invCatFilter;
-  if(invMode==='open'&&invNewTarget!=='dl'&&invCats().some(c=>c.id==='cigs'))document.getElementById('invNewCat').value='cigs';
   document.getElementById('invNewSheet').style.display='flex';
   document.getElementById('invNewName').focus();
 }
@@ -4940,7 +4939,7 @@ function invCamHit(raw){
   invRoute(hit.item,hit.pack,tgt);
   const r=(tgt==='dl'?dlStock:invSess).find(x=>x.id===hit.item.id);
   document.getElementById('upcResultName').textContent=hit.item.name;
-  document.getElementById('upcResultCode').textContent=(tgt!=='dl'&&invMode==='out')?'Flagged out':(tgt!=='dl'&&invMode==='open')?'Carton logged':('+1 '+invUnitWord(hit.item,1)+(r?' · total '+r.qty+' '+invUnitWord(hit.item,r.qty):''));
+  document.getElementById('upcResultCode').textContent=(tgt!=='dl'&&invMode==='out')?'Flagged out':(tgt!=='dl'&&invMode==='open')?'Opened — logged':('+1 '+invUnitWord(hit.item,1)+(r?' · total '+r.qty+' '+invUnitWord(hit.item,r.qty):''));
   document.getElementById('upcResult').style.display='block';
   invCamStatus('✓ '+invCam.count+' scanned — move the item away to scan another');
 }
@@ -5024,10 +5023,9 @@ async function dlSaveWithStock(payload,rows){
   touched.forEach(t=>{t.it.back=t.after;t.it.out=false;});
 }
 
-// ---- OPEN CARTON LOG (cigs only) ----
-// Opening a carton takes 1 off stock (the `back` field, or a leftover `front` quantity) and writes an 'open' entry to inventoryLog.
+// ---- OPEN CASE / CARTON LOG ----
+// Opening a case or carton takes 1 off stock (the `back` field, or a leftover `front` quantity) and writes an 'open' entry to inventoryLog.
 async function invOpenCarton(it){
-  if(it.category!=='cigs'){toast('Open-carton logging is for cigarettes only');return;}
   const f0=Number(it.front)||0,b0=Number(it.back)||0;
   let loc='back',before=b0,warn=false;
   if(b0>0){loc='back';before=b0;}
@@ -5042,10 +5040,10 @@ async function invOpenCarton(it){
     await b.commit();
     if(!warn)it[loc]=after;
     invOpenLog.unshift({logId:logRef.id,itemId:it.id,name:it.name||'',loc,warn,undone:false,time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
-    toast(warn?'⚠ Logged — but stock showed 0 cartons, count may be off':'🚬 '+it.name+' — carton opened ('+invTotal(it)+' left)');
+    toast(warn?'⚠ Logged — but stock showed 0 '+invUnitWord(it,0)+', count may be off':'📦 '+it.name+' — '+invUnitWord(it,1)+' opened ('+invTotal(it)+' left)');
     invRenderSess();
     if(CU&&CU.role==='operator')invOpenedBadge();
-  }catch(e){console.error(e);toast('Error logging carton');}
+  }catch(e){console.error(e);toast('Error logging it — try again');}
 }
 async function invUndoOpen(logId){
   const r=invOpenLog.find(x=>x.logId===logId);if(!r||r.undone)return;
@@ -5080,20 +5078,20 @@ async function loadInvOpened(){
   try{
     const rows=(await invOpenedQuery(mEl.value)).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(((b.ts&&b.ts.seconds)||0)-((a.ts&&a.ts.seconds)||0)));
     const live=rows.filter(r=>!r.undone);
-    if(!rows.length){list.innerHTML='<div class="empty"><div class="ei">🚬</div>No cartons logged this month</div>';return;}
+    if(!rows.length){list.innerHTML='<div class="empty"><div class="ei">📦</div>Nothing opened this month</div>';return;}
     const tally=key=>{const m={};live.forEach(r=>{const k=r[key]||'Unknown';m[k]=(m[k]||0)+(Number(r.qty)||1);});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
     const warns=live.filter(r=>r.warn).length;
     sum.innerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;color:var(--text2)">Cartons opened</span><span style="font-size:20px;font-weight:700">${live.length}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;color:var(--text2)">Total opened</span><span style="font-size:20px;font-weight:700">${live.length}</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${tally('name').map(([k,v])=>`<span class="badge bblu">${invEsc(k)}: ${v}</span>`).join('')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${tally('by').map(([k,v])=>`<span class="badge" style="background:var(--bg);color:var(--text2);border:1px solid var(--border)">${invEsc(k)}: ${v}</span>`).join('')}</div>
-      ${warns?`<div style="font-size:12px;color:var(--amber);margin-top:8px">⚠ ${warns} opened while the count showed 0 — the carton count may be off</div>`:''}
+      ${warns?`<div style="font-size:12px;color:var(--amber);margin-top:8px">⚠ ${warns} opened while the count showed 0 — the stock count may be off</div>`:''}
     </div>`;
     const days=[...new Set(rows.map(r=>r.date))];
     list.innerHTML=days.map(d=>{
       const day=rows.filter(r=>r.date===d),n=day.filter(r=>!r.undone).length;
       const lbl=new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-      return `<div class="inv-cat">${lbl} · ${n} carton${n===1?'':'s'}</div>`+day.map(r=>{
+      return `<div class="inv-cat">${lbl} · ${n} opened</div>`+day.map(r=>{
         const t=(r.ts&&r.ts.toDate)?r.ts.toDate().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'';
         return `<div class="irow"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;${r.undone?'text-decoration:line-through;color:var(--text3)':''}">${invEsc(r.name)}</div><div style="font-size:12px;color:var(--text3)">${invEsc(r.by||'Unknown')}${t?' · '+t:''}${r.undone?' · undone by '+invEsc(r.undoneBy||'?'):''}</div></div>${r.warn&&!r.undone?'<span class="badge" style="background:var(--amber-light);color:var(--amber)">stock was 0</span>':''}</div>`;
       }).join('');
