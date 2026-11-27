@@ -1488,6 +1488,9 @@
       </div>
     </div>
 
+    <!-- Export all prices -->
+    <button class="btn bsecondary" style="width:100%;padding:11px;margin-bottom:12px;font-size:13px" onclick="exportMgPriceBook()">↓ Export price book (one tab per vendor)</button>
+
     <!-- Add category button -->
     <button class="add-cat-btn" onclick="togMgAddCat()">
       <span style="font-size:20px;line-height:1">＋</span> Add Category
@@ -7408,6 +7411,67 @@ function exportMgCategory(id){
   a.click();
   URL.revokeObjectURL(url);
   toast(`✓ Exported ${prods.length} products`);
+}
+
+// Excel tab names: max 31 chars, no []:*?/\, no edge apostrophes, unique ignoring case
+function mgSheetName(name, used){
+  const clean = String(name||'').replace(/[\[\]:*?\/\\]/g,' ').replace(/\s+/g,' ').trim();
+  const trim = s => s.replace(/^[\s']+|[\s']+$/g,'');
+  const base = trim(clean.slice(0,31)) || 'Vendor';
+  let out = base, n = 1;
+  while(used.has(out.toLowerCase()) || out.toLowerCase()==='history'){
+    const suffix = ` (${++n})`;
+    out = trim(base.slice(0,31-suffix.length)) + suffix;
+  }
+  used.add(out.toLowerCase());
+  return out;
+}
+
+// One workbook, one tab per vendor (price book categories are vendors)
+function exportMgPriceBook(){
+  const known  = new Set(mgCategories.map(c=>c.id));
+  const groups = mgCategories.map(c=>({name:c.name, prods:mgProducts.filter(p=>p.categoryId===c.id)}));
+  groups.push({name:'Uncategorized', prods:mgProducts.filter(p=>!known.has(p.categoryId))});
+  const filled = groups.filter(g=>g.prods.length);
+  if(!filled.length){ toast('No products to export'); return; }
+  if(!window.XLSX){ toast('Spreadsheet library not loaded — check your connection'); return; }
+
+  const headers = ['Product Name','Purchase Cost ($)','Units per Case','Cost per Unit ($)','Sell Price ($)','Gross Margin (%)','Markup (%)','Profit per Unit ($)','Profit per Case ($)'];
+  const formats = [null,'0.00',null,'0.0000','0.00','0.00','0.00','0.00','0.00'];
+  const wb = XLSX.utils.book_new();
+  const used = new Set();
+  let count = 0;
+
+  filled.forEach(g=>{
+    const rows = g.prods.map(p=>{
+      const cpu  = (p.units&&p.units>0) ? p.cost/p.units : (p.costPerUnit||p.cost);
+      const both = !!(cpu && p.sell);
+      const profit = both ? p.sell-cpu : null;
+      return [
+        p.name||'',
+        p.cost||null,
+        p.units||null,
+        cpu||null,
+        p.sell||null,
+        calcMg(cpu, p.sell),
+        calcMarkup(cpu, p.sell),
+        profit,
+        (both && p.units) ? profit*p.units : null
+      ];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    rows.forEach((row,r)=>formats.forEach((z,c)=>{
+      const cell = ws[XLSX.utils.encode_cell({r:r+1, c})];
+      if(z && cell && cell.t==='n') cell.z = z;
+    }));
+    ws['!cols'] = headers.map((h,i)=>({wch: i ? h.length+2 : 40}));
+    XLSX.utils.book_append_sheet(wb, ws, mgSheetName(g.name, used));
+    count += rows.length;
+  });
+
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `price-book-${date}.xlsx`);
+  toast(`✓ Exported ${count} products across ${filled.length} tab${filled.length!==1?'s':''}`);
 }
 
 function togAddProdForm(catId){
